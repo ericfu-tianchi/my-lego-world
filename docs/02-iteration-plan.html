@@ -1,0 +1,133 @@
+<title>Brick Atlas v2 计划</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f6f5f1; --bg-2:#ecebe5; --card:#fff; --ink:#1f2124; --ink-2:#4a4e53; --muted:#6f7378; --line:rgba(31,33,36,.12); --line-strong:rgba(31,33,36,.28); --red:#c91a09; --red-soft:rgba(201,26,9,.10); --blue:#0055bf; --blue-soft:rgba(0,85,191,.10); --yellow:#f2cd37; --yellow-soft:rgba(242,205,55,.22); --green:#237841; --green-soft:rgba(35,120,65,.12);
+    --display:Rubik,"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif; --body:"Noto Sans SC","PingFang SC","Hiragino Sans GB",-apple-system,system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#17181b; --bg-2:#1f2125; --card:#22242a; --ink:#ecede9; --ink-2:#c6c8c3; --muted:#979a96; --line:rgba(236,237,233,.14); --line-strong:rgba(236,237,233,.34); --red:#e5392b; --red-soft:rgba(229,57,43,.16); --blue:#3d8be5; --blue-soft:rgba(61,139,229,.16); --yellow-soft:rgba(242,205,55,.16); --green:#4b9f4a; --green-soft:rgba(75,159,74,.16); } }
+  :root[data-theme="dark"] { --bg:#17181b; --bg-2:#1f2125; --card:#22242a; --ink:#ecede9; --ink-2:#c6c8c3; --muted:#979a96; --line:rgba(236,237,233,.14); --line-strong:rgba(236,237,233,.34); --red:#e5392b; --red-soft:rgba(229,57,43,.16); --blue:#3d8be5; --blue-soft:rgba(61,139,229,.16); --yellow-soft:rgba(242,205,55,.16); --green:#4b9f4a; --green-soft:rgba(75,159,74,.16); }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  h1,h2,h3{font-family:var(--display);letter-spacing:-.01em;text-wrap:balance;line-height:1.2;margin:0}
+  h1{font-size:clamp(30px,4.5vw,44px);font-weight:700} h2{font-size:22px;font-weight:700} h3{font-size:16px;font-weight:700}
+  p{margin:0;max-width:68ch} p+p{margin-top:10px}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}
+  .kicker i{width:14px;height:10px;background:var(--red);border-radius:2px;position:relative;display:inline-block}
+  .kicker i::before,.kicker i::after{content:"";position:absolute;top:-3px;width:4px;height:3px;background:var(--red);border-radius:1px 1px 0 0} .kicker i::before{left:2px} .kicker i::after{right:2px}
+  header{padding:52px 0 8px} .lede{font-size:17px;color:var(--ink-2);margin-top:14px}
+  section{padding:40px 0 0} .sec-head{display:flex;gap:14px;align-items:baseline;margin-bottom:14px} .sec-head .n{font-family:var(--display);font-weight:700;color:var(--red);font-size:22px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px} th,td{text-align:left;padding:10px 10px;border-top:1px solid var(--line);vertical-align:top} th{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;border-top:0}
+  .tbl{overflow-x:auto}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .t-done{background:var(--green-soft);color:var(--green)} .t-you{background:var(--yellow-soft);color:var(--ink)} .t-me{background:var(--blue-soft);color:var(--blue)} .t-go{background:var(--red-soft);color:var(--red)} .t-wait{background:var(--bg-2);color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  ul.clean{list-style:none;padding:0;margin:0;display:grid;gap:8px} ul.clean li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:baseline;font-size:15px} ul.clean li::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--red);display:inline-block;justify-self:center;position:relative;top:1px}
+  .fig{margin:16px 0} .fig svg{display:block;width:100%;height:auto} figcaption{font-size:13px;color:var(--muted);margin-top:8px} figure{margin:0}
+  svg text{font-family:var(--body);fill:var(--ink)} svg .muted{fill:var(--muted)} svg .box{fill:var(--card);stroke:var(--line-strong)} svg .chg{fill:var(--red-soft);stroke:var(--red)} svg .same{fill:var(--card);stroke:var(--line-strong)} svg .mono{font-family:var(--mono)}
+  .ask{border-left:3px solid var(--yellow);background:var(--yellow-soft);padding:12px 16px;border-radius:0 10px 10px 0;font-size:15px}
+  code{font-family:var(--mono);font-size:13px;background:var(--bg-2);padding:2px 6px;border-radius:6px}
+  footer{padding:40px 0 56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:48px}
+  @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+</style>
+<header><div class="wrap">
+  <div class="kicker"><i></i>BRICK ATLAS V2 · 迭代计划 · 2026-09-11</div>
+  <h1 style="margin-top:14px">从一次性 demo，到能放进作品集的作品</h1>
+  <p class="lede">这一页只讲三件事：这次迭代为什么这么做、哪些决策已定哪些还等你、新老架构差在哪。细节原理见上一份图解。</p>
+</div></header>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">01</span><h2>这次迭代的逻辑</h2></div>
+  <div class="panel">
+    <p>v1 是两个模型各自 one-shot 出来的 demo，目标是"看起来像"。v2 的目标是"真的能拼"加"一个系列 20 个国家"，所以顺序反过来：<b>先定规则和风格，再动手搭</b>。</p>
+    <p>规则只有四条，全部是硬的：每块零件对应真实乐高零件号和官方颜色；每块零件必须固定在结构上，校验不过就构建失败；只允许整数格子放置；产品里没有任何生成图片，图片只用来定风格。</p>
+    <p>风格靠打样定：日本、捷克、新加坡各出 3 到 4 种形态给你比，选定后写成一页设计规范，之后所有城市都照它搭。搭的时候我按乐高大师的做法：先构图、再选技法和零件、再逐块落位、再看图修。</p>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">02</span><h2>决策看板</h2></div>
+  <div class="tbl panel" style="padding:6px 8px"><table>
+    <thead><tr><th style="width:36%">决策</th><th>结论</th><th style="width:110px">状态</th></tr></thead>
+    <tbody>
+      <tr><td>可拼装性</td><td>硬门槛。校验器是构建门禁，不是警告</td><td><span class="tag t-done">已定</span></td></tr>
+      <tr><td>零件标准</td><td>目录对应 BrickLink 零件号，官方颜色，数量向真实标准靠齐（约 120 到 150 种）；配齐后出一份目录 artifact 给你审</td><td><span class="tag t-done">已定</span></td></tr>
+      <tr><td>架构</td><td>内核沿用我的（网格、排砖器、地球），手感和交互学 Astra（Worker 物理、炸开、抛物线重建、点选零件）</td><td><span class="tag t-done">已定</span></td></tr>
+      <tr><td>工程栈</td><td>TypeScript + Vite 轻壳，不带 React / Next；先做独立网页，再嵌入你的个人 OS</td><td><span class="tag t-done">已定</span></td></tr>
+      <tr><td>视觉基调</td><td>以我 v1 的色彩和拼装质感为基准，Astra 的界面气质不沿用</td><td><span class="tag t-done">已定</span></td></tr>
+      <tr><td>每国形态与设计规范</td><td>打样后你拍板：微缩城市 / 花园岛 / 街角故事 / 明信片天际线，或混合</td><td><span class="tag t-you">等你拍板</span></td></tr>
+      <tr><td>20 国清单与每国英雄地标</td><td>你给国家和你记忆最深的地方，我配地标候选</td><td><span class="tag t-you">等你</span></td></tr>
+      <tr><td>功能范围</td><td>点选零件、零件清单、分享图先进；音效、日暮光、拖零件视预算</td><td><span class="tag t-you">打样后一起定</span></td></tr>
+      <tr><td>嵌入方式</td><td>iframe 还是组件，取决于你个人 OS 网站的技术栈</td><td><span class="tag t-you">需你告知</span></td></tr>
+      <tr><td>场景工具箱怎么设计</td><td>我定，见第 04 节，做完第一座城市时汇报效果</td><td><span class="tag t-me">我定并汇报</span></td></tr>
+      <tr><td>代码库</td><td>新建 <code>~/Desktop/brick-atlas</code>（已 git init）。v1 和 Astra 的文件夹原样保留作对照</td><td><span class="tag t-me">已执行</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">03</span><h2>新老架构：变的是哪几层</h2></div>
+  <figure class="fig panel">
+    <svg viewBox="0 0 900 330" role="img" aria-label="v1 与 v2 的分层对比：图纸内核加了校验门禁和真实零件号，新增场景工具箱层，物理移到后台线程，应用壳换成 TypeScript 轻壳，渲染层不变">
+      <text x="200" y="26" text-anchor="middle" font-size="14" font-weight="700">v1 · 一次性 demo</text>
+      <text x="660" y="26" text-anchor="middle" font-size="14" font-weight="700">v2 · 作品集版本</text>
+      <g font-size="12.5">
+        <rect class="same" x="40" y="44" width="320" height="38" rx="8"/><text x="200" y="68" text-anchor="middle">应用壳 · 单文件 JS，飞入动画，图钉</text>
+        <rect class="chg" x="500" y="44" width="320" height="38" rx="8"/><text x="660" y="68" text-anchor="middle">应用壳 · TypeScript + Vite，点选零件，清单，分享图</text>
+        <rect class="same" x="40" y="92" width="320" height="38" rx="8"/><text x="200" y="116" text-anchor="middle">物理 · Rapier，主线程，逐层融化</text>
+        <rect class="chg" x="500" y="92" width="320" height="38" rx="8"/><text x="660" y="116" text-anchor="middle">物理 · Rapier 在 Web Worker，炸开 + 力度，抛物线重建</text>
+        <rect class="same" x="40" y="140" width="320" height="38" rx="8"/><text x="200" y="164" text-anchor="middle">渲染 · three.js 实例化，PBR，阴影</text>
+        <rect class="same" x="500" y="140" width="320" height="38" rx="8"/><text x="660" y="164" text-anchor="middle">渲染 · 不变</text>
+        <rect x="40" y="188" width="320" height="38" rx="8" fill="none" stroke="var(--line-strong)" stroke-dasharray="5 4"/><text x="200" y="212" text-anchor="middle" class="muted">（没有这一层：每个场景手写全部细节）</text>
+        <rect class="chg" x="500" y="188" width="320" height="38" rx="8"/><text x="660" y="212" text-anchor="middle">场景工具箱 · 技法与生成器，每城手工构图</text>
+        <rect class="same" x="40" y="236" width="320" height="38" rx="8"/><text x="200" y="260" text-anchor="middle">图纸内核 · 网格，排砖器，54 种自定零件，无校验</text>
+        <rect class="chg" x="500" y="236" width="320" height="38" rx="8"/><text x="660" y="260" text-anchor="middle">图纸内核 · 网格，排砖器，真实零件号，连接点校验门禁</text>
+        <rect class="same" x="40" y="284" width="320" height="38" rx="8"/><text x="200" y="308" text-anchor="middle">数据 · 2 城 + 真实海岸线地球</text>
+        <rect class="chg" x="500" y="284" width="320" height="38" rx="8"/><text x="660" y="308" text-anchor="middle">数据 · 20 国登记表 + 地球 + LDraw 导出</text>
+      </g>
+      <g stroke="var(--line-strong)" stroke-width="1"><line x1="400" y1="63" x2="470" y2="63"/><line x1="400" y1="111" x2="470" y2="111"/><line x1="400" y1="159" x2="470" y2="159"/><line x1="400" y1="207" x2="470" y2="207"/><line x1="400" y1="255" x2="470" y2="255"/><line x1="400" y1="303" x2="470" y2="303"/></g>
+    </svg>
+    <figcaption>红框是变化的层。渲染层原样保留：它已经是两边共同的做法，也是画面质感的来源。</figcaption>
+  </figure>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">04</span><h2>工具箱怎样做到"同一系列，但每个都不一样"</h2></div>
+  <div class="panel">
+    <p>你的担心是对的：如果工具箱是"把同一栋楼复制 20 次"，就会有流水线感。所以工具箱里放的不是成品建筑，而是<b>技法和语法</b>，对应乐高官方的做法：Creator 系列和 Architecture 系列共用同一批零件与技法，但每个 set 都是设计师单独构图的。</p>
+    <ul class="clean" style="margin-top:12px">
+      <li>每座城市至少一个<b>手工设计的英雄地标</b>，不走生成器，全网唯一。</li>
+      <li>配角建筑由<b>生成器</b>产生，但生成器吃的是每城不同的参数：屋顶形式、立面节奏、材质、层数、色板。布拉格的红瓦坡顶和新加坡的骑楼拱廊出自同一个"低层街区生成器"，长得却完全不同。</li>
+      <li><b>色板每城独立</b>，事先写进设计规范；同一色板内不超过一个主色、两个辅色、一个点缀色。</li>
+      <li><b>构图永远手工</b>：地标落点、水路、道路、绿化是我按这座城市的地理和记忆点排的，不是模板。</li>
+      <li><b>人仔与小故事每城定制</b>：谁在做什么，是一眼分辨"这是哪儿"的最快线索。</li>
+      <li>校验器里加一条<b>相似度检查</b>：两座城市若共享超过 30% 的生成器参数组合就报警。</li>
+    </ul>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">05</span><h2>一周节奏：谁在什么时候做什么</h2></div>
+  <div class="tbl panel" style="padding:6px 8px"><table>
+    <thead><tr><th style="width:90px">时间</th><th>我做</th><th style="width:34%">需要你</th><th style="width:100px">状态</th></tr></thead>
+    <tbody>
+      <tr><td>Day 0</td><td>新仓库、TypeScript 骨架、把 v1 内核搬过去；校验器变成构建门禁；Worker 物理</td><td>—</td><td><span class="tag t-go">开工中</span></td></tr>
+      <tr><td>Day 0</td><td>三城 × 四形态打样图 + 参考作品调研，出打样 artifact</td><td>先完成一次 Cloudflare 登录（见下），然后审图、选形态</td><td><span class="tag t-you">等你登录</span></td></tr>
+      <tr><td>Day 1</td><td>零件目录 v1：约 120 到 150 种真实零件号 + 官方色，出目录 artifact</td><td>审目录是否多样、合理</td><td><span class="tag t-go">可开工</span></td></tr>
+      <tr><td>Day 1</td><td>设计规范一页：形态、底板、比例、色板规则、人仔规则、零件多样性规则</td><td>拍板形态后我才能写</td><td><span class="tag t-wait">需 align</span></td></tr>
+      <tr><td>Day 2</td><td>工具箱 + 第一座城市（试点）按大师方法完整搭一遍，含拆解重建</td><td>审第一座城市，定质量基线</td><td><span class="tag t-wait">需 align</span></td></tr>
+      <tr><td>Day 3–5</td><td>其余城市，每天 4 到 5 座，每座 3 到 4 个角度截图</td><td>每天看一批，只挑不满意的说</td><td><span class="tag t-wait">需 20 国清单</span></td></tr>
+      <tr><td>Day 6</td><td>地球 20 枚图钉、飞入过渡、分享图、音效、移动端手势</td><td>—</td><td><span class="tag t-wait">排队</span></td></tr>
+      <tr><td>Day 7</td><td>嵌入你的个人 OS，性能与设备测试，LDraw 导出</td><td>告诉我 OS 网站用什么做的</td><td><span class="tag t-you">需你告知</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><span class="n">06</span><h2>现在需要你做的三件事</h2></div>
+  <div class="ask"><b>1 · 让我能生成打样图。</b> 图片服务在公司 Cloudflare Access 后面，你的 WARP 已连接但没有登录到 Zero Trust。任选一种：打开菜单栏的 Cloudflare WARP，点登录并完成浏览器验证；或在这个会话里输入 <code>! cloudflared access login https://flyer.opuslab.ai</code> 完成一次浏览器登录。完成后回我一句，我立刻出图。</div>
+  <div class="ask" style="margin-top:12px"><b>2 · 告诉我个人 OS 网站的技术栈</b>（比如 Next.js / Astro / 纯静态），决定用 iframe 还是组件嵌入。不急，Day 7 之前即可。</div>
+  <div class="ask" style="margin-top:12px"><b>3 · 20 个国家的清单初稿</b>，每个国家写一个你记忆最深的地方或画面就够，地标候选我来配。打样定形态之后再给也行。</div>
+</div></section>
+
+<footer><div class="wrap">Brick Atlas v2 · 迭代计划 · 代码库 ~/Desktop/brick-atlas · 上一份：原理图解 docs/01-explainer.html</div></footer>
