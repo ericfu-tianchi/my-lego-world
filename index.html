@@ -1,3 +1,28 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My Lego World</title></head>
-<body><p style="font-family:system-ui;padding:24px">My Lego World v2 — app shell lands after the parts catalogue is approved.</p></body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My Lego World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1f2124; --muted: #6a6e72; --paper: #f1f2ef; --line: rgba(31,33,36,.13); --brick: #c91a09; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+  html, body { height: 100%; } body { margin: 0; overflow: hidden; font-family: Rubik, -apple-system, system-ui, sans-serif; color: var(--ink); background: var(--paper) radial-gradient(120% 90% at 50% 38%, #f5f5f2 0%, #e6e7e3 58%, #d2d4cf 100%); -webkit-font-smoothing: antialiased; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hud { position: fixed; z-index: 2; pointer-events: none; } [hidden] { display: none !important; }
+  .brand { top: 22px; left: 26px; display: flex; align-items: center; gap: 10px; } .brand .logo { width: 22px; height: 16px; border-radius: 3px; background: var(--brick); position: relative; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+  .brand .logo::before, .brand .logo::after { content: ""; position: absolute; top: -4px; width: 6px; height: 4px; border-radius: 2px 2px 0 0; background: var(--brick); } .brand .logo::before { left: 3px; } .brand .logo::after { right: 3px; }
+  .brand h1 { font-size: 15px; font-weight: 600; margin: 0; } .brand .pill { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+  .hint { top: 26px; right: 26px; font-size: 12px; color: var(--muted); }
+  .switch { top: 64px; left: 26px; display: flex; gap: 6px; pointer-events: auto; } .switch button { font-size: 13px; padding: 7px 12px; } .switch button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .card { left: 26px; bottom: 26px; max-width: 460px; } .card h2 { font-size: 30px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 4px; } .card .sub { font-size: 14px; color: var(--muted); margin: 0 0 10px; } .card .stats { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .actions { right: 26px; bottom: 26px; display: flex; gap: 10px; align-items: center; pointer-events: auto; }
+  button { font: inherit; font-size: 14px; font-weight: 500; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.75); color: var(--ink); cursor: pointer; backdrop-filter: blur(8px); transition: transform .12s ease, background .12s ease; }
+  button:hover { background: #fff; transform: translateY(-1px); } button.primary { background: var(--ink); color: #fff; border-color: var(--ink); } button:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+  #strength-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.6); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; } #strength { width: 110px; accent-color: var(--brick); }
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud brand"><div class="logo"></div><h1>My Lego World</h1><span class="pill">Samples</span></div>
+<div class="hud hint">Drag to orbit · Scroll to zoom · Shift-drag to pan</div>
+<div class="hud switch"><button data-scene="kyoto">B · Kyoto</button><button data-scene="tokyo">A · Tokyo</button></div>
+<div class="hud card"><h2 id="place-title">—</h2><p class="sub" id="place-sub"></p><div class="stats" id="place-stats"></div></div>
+<div class="hud actions"><label id="strength-wrap">Force <input id="strength" type="range" min="1" max="6" step="0.5" value="3"></label><button id="btn-rebuild" hidden>Rebuild</button><button id="btn-apart" class="primary">Take it apart</button></div>
+<script type="module" src="/src/app/main.ts"></script>
+</body></html>

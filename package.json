@@ -11,8 +11,10 @@
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
-    "vite": "^6.4.3"
+    "vite": "^6.4.3",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.14.0",
