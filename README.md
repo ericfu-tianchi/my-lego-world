@@ -1,4 +1,4 @@
-# Brick Atlas (v2)
+# My Lego World (v2)
 
 A brick-built atlas of the ~20 countries Eric has travelled: each place is a LEGO-style micro diorama built from real, buildable parts, which you can take apart with physics and rebuild in one click. Ships as a standalone web app, later embedded in Eric's pixel-OS personal site.
 

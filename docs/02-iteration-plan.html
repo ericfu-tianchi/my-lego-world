@@ -1,4 +1,4 @@
-<title>Brick Atlas v2 计划</title>
+<title>My Lego World v2 计划</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -31,7 +31,7 @@
   @media (max-width:720px){.grid2{grid-template-columns:1fr}}
 </style>
 <header><div class="wrap">
-  <div class="kicker"><i></i>BRICK ATLAS V2 · 迭代计划 · 2026-09-11</div>
+  <div class="kicker"><i></i>MY LEGO WORLD · V2 迭代计划 · 2026-09-11</div>
   <h1 style="margin-top:14px">从一次性 demo，到能放进作品集的作品</h1>
   <p class="lede">这一页只讲三件事：这次迭代为什么这么做、哪些决策已定哪些还等你、新老架构差在哪。细节原理见上一份图解。</p>
 </div></header>
@@ -60,7 +60,7 @@
       <tr><td>功能范围</td><td>点选零件、零件清单、分享图先进；音效、日暮光、拖零件视预算</td><td><span class="tag t-you">打样后一起定</span></td></tr>
       <tr><td>嵌入方式</td><td>iframe 还是组件，取决于你个人 OS 网站的技术栈</td><td><span class="tag t-you">需你告知</span></td></tr>
       <tr><td>场景工具箱怎么设计</td><td>我定，见第 04 节，做完第一座城市时汇报效果</td><td><span class="tag t-me">我定并汇报</span></td></tr>
-      <tr><td>代码库</td><td>新建 <code>~/Desktop/brick-atlas</code>（已 git init）。v1 和 Astra 的文件夹原样保留作对照</td><td><span class="tag t-me">已执行</span></td></tr>
+      <tr><td>代码库</td><td>新建 <code>~/Desktop/My Lego World</code>（已 git init）。v1 和 Astra 的文件夹原样保留作对照</td><td><span class="tag t-me">已执行</span></td></tr>
     </tbody>
   </table></div>
 </div></section>
@@ -96,29 +96,30 @@
   <div class="panel">
     <p>你的担心是对的：如果工具箱是"把同一栋楼复制 20 次"，就会有流水线感。所以工具箱里放的不是成品建筑，而是<b>技法和语法</b>，对应乐高官方的做法：Creator 系列和 Architecture 系列共用同一批零件与技法，但每个 set 都是设计师单独构图的。</p>
     <ul class="clean" style="margin-top:12px">
-      <li>每座城市至少一个<b>手工设计的英雄地标</b>，不走生成器，全网唯一。</li>
-      <li>配角建筑由<b>生成器</b>产生，但生成器吃的是每城不同的参数：屋顶形式、立面节奏、材质、层数、色板。布拉格的红瓦坡顶和新加坡的骑楼拱廊出自同一个"低层街区生成器"，长得却完全不同。</li>
-      <li><b>色板每城独立</b>，事先写进设计规范；同一色板内不超过一个主色、两个辅色、一个点缀色。</li>
-      <li><b>构图永远手工</b>：地标落点、水路、道路、绿化是我按这座城市的地理和记忆点排的，不是模板。</li>
-      <li><b>人仔与小故事每城定制</b>：谁在做什么，是一眼分辨"这是哪儿"的最快线索。</li>
-      <li>校验器里加一条<b>相似度检查</b>：两座城市若共享超过 30% 的生成器参数组合就报警。</li>
+      <li><span>每座城市至少一个<b>手工设计的英雄地标</b>，不走生成器，全网唯一。</span></li>
+      <li><span>配角建筑由<b>生成器</b>产生，但生成器吃的是每城不同的参数：屋顶形式、立面节奏、材质、层数、色板。布拉格的红瓦坡顶和新加坡的骑楼拱廊出自同一个"低层街区生成器"，长得却完全不同。</span></li>
+      <li><span><b>色板每城独立</b>，事先写进设计规范；同一色板内不超过一个主色、两个辅色、一个点缀色。</span></li>
+      <li><span><b>构图永远手工</b>：地标落点、水路、道路、绿化是我按这座城市的地理和记忆点排的，不是模板。</span></li>
+      <li><span><b>人仔与小故事每城定制</b>：谁在做什么，是一眼分辨"这是哪儿"的最快线索。</span></li>
+      <li><span>校验器里加一条<b>相似度检查</b>：两座城市若共享超过 30% 的生成器参数组合就报警。</span></li>
     </ul>
   </div>
 </div></section>
 
 <section><div class="wrap">
-  <div class="sec-head"><span class="n">05</span><h2>一周节奏：谁在什么时候做什么</h2></div>
+  <div class="sec-head"><span class="n">05</span><h2>推进顺序（仅供参考，不是排期）</h2></div>
+  <p style="margin-bottom:12px;color:var(--ink-2)">按依赖关系排的先后，不按天数。passion project 想两天做完也行，顺序不变。</p>
   <div class="tbl panel" style="padding:6px 8px"><table>
-    <thead><tr><th style="width:90px">时间</th><th>我做</th><th style="width:34%">需要你</th><th style="width:100px">状态</th></tr></thead>
+    <thead><tr><th style="width:70px">顺序</th><th>我做</th><th style="width:34%">需要你</th><th style="width:100px">状态</th></tr></thead>
     <tbody>
-      <tr><td>Day 0</td><td>新仓库、TypeScript 骨架、把 v1 内核搬过去；校验器变成构建门禁；Worker 物理</td><td>—</td><td><span class="tag t-go">开工中</span></td></tr>
-      <tr><td>Day 0</td><td>三城 × 四形态打样图 + 参考作品调研，出打样 artifact</td><td>先完成一次 Cloudflare 登录（见下），然后审图、选形态</td><td><span class="tag t-you">等你登录</span></td></tr>
-      <tr><td>Day 1</td><td>零件目录 v1：约 120 到 150 种真实零件号 + 官方色，出目录 artifact</td><td>审目录是否多样、合理</td><td><span class="tag t-go">可开工</span></td></tr>
-      <tr><td>Day 1</td><td>设计规范一页：形态、底板、比例、色板规则、人仔规则、零件多样性规则</td><td>拍板形态后我才能写</td><td><span class="tag t-wait">需 align</span></td></tr>
-      <tr><td>Day 2</td><td>工具箱 + 第一座城市（试点）按大师方法完整搭一遍，含拆解重建</td><td>审第一座城市，定质量基线</td><td><span class="tag t-wait">需 align</span></td></tr>
-      <tr><td>Day 3–5</td><td>其余城市，每天 4 到 5 座，每座 3 到 4 个角度截图</td><td>每天看一批，只挑不满意的说</td><td><span class="tag t-wait">需 20 国清单</span></td></tr>
-      <tr><td>Day 6</td><td>地球 20 枚图钉、飞入过渡、分享图、音效、移动端手势</td><td>—</td><td><span class="tag t-wait">排队</span></td></tr>
-      <tr><td>Day 7</td><td>嵌入你的个人 OS，性能与设备测试，LDraw 导出</td><td>告诉我 OS 网站用什么做的</td><td><span class="tag t-you">需你告知</span></td></tr>
+      <tr><td class="mono">1</td><td>新仓库、TypeScript 骨架、把 v1 内核搬过去；校验器变成构建门禁；Worker 物理</td><td>—</td><td><span class="tag t-go">开工中</span></td></tr>
+      <tr><td class="mono">2</td><td>三城 × 四形态打样图 + 参考作品调研，出打样 artifact</td><td>先完成一次 Cloudflare 登录（见下），然后审图、选形态</td><td><span class="tag t-you">等你登录</span></td></tr>
+      <tr><td class="mono">3</td><td>零件目录 v1：约 120 到 150 种真实零件号 + 官方色，出目录 artifact</td><td>审目录是否多样、合理</td><td><span class="tag t-go">可开工</span></td></tr>
+      <tr><td class="mono">4</td><td>设计规范一页：形态、底板、比例、色板规则、人仔规则、零件多样性规则</td><td>拍板形态后我才能写</td><td><span class="tag t-wait">需 align</span></td></tr>
+      <tr><td class="mono">5</td><td>工具箱 + 第一座城市（试点）按大师方法完整搭一遍，含拆解重建</td><td>审第一座城市，定质量基线</td><td><span class="tag t-wait">需 align</span></td></tr>
+      <tr><td class="mono">6</td><td>其余城市，每天 4 到 5 座，每座 3 到 4 个角度截图</td><td>每天看一批，只挑不满意的说</td><td><span class="tag t-wait">需 20 国清单</span></td></tr>
+      <tr><td class="mono">7</td><td>地球 20 枚图钉、飞入过渡、分享图、音效、移动端手势</td><td>—</td><td><span class="tag t-wait">排队</span></td></tr>
+      <tr><td class="mono">8</td><td>嵌入你的个人 OS，性能与设备测试，LDraw 导出</td><td>告诉我 OS 网站用什么做的</td><td><span class="tag t-you">需你告知</span></td></tr>
     </tbody>
   </table></div>
 </div></section>
@@ -126,8 +127,8 @@
 <section><div class="wrap">
   <div class="sec-head"><span class="n">06</span><h2>现在需要你做的三件事</h2></div>
   <div class="ask"><b>1 · 让我能生成打样图。</b> 图片服务在公司 Cloudflare Access 后面，你的 WARP 已连接但没有登录到 Zero Trust。任选一种：打开菜单栏的 Cloudflare WARP，点登录并完成浏览器验证；或在这个会话里输入 <code>! cloudflared access login https://flyer.opuslab.ai</code> 完成一次浏览器登录。完成后回我一句，我立刻出图。</div>
-  <div class="ask" style="margin-top:12px"><b>2 · 告诉我个人 OS 网站的技术栈</b>（比如 Next.js / Astro / 纯静态），决定用 iframe 还是组件嵌入。不急，Day 7 之前即可。</div>
+  <div class="ask" style="margin-top:12px"><b>2 · 告诉我个人 OS 网站的技术栈</b>（比如 Next.js / Astro / 纯静态），决定用 iframe 还是组件嵌入。不急。</div>
   <div class="ask" style="margin-top:12px"><b>3 · 20 个国家的清单初稿</b>，每个国家写一个你记忆最深的地方或画面就够，地标候选我来配。打样定形态之后再给也行。</div>
 </div></section>
 
-<footer><div class="wrap">Brick Atlas v2 · 迭代计划 · 代码库 ~/Desktop/brick-atlas · 上一份：原理图解 docs/01-explainer.html</div></footer>
+<footer><div class="wrap">My Lego World · v2 迭代计划 · 代码库 ~/Desktop/My Lego World · 上一份：原理图解 docs/01-explainer.html</div></footer>
