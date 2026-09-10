@@ -1,0 +1,62 @@
+{
+ "japan_A": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057652025-gen-6e851fa8-7210-45f3-96e6-c2a8b3682f84.png",
+  "err": "Job 6e851fa8-7210-45f3-96e6-c2a8b3682f84 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/japan_A.png\n"
+ },
+ "japan_B": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057675089-gen-23bab5e6-7c6d-46c2-80f5-e8abc98719c6.png",
+  "err": "Job 23bab5e6-7c6d-46c2-80f5-e8abc98719c6 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/japan_B.png\n"
+ },
+ "japan_C": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057672748-gen-3834299b-0b62-415a-8825-48cafe19fbc4.png",
+  "err": "Job 3834299b-0b62-415a-8825-48cafe19fbc4 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/japan_C.png\n"
+ },
+ "japan_D": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057672911-gen-ae3e3bc6-995c-4fe9-b33a-d05c0ce48b96.png",
+  "err": "Job ae3e3bc6-995c-4fe9-b33a-d05c0ce48b96 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/japan_D.png\n"
+ },
+ "czechia_A": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057668374-gen-9f7c51b0-4d6a-4879-a7d8-2c3c890704c3.png",
+  "err": "Job 9f7c51b0-4d6a-4879-a7d8-2c3c890704c3 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/czechia_A.png\n"
+ },
+ "czechia_B": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057657627-gen-f7eec084-2e88-4bf4-bf94-2c1482d45791.png",
+  "err": "Job f7eec084-2e88-4bf4-bf94-2c1482d45791 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/czechia_B.png\n"
+ },
+ "czechia_C": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057774081-gen-fff7f1f3-810d-42e2-862e-a2393afa91b6.png",
+  "err": "Job fff7f1f3-810d-42e2-862e-a2393afa91b6 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/czechia_C.png\n"
+ },
+ "czechia_D": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057777363-gen-4a2db9fe-ef53-4437-97cf-e1862da408f9.png",
+  "err": "Job 4a2db9fe-ef53-4437-97cf-e1862da408f9 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/czechia_D.png\n"
+ },
+ "singapore_A": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057787309-gen-10dc7b0f-a0d7-4842-aece-3774066abc37.png",
+  "err": "Job 10dc7b0f-a0d7-4842-aece-3774066abc37 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/singapore_A.png\n"
+ },
+ "singapore_B": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057785216-gen-82dcd256-b99e-40e3-a393-842eac022da6.png",
+  "err": "Job 82dcd256-b99e-40e3-a393-842eac022da6 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/singapore_B.png\n"
+ },
+ "singapore_C": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057781840-gen-8ae9aed2-6084-41ec-a36c-49a0a0466e41.png",
+  "err": "Job 8ae9aed2-6084-41ec-a36c-49a0a0466e41 started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/singapore_C.png\n"
+ },
+ "singapore_D": {
+  "code": 0,
+  "url": "https://flyer.opuslab.ai/a/eric-fu/1789057791550-gen-7c618782-ab01-4f6e-968c-fefb45a53cfd.png",
+  "err": "Job 7c618782-ab01-4f6e-968c-fefb45a53cfd started, polling...\nDownloaded → /Users/tianchifu/Desktop/My Lego World/docs/protos/singapore_D.png\n"
+ }
+}
