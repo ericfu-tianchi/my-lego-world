@@ -56,12 +56,14 @@ export function profileExtrude(shapeFn: (s: THREE.Shape) => void, w: number): TH
   const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: false, curveSegments: 10 });
   g.rotateY(-Math.PI / 2); g.translate(w / 2, 0, 0); g.deleteAttribute('uv'); return g;
 }
-/** Extrude a top-view polygon (x, z points) upward by height h; centred on the w×d footprint. */
-export function footprintPrism(points: [number, number][], h: number, w: number, d: number): THREE.BufferGeometry {
+/** Extrude a top-view polygon (x, z in stud units, origin at the footprint corner) upward by h; centred on the w×d footprint. */
+export function footprintPrism(points: [number, number][], h: number, w: number, d: number, bevel = 0.035): THREE.BufferGeometry {
   const s = new THREE.Shape(); points.forEach(([x, z], i) => (i ? s.lineTo(x - w / 2, z - d / 2) : s.moveTo(x - w / 2, z - d / 2))); s.closePath();
-  const g = new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false }); g.rotateX(Math.PI / 2); g.translate(0, h / 2, 0); g.deleteAttribute('uv');
-  // rotateX(+90°) maps shape y (our z) to -z; flip back
-  g.scale(1, 1, -1); g.computeVertexNormals(); return g;
+  const b = Math.min(bevel, h / 4);
+  const g = new THREE.ExtrudeGeometry(s, { depth: h - 2 * b, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 2, bevelOffset: -b }); // z ∈ [-b, h-b]
+  g.rotateX(Math.PI / 2);          // (x, y, z) → (x, -z, y): extrusion becomes -y, shape y becomes our z
+  g.translate(0, h / 2 - b, 0);    // y ∈ [-h/2, h/2]
+  g.deleteAttribute('uv'); g.computeVertexNormals(); return g;
 }
 export function lathe(points: [number, number][], segs = 24): THREE.BufferGeometry { const g = new THREE.LatheGeometry(points.map((p) => new THREE.Vector2(p[0], p[1])), segs); g.deleteAttribute('uv'); return g; }
 
