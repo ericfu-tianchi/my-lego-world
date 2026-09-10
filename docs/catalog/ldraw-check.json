@@ -1,0 +1,1010 @@
+[
+ {
+  "key": "brick_1x1",
+  "bl": "3005",
+  "name": "Brick 1 x 1",
+  "ldraw": [
+   "3005",
+   "Brick 1 x 1"
+  ]
+ },
+ {
+  "key": "brick_1x2",
+  "bl": "3004",
+  "name": "Brick 1 x 2",
+  "ldraw": [
+   "3004",
+   "Brick 1 x 2"
+  ]
+ },
+ {
+  "key": "brick_1x3",
+  "bl": "3622",
+  "name": "Brick 1 x 3",
+  "ldraw": [
+   "3622",
+   "Brick 1 x 3"
+  ]
+ },
+ {
+  "key": "brick_1x4",
+  "bl": "3010",
+  "name": "Brick 1 x 4",
+  "ldraw": [
+   "3010",
+   "Brick 1 x 4"
+  ]
+ },
+ {
+  "key": "brick_1x6",
+  "bl": "3009",
+  "name": "Brick 1 x 6",
+  "ldraw": [
+   "3009",
+   "Brick 1 x 6"
+  ]
+ },
+ {
+  "key": "brick_1x8",
+  "bl": "3008",
+  "name": "Brick 1 x 8",
+  "ldraw": [
+   "3008",
+   "Brick 1 x 8"
+  ]
+ },
+ {
+  "key": "brick_2x2",
+  "bl": "3003",
+  "name": "Brick 2 x 2",
+  "ldraw": [
+   "3003",
+   "Brick 2 x 2"
+  ]
+ },
+ {
+  "key": "brick_2x3",
+  "bl": "3002",
+  "name": "Brick 2 x 3",
+  "ldraw": [
+   "3002",
+   "Brick 2 x 3"
+  ]
+ },
+ {
+  "key": "brick_2x4",
+  "bl": "3001",
+  "name": "Brick 2 x 4",
+  "ldraw": [
+   "3001",
+   "Brick 2 x 4"
+  ]
+ },
+ {
+  "key": "brick_2x6",
+  "bl": "2456",
+  "name": "Brick 2 x 6",
+  "ldraw": [
+   "2456",
+   "Brick 2 x 6"
+  ]
+ },
+ {
+  "key": "brick_2x8",
+  "bl": "3007",
+  "name": "Brick 2 x 8",
+  "ldraw": [
+   "3007",
+   "Brick 2 x 8"
+  ]
+ },
+ {
+  "key": "brick_1x1x5",
+  "bl": "2453b",
+  "name": "Brick 1 x 1 x 5",
+  "ldraw": [
+   "2453b",
+   "Brick 1 x 1 x 5 with Solid Stud"
+  ]
+ },
+ {
+  "key": "brick_1x2x2",
+  "bl": "3245c",
+  "name": "Brick 1 x 2 x 2",
+  "ldraw": [
+   "3245c",
+   "Brick 1 x 2 x 2 without Understud"
+  ]
+ },
+ {
+  "key": "brick_corner_2x2",
+  "bl": "2357",
+  "name": "Brick 2 x 2 Corner",
+  "ldraw": [
+   "2357",
+   "Brick 2 x 2 Corner"
+  ]
+ },
+ {
+  "key": "round_1x1",
+  "bl": "3062b",
+  "name": "Brick Round 1 x 1",
+  "ldraw": [
+   "3062b",
+   "Brick 1 x 1 Round with Hollow Stud"
+  ]
+ },
+ {
+  "key": "roundbrick_2x2",
+  "bl": "3941",
+  "name": "Brick Round 2 x 2",
+  "ldraw": [
+   "3941",
+   "Brick 2 x 2 Round without Reinforcement"
+  ]
+ },
+ {
+  "key": "brick_snot_1x1",
+  "bl": "87087",
+  "name": "Brick 1 x 1 with Stud on Side",
+  "ldraw": [
+   "87087",
+   "Brick 1 x 1 with Stud on 1 Side"
+  ]
+ },
+ {
+  "key": "brick_headlight",
+  "bl": "4070",
+  "name": "Brick 1 x 1 with Headlight",
+  "ldraw": [
+   "4070",
+   "Brick 1 x 1 with Headlight"
+  ]
+ },
+ {
+  "key": "brick_grille_1x2",
+  "bl": "2877",
+  "name": "Brick 1 x 2 with Grille",
+  "ldraw": [
+   "2877",
+   "Brick 1 x 2 with Grille"
+  ]
+ },
+ {
+  "key": "brick_log_1x2",
+  "bl": "30136",
+  "name": "Brick 1 x 2 Log",
+  "ldraw": [
+   "30136",
+   "Brick 1 x 2 Log"
+  ]
+ },
+ {
+  "key": "plate_1x1",
+  "bl": "3024",
+  "name": "Plate 1 x 1",
+  "ldraw": [
+   "3024",
+   "Plate 1 x 1"
+  ]
+ },
+ {
+  "key": "plate_1x2",
+  "bl": "3023",
+  "name": "Plate 1 x 2",
+  "ldraw": [
+   "3023b",
+   "alias"
+  ]
+ },
+ {
+  "key": "plate_1x3",
+  "bl": "3623",
+  "name": "Plate 1 x 3",
+  "ldraw": [
+   "3623",
+   "Plate 1 x 3"
+  ]
+ },
+ {
+  "key": "plate_1x4",
+  "bl": "3710",
+  "name": "Plate 1 x 4",
+  "ldraw": [
+   "3710",
+   "Plate 1 x 4"
+  ]
+ },
+ {
+  "key": "plate_1x6",
+  "bl": "3666",
+  "name": "Plate 1 x 6",
+  "ldraw": [
+   "3666",
+   "Plate 1 x 6"
+  ]
+ },
+ {
+  "key": "plate_1x8",
+  "bl": "3460",
+  "name": "Plate 1 x 8",
+  "ldraw": [
+   "3460",
+   "Plate 1 x 8"
+  ]
+ },
+ {
+  "key": "plate_2x2",
+  "bl": "3022",
+  "name": "Plate 2 x 2",
+  "ldraw": [
+   "3022",
+   "Plate 2 x 2"
+  ]
+ },
+ {
+  "key": "plate_2x3",
+  "bl": "3021",
+  "name": "Plate 2 x 3",
+  "ldraw": [
+   "3021",
+   "Plate 2 x 3"
+  ]
+ },
+ {
+  "key": "plate_2x4",
+  "bl": "3020",
+  "name": "Plate 2 x 4",
+  "ldraw": [
+   "3020",
+   "Plate 2 x 4"
+  ]
+ },
+ {
+  "key": "plate_2x6",
+  "bl": "3795",
+  "name": "Plate 2 x 6",
+  "ldraw": [
+   "3795",
+   "Plate 2 x 6"
+  ]
+ },
+ {
+  "key": "plate_2x8",
+  "bl": "3034",
+  "name": "Plate 2 x 8",
+  "ldraw": [
+   "3034",
+   "Plate 2 x 8"
+  ]
+ },
+ {
+  "key": "plate_4x4",
+  "bl": "3031",
+  "name": "Plate 4 x 4",
+  "ldraw": [
+   "3031",
+   "Plate 4 x 4"
+  ]
+ },
+ {
+  "key": "plate_4x6",
+  "bl": "3032",
+  "name": "Plate 4 x 6",
+  "ldraw": [
+   "3032",
+   "Plate 4 x 6"
+  ]
+ },
+ {
+  "key": "plate_4x8",
+  "bl": "3035",
+  "name": "Plate 4 x 8",
+  "ldraw": [
+   "3035",
+   "Plate 4 x 8"
+  ]
+ },
+ {
+  "key": "plate_6x6",
+  "bl": "3958",
+  "name": "Plate 6 x 6",
+  "ldraw": [
+   "3958",
+   "Plate 6 x 6"
+  ]
+ },
+ {
+  "key": "plate_6x8",
+  "bl": "3036",
+  "name": "Plate 6 x 8",
+  "ldraw": [
+   "3036",
+   "Plate 6 x 8"
+  ]
+ },
+ {
+  "key": "plate_8x8",
+  "bl": "41539",
+  "name": "Plate 8 x 8",
+  "ldraw": [
+   "41539",
+   "Plate 8 x 8"
+  ]
+ },
+ {
+  "key": "plate_corner_2x2",
+  "bl": "2420",
+  "name": "Plate 2 x 2 Corner",
+  "ldraw": [
+   "2420",
+   "Plate 2 x 2 Corner"
+  ]
+ },
+ {
+  "key": "jumper_1x2",
+  "bl": "15573",
+  "name": "Plate 1 x 2 with 1 Stud (Jumper)",
+  "ldraw": [
+   "15573",
+   "Plate 1 x 2 with Groove with 1 Centre Stud, without Understud"
+  ]
+ },
+ {
+  "key": "jumper_2x2",
+  "bl": "87580",
+  "name": "Plate 2 x 2 with 1 Stud (Jumper)",
+  "ldraw": [
+   "87580",
+   "Plate 2 x 2 with Groove with 1 Centre Stud"
+  ]
+ },
+ {
+  "key": "roundplate_1x1",
+  "bl": "6141",
+  "name": "Plate Round 1 x 1",
+  "ldraw": [
+   "6141",
+   "Plate 1 x 1 Round"
+  ]
+ },
+ {
+  "key": "roundplate_2x2",
+  "bl": "4032",
+  "name": "Plate Round 2 x 2",
+  "ldraw": [
+   "4032a",
+   "alias"
+  ]
+ },
+ {
+  "key": "roundplate_4x4",
+  "bl": "60474",
+  "name": "Plate Round 4 x 4",
+  "ldraw": [
+   "60474",
+   "Plate 4 x 4 Round with Hole and Snapstud"
+  ]
+ },
+ {
+  "key": "flower_1x1",
+  "bl": "24866",
+  "name": "Plate Round 1 x 1 with Flower Edge",
+  "ldraw": [
+   "24866",
+   "Plate 1 x 1 with 5 Petals"
+  ]
+ },
+ {
+  "key": "wedge_4x2_r",
+  "bl": "41769",
+  "name": "Wedge Plate 4 x 2 Right",
+  "ldraw": [
+   "41769a",
+   "alias"
+  ]
+ },
+ {
+  "key": "wedge_4x2_l",
+  "bl": "41770",
+  "name": "Wedge Plate 4 x 2 Left",
+  "ldraw": [
+   "41770a",
+   "alias"
+  ]
+ },
+ {
+  "key": "wedge_3x3",
+  "bl": "2450",
+  "name": "Wedge Plate 3 x 3 Cut Corner",
+  "ldraw": [
+   "2450",
+   "Plate 3 x 3 without Corner"
+  ]
+ },
+ {
+  "key": "tile_1x1",
+  "bl": "3070b",
+  "name": "Tile 1 x 1",
+  "ldraw": [
+   "3070b",
+   "Tile 1 x 1 with Groove"
+  ]
+ },
+ {
+  "key": "tile_1x2",
+  "bl": "3069b",
+  "name": "Tile 1 x 2",
+  "ldraw": [
+   "3069b",
+   "Tile 1 x 2 with Groove"
+  ]
+ },
+ {
+  "key": "tile_1x3",
+  "bl": "63864",
+  "name": "Tile 1 x 3",
+  "ldraw": [
+   "63864",
+   "Tile 1 x 3"
+  ]
+ },
+ {
+  "key": "tile_1x4",
+  "bl": "2431",
+  "name": "Tile 1 x 4",
+  "ldraw": [
+   "2431",
+   "Tile 1 x 4 with Groove"
+  ]
+ },
+ {
+  "key": "tile_1x6",
+  "bl": "6636",
+  "name": "Tile 1 x 6",
+  "ldraw": [
+   "6636",
+   "Tile 1 x 6"
+  ]
+ },
+ {
+  "key": "tile_1x8",
+  "bl": "4162",
+  "name": "Tile 1 x 8",
+  "ldraw": [
+   "4162",
+   "Tile 1 x 8"
+  ]
+ },
+ {
+  "key": "tile_2x2",
+  "bl": "3068b",
+  "name": "Tile 2 x 2",
+  "ldraw": [
+   "3068b",
+   "Tile 2 x 2 with Groove"
+  ]
+ },
+ {
+  "key": "tile_2x4",
+  "bl": "87079",
+  "name": "Tile 2 x 4",
+  "ldraw": [
+   "87079",
+   "Tile 2 x 4"
+  ]
+ },
+ {
+  "key": "roundtile_1x1",
+  "bl": "98138",
+  "name": "Tile Round 1 x 1",
+  "ldraw": [
+   "98138",
+   "Tile 1 x 1 Round with Groove"
+  ]
+ },
+ {
+  "key": "roundtile_2x2",
+  "bl": "14769",
+  "name": "Tile Round 2 x 2",
+  "ldraw": [
+   "14769",
+   "Tile 2 x 2 Round with Round Underside Stud"
+  ]
+ },
+ {
+  "key": "grilletile_1x2",
+  "bl": "2412b",
+  "name": "Tile 1 x 2 Grille",
+  "ldraw": [
+   "2412b",
+   "Tile 1 x 2 Grille with Groove"
+  ]
+ },
+ {
+  "key": "cheese_1x1",
+  "bl": "54200",
+  "name": "Slope 30 1 x 1 x 2/3",
+  "ldraw": [
+   "54200",
+   "Slope Brick 31 1 x 1 x 0.667"
+  ]
+ },
+ {
+  "key": "cheese_1x2",
+  "bl": "85984",
+  "name": "Slope 30 1 x 2 x 2/3",
+  "ldraw": [
+   "85984",
+   "Slope Brick 31 1 x 2 x 0.667"
+  ]
+ },
+ {
+  "key": "pyramid_1x1",
+  "bl": "22388",
+  "name": "Slope 45 1 x 1 x 2/3 Quadruple Convex Pyramid",
+  "ldraw": [
+   "22388",
+   "Slope Brick 50 1 x 1 x 0.667 Quadruple Convex"
+  ]
+ },
+ {
+  "key": "slope_1x2",
+  "bl": "3040",
+  "name": "Slope 45 2 x 1",
+  "ldraw": [
+   "3040b",
+   "Slope Brick 45 2 x 1"
+  ]
+ },
+ {
+  "key": "slope_2x2",
+  "bl": "3039",
+  "name": "Slope 45 2 x 2",
+  "ldraw": [
+   "3039",
+   "Slope Brick 45 2 x 2"
+  ]
+ },
+ {
+  "key": "slope_4x2",
+  "bl": "3037",
+  "name": "Slope 45 2 x 4",
+  "ldraw": [
+   "3037",
+   "Slope Brick 45 2 x 4"
+  ]
+ },
+ {
+  "key": "slope_1x3",
+  "bl": "4286",
+  "name": "Slope 33 3 x 1",
+  "ldraw": [
+   "4286",
+   "Slope Brick 33 3 x 1"
+  ]
+ },
+ {
+  "key": "slope_2x3",
+  "bl": "3298",
+  "name": "Slope 33 3 x 2",
+  "ldraw": [
+   "3298",
+   "Slope Brick 33 3 x 2"
+  ]
+ },
+ {
+  "key": "slope_65_2x1x2",
+  "bl": "60481",
+  "name": "Slope 65 2 x 1 x 2",
+  "ldraw": [
+   "60481a",
+   "Slope Brick 65 2 x 1 x 2"
+  ]
+ },
+ {
+  "key": "ridge_2x2",
+  "bl": "3300",
+  "name": "Slope 33 2 x 2 Double",
+  "ldraw": [
+   "3300",
+   "Slope Brick 33 2 x 2 Double"
+  ]
+ },
+ {
+  "key": "ridge_4x2",
+  "bl": "3299",
+  "name": "Slope 33 2 x 4 Double",
+  "ldraw": [
+   "3299",
+   "Slope Brick 33 2 x 4 Double"
+  ]
+ },
+ {
+  "key": "slope_corner_2x2",
+  "bl": "3045",
+  "name": "Slope 45 2 x 2 Double Convex",
+  "ldraw": [
+   "3045",
+   "Slope Brick 45 2 x 2 Double Convex"
+  ]
+ },
+ {
+  "key": "slope_corner_3x3",
+  "bl": "3675",
+  "name": "Slope 33 3 x 3 Double Convex",
+  "ldraw": [
+   "3675",
+   "Slope Brick 33 3 x 3 Double Convex"
+  ]
+ },
+ {
+  "key": "slope_inv_1x2",
+  "bl": "3665",
+  "name": "Slope Inverted 45 2 x 1",
+  "ldraw": [
+   "3665a",
+   "Slope Brick 45 2 x 1 Inverted"
+  ]
+ },
+ {
+  "key": "slope_inv_2x2",
+  "bl": "3660",
+  "name": "Slope Inverted 45 2 x 2",
+  "ldraw": [
+   "3660a",
+   "alias"
+  ]
+ },
+ {
+  "key": "curve_1x2",
+  "bl": "11477",
+  "name": "Slope Curved 2 x 1",
+  "ldraw": [
+   "11477",
+   "Slope Brick Curved 2 x 1"
+  ]
+ },
+ {
+  "key": "curve_2x2",
+  "bl": "15068",
+  "name": "Slope Curved 2 x 2",
+  "ldraw": [
+   "15068",
+   "Slope Brick Curved 2 x 2 x 0.667"
+  ]
+ },
+ {
+  "key": "curve_1x3",
+  "bl": "50950",
+  "name": "Slope Curved 3 x 1",
+  "ldraw": [
+   "50950",
+   "Slope Brick Curved 3 x 1"
+  ]
+ },
+ {
+  "key": "curve_1x4",
+  "bl": "61678",
+  "name": "Slope Curved 4 x 1",
+  "ldraw": [
+   "61678",
+   "Slope Brick Curved 4 x 1"
+  ]
+ },
+ {
+  "key": "curve_1x4_double",
+  "bl": "93273",
+  "name": "Slope Curved 4 x 1 Double",
+  "ldraw": [
+   "93273",
+   "Slope Brick Curved 4 x 1 Double"
+  ]
+ },
+ {
+  "key": "cone_1x1",
+  "bl": "4589",
+  "name": "Cone 1 x 1",
+  "ldraw": [
+   "4589",
+   "Cone 1 x 1"
+  ]
+ },
+ {
+  "key": "cone_2x2",
+  "bl": "3942c",
+  "name": "Cone 2 x 2 x 2",
+  "ldraw": [
+   "3942c",
+   "Cone 2 x 2 x 2 with Hollow Stud Open"
+  ]
+ },
+ {
+  "key": "dish_2x2",
+  "bl": "4740",
+  "name": "Dish 2 x 2 Inverted (Radar)",
+  "ldraw": [
+   "4740",
+   "Dish 2 x 2 Inverted"
+  ]
+ },
+ {
+  "key": "dish_4x4",
+  "bl": "3960",
+  "name": "Dish 4 x 4 Inverted (Radar)",
+  "ldraw": [
+   "3960",
+   "Dish 4 x 4 Inverted"
+  ]
+ },
+ {
+  "key": "dome_2x2",
+  "bl": "553c",
+  "name": "Brick Round 2 x 2 Dome Top",
+  "ldraw": [
+   "30367",
+   "alias"
+  ]
+ },
+ {
+  "key": "arch_1x4",
+  "bl": "3659",
+  "name": "Arch 1 x 4",
+  "ldraw": [
+   "3659",
+   "Arch 1 x 4"
+  ]
+ },
+ {
+  "key": "arch_1x6",
+  "bl": "3455",
+  "name": "Arch 1 x 6",
+  "ldraw": [
+   "3455",
+   "Arch 1 x 6"
+  ]
+ },
+ {
+  "key": "arch_1x4x2",
+  "bl": "6182",
+  "name": "Arch 1 x 4 x 2",
+  "ldraw": [
+   "6182",
+   "Arch 1 x 4 x 2"
+  ]
+ },
+ {
+  "key": "arch_1x6x2",
+  "bl": "3307",
+  "name": "Arch 1 x 6 x 2",
+  "ldraw": [
+   "3307",
+   "Arch 1 x 6 x 2 with Thick Top and Reinforced Underside"
+  ]
+ },
+ {
+  "key": "fence_1x4",
+  "bl": "3633",
+  "name": "Fence 1 x 4 x 1",
+  "ldraw": [
+   "3633",
+   "Fence Lattice 1 x 4 x 1"
+  ]
+ },
+ {
+  "key": "fence_1x4x2",
+  "bl": "30055",
+  "name": "Fence 1 x 4 x 2 Spindled",
+  "ldraw": [
+   "30055",
+   "Fence Spindled 1 x 4 x 2"
+  ]
+ },
+ {
+  "key": "window_1x2x2",
+  "bl": "60592",
+  "name": "Window 1 x 2 x 2 Frame",
+  "ldraw": [
+   "60592",
+   "Window 1 x 2 x 2 without Sill"
+  ]
+ },
+ {
+  "key": "glass_1x2x2",
+  "bl": "60601",
+  "name": "Glass for Window 1 x 2 x 2",
+  "ldraw": [
+   "60601",
+   "Glass for Window 1 x 2 x 2 without Sill"
+  ]
+ },
+ {
+  "key": "window_1x4x3",
+  "bl": "3853",
+  "name": "Window 1 x 4 x 3 Frame",
+  "ldraw": [
+   "3853",
+   "Window 1 x 4 x 3"
+  ]
+ },
+ {
+  "key": "glass_1x4x3",
+  "bl": "60603",
+  "name": "Glass for Window 1 x 4 x 3",
+  "ldraw": [
+   "60603",
+   "=Glass for Window 1 x 4 x 3 Opening"
+  ]
+ },
+ {
+  "key": "doorframe_1x4x6",
+  "bl": "60596",
+  "name": "Door Frame 1 x 4 x 6",
+  "ldraw": [
+   "60596",
+   "Door 1 x 4 x 6 Frame"
+  ]
+ },
+ {
+  "key": "door_1x4x6",
+  "bl": "60616",
+  "name": "Door 1 x 4 x 6 with Stud Handle",
+  "ldraw": [
+   "60616a",
+   "Door 1 x 4 x 6 Smooth with Square Handle Plinth"
+  ]
+ },
+ {
+  "key": "antenna_1x4",
+  "bl": "3957",
+  "name": "Antenna 1 x 4",
+  "ldraw": [
+   "3957a",
+   "alias"
+  ]
+ },
+ {
+  "key": "bar_3l",
+  "bl": "87994",
+  "name": "Bar 3L",
+  "ldraw": [
+   "87994",
+   "Bar 3L"
+  ]
+ },
+ {
+  "key": "bar_4l",
+  "bl": "30374",
+  "name": "Bar 4L (Lightsaber Blade)",
+  "ldraw": [
+   "30374",
+   "Bar 4L Lightsaber Blade"
+  ]
+ },
+ {
+  "key": "telescope",
+  "bl": "64644",
+  "name": "Minifig Telescope",
+  "ldraw": [
+   "64644",
+   "Minifig Telescope"
+  ]
+ },
+ {
+  "key": "tap_1x1",
+  "bl": "4599b",
+  "name": "Tap 1 x 1",
+  "ldraw": [
+   "4599b",
+   "Tap 1 x 1 without Hole in Spout"
+  ]
+ },
+ {
+  "key": "leaves_4x3",
+  "bl": "2423",
+  "name": "Plant Leaves 4 x 3",
+  "ldraw": [
+   "2423",
+   "Plant Leaves 4 x 3"
+  ]
+ },
+ {
+  "key": "plant_3leaves",
+  "bl": "32607",
+  "name": "Plant Plate 1 x 1 Round with 3 Leaves",
+  "ldraw": [
+   "32607",
+   "Plate 1 x 1 Round with 3 Leaves"
+  ]
+ },
+ {
+  "key": "flower_stem",
+  "bl": "3741",
+  "name": "Plant Flower Stem",
+  "ldraw": [
+   "3741",
+   "~Plant Flower Stem (Obsolete)"
+  ]
+ },
+ {
+  "key": "bamboo_leaves",
+  "bl": "30176",
+  "name": "Plant Bamboo Leaves",
+  "ldraw": [
+   "30176",
+   "Plant Brick 1 x 1 Round with 3 Bamboo Leaves"
+  ]
+ },
+ {
+  "key": "fig_legs",
+  "bl": "970c00",
+  "name": "Minifig Hips and Legs",
+  "ldraw": [
+   "3815c01",
+   "alias"
+  ]
+ },
+ {
+  "key": "fig_torso",
+  "bl": "973",
+  "name": "Minifig Torso with Arms",
+  "ldraw": [
+   "973",
+   "Minifig Torso"
+  ]
+ },
+ {
+  "key": "fig_hands",
+  "bl": "3820",
+  "name": "Minifig Hands (pair)",
+  "ldraw": [
+   "3820",
+   "Minifig Hand"
+  ]
+ },
+ {
+  "key": "fig_head",
+  "bl": "3626c",
+  "name": "Minifig Head",
+  "ldraw": [
+   "3626c",
+   "Minifig Head with Hollow Stud"
+  ]
+ },
+ {
+  "key": "fig_hair",
+  "bl": "3901",
+  "name": "Minifig Hair (short)",
+  "ldraw": [
+   "3901",
+   "Minifig Hair Male"
+  ]
+ },
+ {
+  "key": "fig_kasa",
+  "bl": "93059",
+  "name": "Minifig Headgear Hat, Conical Asian",
+  "ldraw": [
+   "93059",
+   "Minifig Hat Conical Asian"
+  ]
+ },
+ {
+  "key": "baseplate_32x32",
+  "bl": "3811",
+  "name": "Baseplate 32 x 32",
+  "ldraw": [
+   "3811",
+   "Baseplate 32 x 32"
+  ]
+ },
+ {
+  "key": "baseplate_16x32",
+  "bl": "3857",
+  "name": "Baseplate 16 x 32",
+  "ldraw": [
+   "3857",
+   "Baseplate 16 x 32 with Square Corners"
+  ]
+ }
+]
