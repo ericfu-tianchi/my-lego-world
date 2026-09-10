@@ -73,10 +73,10 @@ function stepAnims(dt: number) {
 function applyPoses(poses: Float32Array) { const p = new THREE.Vector3(), q = new THREE.Quaternion(); for (let i = 0; i < app.items.length; i++) { const o = i * 7; p.set(poses[o], poses[o + 1], poses[o + 2]); q.set(poses[o + 3], poses[o + 4], poses[o + 5], poses[o + 6]); app.bricks.setPose(app.items[i], p, q); } app.bricks.commit(); }
 function dismantle() {
   if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0;
-  const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3);
-  app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); });
+  const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3), fixed = new Uint8Array(n);
+  app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   const strength = +($('strength') as HTMLInputElement).value;
-  app.physics.start(poses, halfs, strength, TABLE_Y, [0, 0], 7);
+  app.physics.start(poses, halfs, fixed, strength, TABLE_Y, [0, 0], 7);
 }
 function rebuild() {
   if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); setState('rebuilding');

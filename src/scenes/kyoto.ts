@@ -68,11 +68,11 @@ export function buildKyoto(bp: Blueprint): SceneMeta {
 
   // ---- trees
   const G = (x: number, z: number) => groundTop(x, z);
-  sakura(bp, 5, G(5, 16), 16, 'M', R); sakura(bp, 21, G(21, 31), 31, 'L', R); sakura(bp, 45, G(45, 11), 11, 'M', R); sakura(bp, 24, G(24, 30), 30, 'S', R);
+  sakura(bp, 5, G(5, 16), 16, 'M', R); sakura(bp, 4, G(4, 26), 26, 'L', R); sakura(bp, 45, G(45, 11), 11, 'M', R); sakura(bp, 22, G(22, 33), 33, 'S', R);
   maple(bp, 40, G(40, 24), 24, R); pine(bp, 23, G(23, 8), 8, R); pine(bp, 36, G(36, 19), 19, R); pine(bp, 3, G(3, 12), 12, R);
   bamboo(bp, 19, G, 4, [4, 5, 3, 4], R);
   sakura(bp, 30, G(30, 22), 22, 'M', R);
-  for (const [x, z] of [[4, 21], [23, 26], [38, 27], [26, 31], [17, 12], [22, 9]] as [number, number][]) if (inIsland(x, z) && !R.has(x, z) && !R.has(x + 1, z + 1)) bush(bp, x, G(x, z), z, undefined, R);
+  for (const [x, z] of [[23, 26], [38, 27], [26, 31], [17, 12], [22, 9], [24, 29], [19, 30]] as [number, number][]) if (inIsland(x, z) && !R.has(x, z) && !R.has(x + 1, z + 1)) bush(bp, x, G(x, z), z, undefined, R);
 
   // ---- lanterns
   stoneLantern(bp, 8, G(8, 31), 31, R); stoneLantern(bp, 15, G(15, 31), 31, R); stoneLantern(bp, 24, G(24, 12), 12, R);
@@ -85,7 +85,7 @@ export function buildKyoto(bp: Blueprint): SceneMeta {
   bp.tag = 'minifig';
   minifig(bp, 12.5, 16, 24.5, 0, { legs: 'DarkBlue', torso: 'BrightRed', hat: 'kasa' }, R);      // on the bridge crown
   minifig(bp, 15.5, 10, 30.5, 0, { legs: 'Black', torso: 'White', hair: 'Black' }, R);            // by the pond
-  minifig(bp, 24.5, G(24, 34), 34.5, 3, { legs: 'DarkRed', torso: 'Yellow', hair: 'DarkOrange' }, R);
+  minifig(bp, 27.5, G(27, 34), 34.5, 3, { legs: 'DarkRed', torso: 'Yellow', hair: 'DarkOrange' }, R);
   minifig(bp, 14.5, 11, 10.5, 2, { legs: 'DarkTan', torso: 'DarkTurquoise', hair: 'ReddishBrown' }, R); // tea house veranda
   minifig(bp, 26.5, G(26, 20), 20.5, 0, { legs: 'DarkBluishGray', torso: 'Lavender', hair: 'Black' }, R);  // below the hill
 

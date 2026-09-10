@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 // Rapier runs here so the render thread never waits on the solver. One rigid body per brick.
 import RAPIER from '@dimforge/rapier3d-compat';
-type Start = { type: 'start'; poses: Float32Array; halfs: Float32Array; strength: number; tableY: number; center: [number, number]; seed: number };
+type Start = { type: 'start'; poses: Float32Array; halfs: Float32Array; fixed: Uint8Array; strength: number; tableY: number; center: [number, number]; seed: number };
 type Msg = Start | { type: 'stop' } | { type: 'pause'; value: boolean } | { type: 'poke'; index: number };
 let world: RAPIER.World | null = null, bodies: RAPIER.RigidBody[] = [], timer: ReturnType<typeof setTimeout> | undefined, paused = false, prev = 0, acc = 0, frame = 0, gen = 0;
 const ready = RAPIER.init();
@@ -16,7 +16,7 @@ function start(m: Start) {
     // burst: outward from the diorama centre, stronger higher up, plus a lift — the "tap" that lets go of every brick at once
     const dx = x - m.center[0], dz = z - m.center[1]; const r = Math.hypot(dx, dz) + 0.5; const a = rnd() * Math.PI * 2;
     const vel = s * (0.9 + Math.max(0, y - m.tableY) / 18); const jitter = s * 0.6;
-    const desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y + 0.03, z).setRotation({ x: m.poses[o + 3], y: m.poses[o + 4], z: m.poses[o + 5], w: m.poses[o + 6] })
+    const desc = (m.fixed[i] ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic()).setTranslation(x, m.fixed[i] ? y : y + 0.03, z).setRotation({ x: m.poses[o + 3], y: m.poses[o + 4], z: m.poses[o + 5], w: m.poses[o + 6] })
       .setCanSleep(true).setLinearDamping(0.12).setAngularDamping(0.3).setCcdEnabled(m.halfs[i * 3 + 1] < 0.25)
       .setLinvel((dx / r) * vel * 0.55 + Math.cos(a) * jitter, 1.5 + s * 0.9 + rnd() * s * 0.6, (dz / r) * vel * 0.55 + Math.sin(a) * jitter)
       .setAngvel({ x: (rnd() - 0.5) * 3 * s, y: (rnd() - 0.5) * 3 * s, z: (rnd() - 0.5) * 3 * s });

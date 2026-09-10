@@ -64,29 +64,46 @@ export function buildTokyo(bp: Blueprint): SceneMeta {
   bp.tag = 'shibuya'; R.add(14, 10, 2, 2); bp.part('plate_2x2', 14, G, 10, 'White'); bp.part('brick_2x2', 14, G + 1, 10, 'White'); bp.part('plate_2x2', 14, G + 4, 10, 'TransLightBlue'); bp.part('tile_2x2', 14, G + 5, 10, 'TransLightBlue');
   // ---- park: sakura and bushes
   bp.tag = 'park'; sakura(bp, 3, G, 16, 'S', R); sakura(bp, 7, G, 19, 'S', R); bush(bp, 2, G, 20, undefined, R); bush(bp, 8, G, 15, undefined, R);
-  // ---- city fabric: parametric towers (skipped where anything else already stands)
+  // ---- city fabric: every block is tiled with lots; each lot gets a tower in one of seven facade systems.
   bp.tag = 'towers';
-  const tower = (x: number, z: number, w: number, d: number, floors: number, style: 'glass' | 'stone' | 'stripe' | 'tan') => {
+  type Style = 'glass' | 'crystal' | 'stone' | 'tan' | 'sand' | 'dark' | 'azure';
+  const STYLES: Style[] = ['glass', 'crystal', 'stone', 'tan', 'sand', 'dark', 'azure', 'glass', 'tan'];
+  const tower = (x: number, z: number, w: number, d: number, floors: number, style: Style) => {
     for (let a = 0; a < w; a++) for (let b = 0; b < d; b++) if (R.has(x + a, z + b)) return false;
     R.add(x, z, w, d); let y = G;
+    const wall: Record<Style, string> = { glass: 'White', crystal: 'TransLightBlue', stone: 'LightBluishGray', tan: 'Tan', sand: 'SandGreen', dark: 'DarkBluishGray', azure: 'White' };
+    const band: Record<Style, string> = { glass: 'TransLightBlue', crystal: 'White', stone: 'DarkBluishGray', tan: 'White', sand: 'White', dark: 'LightBluishGray', azure: 'DarkAzure' };
+    const setback = floors >= 6 && w >= 3 && d >= 3; let cw = w, cd = d, cx = x, cz = z;
     for (let f = 0; f < floors; f++) {
-      const wall = style === 'glass' ? 'White' : style === 'stone' ? 'LightBluishGray' : style === 'tan' ? 'Tan' : 'DarkBluishGray';
-      const band = style === 'glass' ? 'TransLightBlue' : style === 'stone' ? 'DarkBluishGray' : style === 'tan' ? 'White' : 'LightBluishGray';
-      bp.fill('brick', x, y, z, w, 3, d, wall); bp.fill('plate', x, y + 3, z, w, 1, d, band); y += 4;
+      if (setback && f === floors - 2) { cw = w - 1; cd = d - 1; cx = x + 1; cz = z; }
+      bp.fill('brick', cx, y, cz, cw, 3, cd, wall[style]); bp.fill('plate', cx, y + 3, cz, cw, 1, cd, band[style]); y += 4;
     }
-    bp.fill('tile', x, y, z, w, 1, d, style === 'glass' ? 'LightBluishGray' : 'DarkBluishGray');
-    bp.clear(x, y, z, 1, 1, 1); bp.vox1('plate', x, y, z, 'DarkBluishGray');
-    if (w * d >= 6) bp.part('telescope', x, y + 1, z, 'LightBluishGray'); else bp.part('roundplate_1x1', x, y + 1, z, 'LightBluishGray');
+    bp.fill('tile', cx, y, cz, cw, 1, cd, style === 'dark' ? 'LightBluishGray' : 'DarkBluishGray');
+    bp.clear(cx, y, cz, 1, 1, 1); bp.vox1('plate', cx, y, cz, 'DarkBluishGray');
+    const r = bp.rand(); if (r < 0.4) bp.part('telescope', cx, y + 1, cz, 'LightBluishGray'); else if (r < 0.7) bp.part('roundtile_1x1', cx, y + 1, cz, 'White'); else if (r < 0.85) bp.part('dish_2x2', cx - 0.5, y + 1, cz - 0.5, 'LightBluishGray'); else bp.part('antenna_1x4', cx, y + 1, cz, 'LightBluishGray');
     return true;
   };
-  const specs: [number, number, number, number, number, 'glass' | 'stone' | 'stripe' | 'tan'][] = [
-    [13, 2, 2, 3, 3, 'tan'], [2, 8, 3, 3, 2, 'tan'], [6, 8, 2, 2, 3, 'stone'], [10, 8, 3, 3, 3, 'stone'],
-    [19, 2, 4, 3, 6, 'stripe'], [24, 3, 3, 3, 4, 'glass'], [28, 2, 3, 4, 8, 'glass'], [19, 7, 2, 4, 3, 'glass'], [24, 8, 3, 3, 7, 'stripe'], [28, 8, 2, 2, 4, 'tan'],
-    [35, 2, 2, 3, 5, 'stone'], [44, 3, 2, 3, 4, 'tan'], [36, 8, 3, 3, 6, 'glass'], [43, 8, 3, 3, 3, 'stone'],
-    [19, 19, 2, 2, 2, 'stone'], [23, 18, 3, 3, 3, 'glass'], [28, 19, 2, 2, 2, 'tan'], [12, 20, 3, 1, 2, 'tan'],
-    [10, 24, 3, 1, 2, 'glass'], [21, 24, 4, 1, 2, 'tan'], [39, 24, 3, 1, 2, 'stone'], [2, 24, 3, 1, 1, 'stone'],
-  ];
-  for (const s of specs) tower(...s);
+  const microTree = (x: number, z: number) => { if (R.has(x, z)) return; R.add(x, z, 1, 1); bp.part('round_1x1', x, G, z, 'ReddishBrown'); bp.part('roundplate_1x1', x, G + 3, z, bp.pick(['Green', 'BrightGreen'])); bp.part('flower_1x1', x, G + 4, z, bp.pick(['Green', 'BrightGreen', 'DarkGreen'])); };
+  const fillBlock = (x0: number, z0: number, x1: number, z1: number, tallness: number) => {
+    let z = z0;
+    while (z <= z1) {
+      const d = Math.min(bp.pick([2, 3, 3, 4]), z1 - z + 1); if (d < 2) break;
+      let x = x0;
+      while (x <= x1) {
+        const w = Math.min(bp.pick([2, 3, 3, 4]), x1 - x + 1); if (w < 2) { microTree(x, z); break; }
+        const floors = Math.max(1, Math.round(tallness * (0.5 + bp.rand()) + (w + d) / 3));
+        if (!tower(x, z, w, d, floors, bp.pick(STYLES))) { for (let a = 0; a < w; a++) if (bp.chance(0.4)) microTree(x + a, z); }
+        x += w + 1;
+      }
+      z += d + 1;
+    }
+  };
+  fillBlock(1, 1, 15, 11, 2.5); fillBlock(18, 1, 31, 11, 4.5); fillBlock(34, 1, 46, 11, 3);
+  fillBlock(1, 14, 15, 21, 1.5); fillBlock(18, 18, 31, 21, 2); fillBlock(34, 14, 46, 21, 1.5);
+  for (let x = 1; x < 47; x++) if (!R.has(x, 24) && bp.chance(0.55)) { if (bp.chance(0.5)) microTree(x, 24); else { bp.part('plate_1x1', x, G, 24, 'DarkBluishGray'); bp.part('roundtile_1x1', x, G + 1, 24, 'White'); R.add(x, 24, 1, 1); } }
+  for (let x = 2; x < 46; x += 3) if (!R.has(x, 30)) microTree(x, 30);
+  // cars: a few road cells become plates so the cars have studs to sit on
+  bp.tag = 'cars'; for (const [x, z, c, rot] of [[5, 12, 'BrightRed', 1], [24, 13, 'White', 1], [40, 12, 'Yellow', 1], [16, 5, 'DarkAzure', 0], [33, 18, 'White', 0], [10, 22, 'Black', 1], [37, 23, 'BrightRed', 1]] as [number, number, string, number][]) { const dx = rot ? 1 : 0, dz = rot ? 0 : 1; bp.clear(x, 1, z, 1 + dx, 1, 1 + dz); bp.vox1('plate', x, 1, z, 'LightBluishGray'); bp.vox1('plate', x + dx, 1, z + dz, 'LightBluishGray'); bp.part('plate_1x2', x, 2, z, c, rot); bp.part('tile_1x1', x, 3, z, 'TransLightBlue'); }
   // ---- boats on the river (sit on trans plates swapped in for tiles)
   bp.tag = 'boats'; for (const x of [12, 26, 41]) { bp.clear(x, 1, 27, 2, 1, 1); bp.vox1('plate', x, 1, 27, 'TransLightBlue'); bp.vox1('plate', x + 1, 1, 27, 'TransLightBlue'); bp.part('plate_1x2', x, 2, 27, 'White', 1); bp.part('tile_1x1', x, 3, 27, 'BrightRed'); }
   // ---- figure stand beside the base
