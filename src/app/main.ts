@@ -93,7 +93,7 @@ async function start() {
     if (qs.has('strength')) ($('strength') as HTMLInputElement).value = qs.get('strength')!;
     if (qs.has('dismantle')) { // run the sim for T seconds, then hold the frame
       const T = +qs.get('dismantle')!; dismantle();
-      await new Promise<void>((res) => { let t0 = 0; const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (!t0) t0 = performance.now(); if (performance.now() - t0 > T * 1000) { app.physics.pause(true); res(); } }; });
+      await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
     }
   } else playBuildIn();
   app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));

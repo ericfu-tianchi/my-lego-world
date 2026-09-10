@@ -3,7 +3,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 type Start = { type: 'start'; poses: Float32Array; halfs: Float32Array; fixed: Uint8Array; strength: number; tableY: number; center: [number, number]; seed: number };
 type Msg = Start | { type: 'stop' } | { type: 'pause'; value: boolean } | { type: 'poke'; index: number };
-let world: RAPIER.World | null = null, bodies: RAPIER.RigidBody[] = [], timer: ReturnType<typeof setTimeout> | undefined, paused = false, prev = 0, acc = 0, frame = 0, gen = 0;
+let world: RAPIER.World | null = null, bodies: RAPIER.RigidBody[] = [], timer: ReturnType<typeof setTimeout> | undefined, paused = false, prev = 0, acc = 0, frame = 0, gen = 0, simT = 0;
 const ready = RAPIER.init();
 function rand(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function start(m: Start) {
@@ -24,7 +24,7 @@ function start(m: Start) {
     world.createCollider(RAPIER.ColliderDesc.cuboid(Math.max(0.05, m.halfs[i * 3] * 0.96), Math.max(0.05, m.halfs[i * 3 + 1] * 0.96), Math.max(0.05, m.halfs[i * 3 + 2] * 0.96)).setDensity(0.8).setFriction(0.65).setRestitution(0.12), b);
     bodies.push(b);
   }
-  prev = performance.now(); acc = 0; paused = false; frame = 0;
+  prev = performance.now(); acc = 0; paused = false; frame = 0; simT = 0;
   (self as unknown as Worker).postMessage({ type: 'ready', count: n });
   tick(++gen);
 }
@@ -33,11 +33,11 @@ function tick(g: number) {
   const now = performance.now();
   if (!paused) {
     acc = Math.min(0.07, acc + (now - prev) / 1000); let steps = 0; const t0 = performance.now();
-    while (acc >= 1 / 60 && steps < 3) { world.step(); acc -= 1 / 60; steps++; }
+    while (acc >= 1 / 60 && steps < 3) { world.step(); acc -= 1 / 60; steps++; simT += 1 / 60; }
     if (steps) {
       const out = new Float32Array(bodies.length * 7); let awake = 0;
       for (let i = 0; i < bodies.length; i++) { const b = bodies[i]; const t = b.translation(), r = b.rotation(); out.set([t.x, t.y, t.z, r.x, r.y, r.z, r.w], i * 7); if (!b.isSleeping()) awake++; }
-      (self as unknown as Worker).postMessage({ type: 'frame', poses: out, awake, stepMs: performance.now() - t0 }, [out.buffer]);
+      (self as unknown as Worker).postMessage({ type: 'frame', poses: out, awake, stepMs: performance.now() - t0, simT }, [out.buffer]);
       frame++;
     }
   }
