@@ -139,6 +139,8 @@ Eric 点名的问题：鸟居不对称（横梁 1×8 在柱 10/14 上，左出 2
 - 图片生成（`flyer:image-gen` 技能 → flyer.opuslab.ai）在 Cloudflare Access 后：需要 Eric 先 `cloudflared access login https://flyer.opuslab.ai`（约 24 小时有效）；gen.sh 的 `--out` 下载是坏的，要自己 `curl -sSL -H "cf-access-token: $(cloudflared access token --app https://flyer.opuslab.ai)"` 跟随重定向下载。
 - Rebrickable 网页拒绝抓取（403）；核零件号用 `curl https://library.ldraw.org/library/official/parts/<id>.dat | head -1`，请求间隔 0.4 秒。
 - 参考作品：Micropolis 标准（TwinLUG）、LEGO Architecture Skyline 设计哲学（Brickset "Designing Skylines"、New Elementary 访谈）、Teddy「Tokyo · City Diorama Series」1,299 块、LEGO Icons 10315 静谧庭园、21060 姬路城、40725 樱花。
+- 裁判第一轮引用的技法基线（改京都前先读）：10315 评测 https://www.newelementary.com/2023/07/lego-icons-review-10315-tranquil-garden.html （透明砖叠色做水深、SNOT 石组、印刷锦鲤砖）；21060 评测 https://www.newelementary.com/2023/09/lego-architecture-review-21060-himeji.html （铰链板 + 托架 + 弧形斜坡做反宇檐角、jumper 半格偏移）；40725 评测 https://brickset.com/article/104961/review-40725-cherry-blossoms （Technic 枝干骨架 + 1×1 花瓣圆片做立体树冠）。
+- 裁判第一轮结论：加权 4.60/9，不过门禁；元件分：塔 7、鸟居 4、人仔 2、樱花 4、茶室 4、桥与池 3、构图 5；修复顺序：人仔与故事 → 桥与池 → 鸟居 → 地面语汇 → 樱花 → 茶室 → 塔（最后、小心）。裁判建议的新零件（1×12 板 60479、1×12 砖 6112、裙摆圆锥 14918、托盘 4523、雨伞 61482、扫帚 3836、四分之一圆板 27925、6×1 弧形斜坡 42022、铰链板 44302/44567、夹子件 60897）走按需入库，入库前逐个用 LDraw 核编号。
 
 ---
 ## 10. 交接后的第一句话（贴给新会话）
