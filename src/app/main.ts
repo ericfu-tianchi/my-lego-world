@@ -13,6 +13,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 type State = 'idle' | 'building' | 'built' | 'dismantling' | 'settled' | 'rebuilding';
 
 const app = {
+  tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as { it: Item; fromP: THREE.Vector3; fromQ: THREE.Quaternion; delay: number; dur: number; arc: number }[], animT: 0, animDone: null as null | (() => void),
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
@@ -24,9 +25,10 @@ function init() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 600);
-  const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.setEnvironment(makeStudioEnv(renderer));
+  const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); bricks.setEnvironment(makeStudioEnv(renderer));
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
-  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks });
+  if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
+  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild();
   document.querySelectorAll<HTMLButtonElement>('[data-scene]').forEach((b) => (b.onclick = () => switchScene(b.dataset.scene!)));
@@ -36,16 +38,18 @@ function init() {
 function loadScene(id: string) {
   const def = SCENES[id]; if (!def) return; app.sceneId = id; const bp = new Blueprint(def.seed);
   const t0 = performance.now(); const meta = def.build(bp); const t1 = performance.now();
-  const rep = validate(bp.parts); console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(rep, 10));
+  app.tableY = id === 'kyoto-refined' ? -.03 : TABLE_Y; app.table.position.y = app.tableY;
+  const rep = validate(bp.parts, meta.base ?? 0); console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(rep, 10));
   const origin = new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2);
-  app.items = app.bricks.build(bp.parts, origin); const st = bp.stats();
+  const only = qs.get('only'); const shown = only ? bp.parts.filter((p) => only.split(',').includes(p.tag ?? '')) : bp.parts;   // ?only=torii,bridge → element renders against clean sky
+  app.items = app.bricks.build(shown, origin); const st = bp.stats();
   app.center.set(0, meta.center[1], 0); const radius = Math.hypot(meta.size[0], meta.size[1]) / 2 + 4; app.lights.frame(app.center, radius);
   const o = app.orbit; o.target.copy(app.center); o.az = meta.camera?.az ?? 0.62; o.el = meta.camera?.el ?? 0.4; o.dist = meta.camera?.dist ?? radius * 2.7; o.minDist = 8; o.maxDist = 220; o.autoRotate = app.autoRotate;
   if (qs.has('az')) o.az = +qs.get('az')!; if (qs.has('el')) o.el = +qs.get('el')!; if (qs.has('dist')) o.dist = +qs.get('dist')!; if (qs.has('tx')) o.target.set(+qs.get('tx')!, +qs.get('ty')!, +qs.get('tz')!);
   $('place-title').textContent = meta.title; $('place-sub').textContent = `${meta.caption} · ${meta.subtitle}`;
-  $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${rep.ok ? 'all connected' : rep.floating + ' floating'}`;
+  $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${rep.ok ? 'connection check passed' : rep.floating + ' floating · ' + rep.overlaps + ' overlaps'}`;
   document.querySelectorAll<HTMLButtonElement>('[data-scene]').forEach((b) => b.classList.toggle('on', b.dataset.scene === id));
-  app.bricks.resetHome(); setState('built');
+  app.bricks.resetHome(); if (SHOT && qs.has('sil')) app.bricks.silhouette(true); setState('built');
 }
 function switchScene(id: string) { if (id === app.sceneId || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.anims = []; loadScene(id); if (!SHOT) playBuildIn(); }
 function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); $('strength-wrap').hidden = s !== 'built'; }
@@ -76,7 +80,7 @@ function dismantle() {
   const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3), fixed = new Uint8Array(n);
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   const strength = +($('strength') as HTMLInputElement).value;
-  app.physics.start(poses, halfs, fixed, strength, TABLE_Y, [0, 0], 7);
+  app.physics.start(poses, halfs, fixed, strength, app.tableY, [0, 0], 7);
 }
 function rebuild() {
   if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); setState('rebuilding');

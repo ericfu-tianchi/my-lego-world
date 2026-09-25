@@ -5,7 +5,7 @@ import { validate, summarize } from '../src/core/validate';
 const only = process.argv[2]; let fail = false;
 for (const [id, def] of Object.entries(SCENES)) {
   if (only && id !== only) continue;
-  const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); const r = validate(bp.parts); const st = bp.stats();
+  const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); const r = validate(bp.parts, meta.base ?? 0); const st = bp.stats();
   console.log(`\n${id} (${meta.title}) — ${st.parts} parts, ${st.types} types, ${st.colors} colours, ${(performance.now() - t0).toFixed(0)} ms\n` + summarize(r));
   if (!r.ok) fail = true;
 }

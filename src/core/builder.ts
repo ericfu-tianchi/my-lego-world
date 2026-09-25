@@ -2,8 +2,9 @@
 // packer turns into real bricks / plates / tiles with a staggered bond. Grid: x,z in studs, y in plates,
 // rot ∈ {0,1,2,3} quarter turns about Y. Half-stud positions are allowed where a jumper or a minifig neck makes them real.
 import { PARTS } from './catalog';
+import { PRINTS } from './prints';
 
-export interface Placement { key: string; x: number; y: number; z: number; rot: number; color: string; tag?: string }
+export interface Placement { key: string; x: number; y: number; z: number; rot: number; color: string; tag?: string; print?: string }
 export type VoxKind = 'brick' | 'plate' | 'tile';
 
 function mulberry32(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -19,15 +20,17 @@ export class Blueprint {
   private vox = new Map<string, { color: string; kind: VoxKind; tag?: string }>();
   private rng: () => number;
   tag = '';
+  compact = false; // deterministic maximum-area packing; legacy samples retain their original packing
   constructor(seed = 1) { this.rng = mulberry32(seed); }
   static key(x: number, y: number, z: number) { return x + ',' + y + ',' + z; }
   rand() { return this.rng(); }
   pick<T>(arr: T[]): T { return arr[Math.floor(this.rng() * arr.length)]; }
   chance(p: number) { return this.rng() < p; }
   /** Explicit part placement. */
-  part(key: string, x: number, y: number, z: number, color: string, rot = 0) {
+  part(key: string, x: number, y: number, z: number, color: string, rot = 0, print?: string) {
     if (!PARTS[key]) throw new Error('Unknown part ' + key);
-    this.parts.push({ key, x, y, z, rot: ((rot % 4) + 4) % 4, color, tag: this.tag }); return this;
+    if (print) { const pd = PRINTS[print]; if (!pd) throw new Error('Unknown print ' + print); if (!(pd.base.endsWith('*') ? key.startsWith(pd.base.slice(0, -1)) : pd.base === key)) throw new Error(`print ${print} belongs on ${pd.base}, not ${key}`); }
+    this.parts.push({ key, x, y, z, rot: ((rot % 4) + 4) % 4, color, tag: this.tag, print }); return this;
   }
   /** Voxel fill; h in plates; packed later. */
   fill(kind: VoxKind, x0: number, y0: number, z0: number, w: number, h: number, d: number, color: string) {
@@ -44,7 +47,7 @@ export class Blueprint {
     const ys = [...layers.keys()].sort((a, b) => a - b); const used = new Set<string>();
     for (const y of ys) {
       const cells = layers.get(y)!; const flip = (y % 2) === 1;
-      cells.sort((a, b) => (a[1] - b[1]) || (flip ? b[0] - a[0] : a[0] - b[0]));
+      cells.sort((a, b) => (a[1] - b[1]) || (!this.compact && flip ? b[0] - a[0] : a[0] - b[0]));
       const brickOk = (x: number, z: number): string | null => {
         const k0 = Blueprint.key(x, y, z); const v0 = this.vox.get(k0); if (!v0 || v0.kind !== 'brick' || used.has(k0)) return null;
         for (let dy = 1; dy < 3; dy++) { const k = Blueprint.key(x, y + dy, z); const v = this.vox.get(k); if (!v || v.kind !== 'brick' || v.color !== v0.color || used.has(k)) return null; }
@@ -75,7 +78,7 @@ export class Blueprint {
       if (good) fits.push([fw, fd, fw * fd]);
     }
     fits.sort((p, q) => q[2] - p[2] || (flip ? q[0] - p[0] : p[0] - q[0]));
-    const r = this.rng(); const i = fits.length > 2 && r > 0.85 ? 2 : fits.length > 1 && r > 0.6 ? 1 : 0;
+    const r = this.rng(); const i = this.compact ? 0 : fits.length > 2 && r > 0.85 ? 2 : fits.length > 1 && r > 0.6 ? 1 : 0;
     return [fits[i][0], fits[i][1]];
   }
   private emit(kind: VoxKind, x: number, y: number, z: number, fw: number, fd: number, color: string, tag?: string) {

@@ -44,9 +44,10 @@ export const COLORS: LegoColor[] = [
   { key: 'FlatSilver', lego: 'Silver Metallic', id: 315, bl: 'Flat Silver', hex: 0x898788, use: '天线、金属' },
   { key: 'TransClear', lego: 'Transparent', id: 40, bl: 'Trans-Clear', hex: 0xFCFCFC, trans: true, use: '玻璃、水花' },
   { key: 'TransLightBlue', lego: 'Transparent Light Blue', id: 42, bl: 'Trans-Light Blue', hex: 0xAEEFEC, trans: true, use: '水面、玻璃幕墙' },
-  { key: 'TransDarkBlue', lego: 'Transparent Blue', id: 43, bl: 'Trans-Dark Blue', hex: 0x0020A0, trans: true, use: '深水、玻璃' },
+  { key: 'TransDarkBlue', lego: 'Transparent Blue', id: 43, bl: 'Trans-Dark Blue', hex: 0x0C2F92, trans: true, use: '深水、玻璃（金沙幕墙：压暗到海军蓝，0x0020A0 在白底上过亮）' },
   { key: 'TransOrange', lego: 'Transparent Bright Orange', id: 182, bl: 'Trans-Orange', hex: 0xF08F1C, trans: true, use: '纸灯笼、灯光' },
   { key: 'TransGreen', lego: 'Transparent Green', id: 48, bl: 'Trans-Green', hex: 0x84B68D, trans: true, use: '玻璃点缀' },
+  { key: 'TransBlack', lego: 'Transparent Brown', id: 111, bl: 'Trans-Black', hex: 0x635F52, trans: true, use: '墨色玻璃幕墙（滨海湾金沙）' },
 ];
 const BY_KEY = new Map(COLORS.map((c) => [c.key, c]));
 export function colorOf(key: string): LegoColor { const c = BY_KEY.get(key); if (!c) throw new Error('Unknown LEGO colour: ' + key); return c; }

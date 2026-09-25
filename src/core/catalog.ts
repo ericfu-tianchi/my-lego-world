@@ -1,19 +1,34 @@
 import * as THREE from 'three';
 import { PLATE, STUD_R, STUD_H, mergeGeos, roundedBox, box, cyl, stud, studGrid, profileExtrude, footprintPrism, lathe, cornerSlope, pyramid, sideStud } from './geometry';
+import { ldrawGeometry, bakedBox, type Anchor } from './ldraw';
 
 // ---- Part catalogue ------------------------------------------------------------
 // Every entry maps to a real LEGO design (BrickLink id). Geometry is our own approximation
 // at true proportions. `studs` says where the top face offers studs (what can sit on it);
 // `accepts` says whether the underside takes studs. The validator uses both.
-export type Category = 'brick' | 'brick-mod' | 'plate' | 'plate-mod' | 'tile' | 'slope' | 'curve' | 'round' | 'arch' | 'window' | 'bar' | 'plant' | 'minifig' | 'baseplate';
+export type Category = 'brick' | 'brick-mod' | 'plate' | 'plate-mod' | 'tile' | 'slope' | 'curve' | 'round' | 'arch' | 'window' | 'bar' | 'plant' | 'minifig' | 'accessory' | 'animal' | 'baseplate';
 export type StudPattern = 'all' | 'none' | 'back' | 'center' | 'disc' | ((i: number, j: number) => boolean);
 export interface PartDef {
   key: string; bl: string; name: string; zh: string; cat: Category;
   w: number; d: number; h: number;              // studs, studs, plates
   studs: StudPattern; accepts: boolean;        // connection points
+  studPoints?: [number, number][];             // explicit mould connectors relative to centre (e.g. branching foliage)
   verified: boolean;                            // id checked against the LDraw official library headers (2026-09-11); see docs/catalog/ldraw-check.json for aliases
   mask?: (i: number, j: number) => boolean;    // occupied footprint cells when not the full rectangle
   note?: string; showColor: string;
+  gripMate?: string;                           // exact co-located rig frame for a rigidly aligned held part
+  held?: boolean;                               // accessory held in a minifig hand (connects through fig_hands, may sit at half-stud positions)
+  hollow?: boolean;                             // has a hollow stud / clip / hole that takes a bar
+  clip?: boolean;                               // the bar is gripped by a clip that reaches into the neighbouring cell
+  hand?: boolean;                               // a minifig hand: held accessories connect to it
+  attach?: boolean;                             // rides on a minifig body part it touches (hands on a torso)
+  body?: boolean;                               // minifig legs / torso: hands may overlap it, held things may not
+  bom?: string[];                               // real part numbers behind an assembly (torso + arms)
+  ext?: [number, number, number, number];       // true footprint rectangle [x0, x1, z0, z1] around the part centre (studs), used for interpenetration tests
+  extY?: [number, number];                      // true vertical extent in plates, relative to the placement level — collision uses the real geometry, connection uses the declared box
+  loop?: number;                                // plates a grippable loop / bar pokes above the part box (lantern handle)
+  bar?: boolean;                                // is a bar (3.18 mm) that plugs into hollow parts
+  ldraw?: string;                               // geometry baked from this LDraw file (L1 specialty moulds)
   build: () => THREE.BufferGeometry;
 }
 export const CATEGORIES: { id: Category; zh: string; en: string; blurb: string }[] = [
@@ -29,6 +44,8 @@ export const CATEGORIES: { id: Category; zh: string; en: string; blurb: string }
   { id: 'window', zh: '门窗', en: 'Windows & doors', blurb: '人仔尺度建筑用；微缩尺度用透明板代替。' },
   { id: 'bar', zh: '杆件与小配件', en: 'Bars & small details', blurb: '天线、旗杆、路灯、水龙头做微缩细节。' },
   { id: 'plant', zh: '植物', en: 'Plants', blurb: '树叶、花茎、竹叶，配合圆板做各种树。' },
+  { id: 'accessory', zh: '人仔道具', en: 'Accessories', blurb: '手里拿的、桌上放的：扫帚、茶杯、相机、雨伞。人仔比例的生活层。' },
+  { id: 'animal', zh: '动物', en: 'Animals', blurb: '锦鲤、猫、鸟、蛙：庭园里的活物。' },
   { id: 'minifig', zh: '人仔', en: 'Minifigure', blurb: '按颜色分件，每件是一个物理零件。' },
   { id: 'baseplate', zh: '底板', en: 'Baseplates', blurb: '每座城市的桌面。' },
 ];
@@ -54,6 +71,18 @@ export function hasStud(p: PartDef, i: number, j: number): boolean {
 }
 
 // ---- helpers -------------------------------------------------------------------
+/** L1 specialty mould: real LDraw geometry (baked), stud semantics filled by hand. `lift` raises the mesh by whole plates. */
+export function ldrawPart(p: Omit<PartDef, 'build' | 'verified' | 'ldraw'> & { id: string; lift?: number; anchor?: Anchor }) {
+  const { id, lift, anchor, ...rest } = p; if (PARTS[rest.key]) delete PARTS[rest.key];
+  let ext = rest.ext; let extY = rest.extY;
+  const bb = bakedBox(id), lf = lift ?? 0, an = anchor ?? 'bbox';
+  if (!extY) extY = an === 'origin' ? [+(lf + bb[1] / PLATE).toFixed(2), +(lf + bb[4] / PLATE).toFixed(2)] : [lf, +(lf + (bb[4] - bb[1]) / PLATE).toFixed(2)];
+  if (!ext && (rest.cat === 'minifig' || rest.cat === 'accessory' || rest.cat === 'animal')) { // small parts: true rectangle from the baked bbox
+    ext = an !== 'bbox' ? [bb[0], bb[3], bb[2], bb[5]] : [-(bb[3] - bb[0]) / 2, (bb[3] - bb[0]) / 2, -(bb[5] - bb[2]) / 2, (bb[5] - bb[2]) / 2];
+    ext = ext.map((v) => +v.toFixed(2)) as [number, number, number, number];
+  }
+  def({ ...rest, ext, extY, verified: true, ldraw: id, build: () => ldrawGeometry(id, p.h, lf, an) });
+}
 const boxPart = (w: number, d: number, h: number, studs = true) => () => { const H = h * PLATE; const geos = [roundedBox(w, H, d)]; if (studs) geos.push(...studGrid(w, d, H / 2)); return mergeGeos(geos); };
 // Slopes: canonical studs on the back row (z<0), slope descends toward +z.
 const slopePart = (w: number, d: number, h: number, backRows: number, lip: number, studRows: number) => () => {
@@ -101,12 +130,12 @@ for (const [w, d, bl] of [[1, 1, '3024'], [1, 2, '3023'], [1, 3, '3623'], [1, 4,
 def({ key: 'plate_corner_2x2', bl: '2420', name: 'Plate 2 x 2 Corner', zh: '转角板 2×2', cat: 'plate', w: 2, d: 2, h: 1, studs: 'all', accepts: true, verified: true, mask: lMask, showColor: 'BrightBlue', build: lPart(1, true) });
 
 // ---- MODIFIED PLATES -------------------------------------------------------------
-def({ key: 'jumper_1x2', bl: '15573', name: 'Plate 1 x 2 with 1 Stud (Jumper)', zh: '半格偏移板 1×2', cat: 'plate-mod', w: 2, d: 1, h: 1, studs: (i) => i === 0, accepts: true, verified: true, showColor: 'BrightBlue', note: '把上面的零件偏移半格，微缩建筑的关键技法', build: () => mergeGeos([roundedBox(2, 0.4, 1), stud(0, 0.2, 0)]) });
-def({ key: 'jumper_2x2', bl: '87580', name: 'Plate 2 x 2 with 1 Stud (Jumper)', zh: '半格偏移板 2×2', cat: 'plate-mod', w: 2, d: 2, h: 1, studs: (i, j) => i === 0 && j === 0, accepts: true, verified: true, showColor: 'BrightBlue', note: '中心单凸点', build: () => mergeGeos([roundedBox(2, 0.4, 2), stud(0, 0.2, 0)]) });
+def({ key: 'jumper_1x2', bl: '15573', name: 'Plate 1 x 2 with 1 Stud (Jumper)', zh: '半格偏移板 1×2', cat: 'plate-mod', w: 2, d: 1, h: 1, studs: 'center', accepts: true, verified: true, showColor: 'BrightBlue', note: '把上面的零件偏移半格，微缩建筑的关键技法', build: () => mergeGeos([roundedBox(2, 0.4, 1), stud(0, 0.2, 0)]) });
+def({ key: 'jumper_2x2', bl: '87580', name: 'Plate 2 x 2 with 1 Stud (Jumper)', zh: '半格偏移板 2×2', cat: 'plate-mod', w: 2, d: 2, h: 1, studs: 'center', accepts: true, verified: true, showColor: 'BrightBlue', note: '中心单凸点', build: () => mergeGeos([roundedBox(2, 0.4, 2), stud(0, 0.2, 0)]) });
 def({ key: 'roundplate_1x1', bl: '6141', name: 'Plate Round 1 x 1', zh: '圆板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 1, studs: 'all', accepts: true, verified: true, showColor: 'BrightGreen', note: '树叶、灌木、石子', build: () => mergeGeos([cyl(0.49, 0.4, 20), stud(0, 0.2, 0)]) });
 def({ key: 'roundplate_2x2', bl: '4032', name: 'Plate Round 2 x 2', zh: '圆板 2×2', cat: 'plate-mod', w: 2, d: 2, h: 1, studs: 'all', accepts: true, verified: true, showColor: 'BrightGreen', note: '树冠叠塔', build: () => mergeGeos([cyl(0.98, 0.4, 28), ...studGrid(2, 2, 0.2)]) });
 def({ key: 'roundplate_4x4', bl: '60474', name: 'Plate Round 4 x 4', zh: '圆板 4×4', cat: 'plate-mod', w: 4, d: 4, h: 1, studs: 'disc', accepts: true, verified: true, showColor: 'BrightGreen', note: '擎天树冠、圆形平台', build: () => mergeGeos([cyl(1.98, 0.4, 40), ...studGrid(4, 4, 0.2, (i, j) => Math.hypot(i + 0.5 - 2, j + 0.5 - 2) < 1.6)]) });
-def({ key: 'flower_1x1', bl: '24866', name: 'Plate Round 1 x 1 with Flower Edge', zh: '花瓣板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 1, studs: 'all', accepts: true, verified: true, showColor: 'BrightPink', note: '樱花、花丛、树冠质感', build: () => { const geos = [cyl(0.26, 0.4, 12)]; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; geos.push(cyl(0.21, 0.36, 10, 0.21, Math.cos(a) * 0.3, -0.02, Math.sin(a) * 0.3)); } geos.push(stud(0, 0.2, 0)); return mergeGeos(geos); } });
+def({ key: 'flower_1x1', bl: '24866', name: 'Plate Round 1 x 1 with Flower Edge', zh: '花瓣板 1×1', cat: 'plant', w: 1, d: 1, h: 1, studs: 'all', accepts: true, verified: true, showColor: 'BrightPink', note: '樱花、花丛、树冠质感', build: () => { const geos = [cyl(0.26, 0.4, 12)]; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; geos.push(cyl(0.21, 0.36, 10, 0.21, Math.cos(a) * 0.3, -0.02, Math.sin(a) * 0.3)); } geos.push(stud(0, 0.2, 0)); return mergeGeos(geos); } });
 const wedgeR: [number, number][] = [[0, 0], [4, 0], [4, 1], [0, 2]], wedgeL: [number, number][] = [[0, 0], [4, 0], [4, 2], [0, 1]];
 def({ key: 'wedge_4x2_r', bl: '41769', name: 'Wedge Plate 4 x 2 Right', zh: '楔形板 4×2 右', cat: 'plate-mod', w: 4, d: 2, h: 1, studs: 'all', accepts: true, verified: true, mask: (i, j) => insidePoly(wedgeR, i + 0.5, j + 0.5), showColor: 'White', note: '船头、斜向街区', build: wedgePart(wedgeR, 4, 2) });
 def({ key: 'wedge_4x2_l', bl: '41770', name: 'Wedge Plate 4 x 2 Left', zh: '楔形板 4×2 左', cat: 'plate-mod', w: 4, d: 2, h: 1, studs: 'all', accepts: true, verified: true, mask: (i, j) => insidePoly(wedgeL, i + 0.5, j + 0.5), showColor: 'White', build: wedgePart(wedgeL, 4, 2) });
@@ -170,31 +199,127 @@ def({ key: 'door_1x4x6', bl: '60616', name: 'Door 1 x 4 x 6 with Stud Handle', z
 
 // ---- BARS & SMALL DETAILS -------------------------------------------------------------
 def({ key: 'antenna_1x4', bl: '3957', name: 'Antenna 1 x 4', zh: '天线 1×4', cat: 'bar', w: 1, d: 1, h: 8, studs: 'none', accepts: true, verified: true, showColor: 'LightBluishGray', note: '旗杆、塔尖、路灯', build: () => { const H = 3.2; return mergeGeos([cyl(0.49, 0.4, 16, 0.49, 0, -H / 2 + 0.2, 0), cyl(0.14, H - 0.4, 10, 0.14, 0, 0.2, 0), cyl(0.2, 0.3, 10, 0.2, 0, H / 2 - 0.15, 0)]); } });
-def({ key: 'bar_3l', bl: '87994', name: 'Bar 3L', zh: '杆 3 格', cat: 'bar', w: 1, d: 1, h: 6, studs: 'none', accepts: false, verified: true, showColor: 'PearlGold', note: '插在圆板/圆砖的空心凸点里', build: () => cyl(0.16, 2.4, 10) });
-def({ key: 'bar_4l', bl: '30374', name: 'Bar 4L (Lightsaber Blade)', zh: '杆 4 格', cat: 'bar', w: 1, d: 1, h: 8, studs: 'none', accepts: false, verified: true, showColor: 'TransLightBlue', note: '瀑布、光柱、旗杆', build: () => cyl(0.16, 3.2, 10) });
+def({ key: 'bar_3l', bl: '87994', name: 'Bar 3L', zh: '杆 3 格', cat: 'bar', w: 1, d: 1, h: 6, studs: 'none', accepts: false, held: true, bar: true, ext: [-0.16, 0.16, -0.16, 0.16], verified: true, showColor: 'PearlGold', note: '插在圆板/圆砖的空心凸点里', build: () => cyl(0.16, 2.4, 10) });
+def({ key: 'bar_4l', bl: '30374', name: 'Bar 4L (Lightsaber Blade)', zh: '杆 4 格', cat: 'bar', w: 1, d: 1, h: 8, studs: 'none', accepts: false, held: true, bar: true, ext: [-0.16, 0.16, -0.16, 0.16], verified: true, showColor: 'TransLightBlue', note: '瀑布、光柱、旗杆', build: () => cyl(0.16, 3.2, 10) });
 def({ key: 'telescope', bl: '64644', name: 'Minifig Telescope', zh: '望远镜', cat: 'bar', w: 1, d: 1, h: 2, studs: 'none', accepts: true, verified: true, showColor: 'DarkBluishGray', note: '微缩路灯头、烟囱、小塔尖', build: () => mergeGeos([cyl(0.28, 0.5, 14, 0.28, 0, -0.15, 0), cyl(0.38, 0.3, 14, 0.38, 0, 0.25, 0)]) });
 def({ key: 'tap_1x1', bl: '4599b', name: 'Tap 1 x 1', zh: '水龙头 1×1', cat: 'bar', w: 1, d: 1, h: 2, studs: 'none', accepts: true, verified: true, showColor: 'LightBluishGray', note: '微缩雕像、路灯、旗杆底座', build: () => mergeGeos([cyl(0.3, 0.4, 12, 0.3, 0, -0.2, 0), cyl(0.14, 0.7, 10, 0.14, 0, 0.35, 0), (() => { const c = new THREE.CylinderGeometry(0.14, 0.14, 0.6, 10); c.rotateX(Math.PI / 2); c.translate(0, 0.55, 0.3); c.deleteAttribute('uv'); return c; })()]) });
 
 // ---- PLANTS -----------------------------------------------------------------------------
-def({ key: 'leaves_4x3', bl: '2423', name: 'Plant Leaves 4 x 3', zh: '树叶 4×3', cat: 'plant', w: 4, d: 3, h: 1, studs: (i, j) => j === 0 && (i === 1 || i === 2), accepts: true, verified: true, mask: () => true, showColor: 'Green', note: '树冠、灌木', build: () => { const geos: THREE.BufferGeometry[] = []; for (const [x, z, sx, sz] of [[-1.2, 0.3, 1.1, 0.7], [0, -0.2, 1.0, 1.1], [1.2, 0.3, 1.1, 0.7]]) { const c = cyl(0.8, 0.25, 18); c.scale(sx, 1, sz); c.translate(x, -0.07, z); geos.push(c); } geos.push(box(1.2, 0.3, 1, 0, -0.05, -1.0), ...studGrid(4, 3, 0.1, (i, j) => j === 0 && (i === 1 || i === 2))); return mergeGeos(geos); } });
-def({ key: 'plant_3leaves', bl: '32607', name: 'Plant Plate 1 x 1 Round with 3 Leaves', zh: '三叶圆板 1×1', cat: 'plant', w: 1, d: 1, h: 1, studs: 'all', accepts: true, verified: true, showColor: 'BrightGreen', note: '叶片向外悬出一格，不占格', build: () => { const geos = [cyl(0.49, 0.4, 16), stud(0, 0.2, 0)]; for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2 + 0.4; const leaf = cyl(0.45, 0.12, 12); leaf.scale(1, 1, 0.55); leaf.rotateY(-a); leaf.translate(Math.cos(a) * 0.8, 0.02, Math.sin(a) * 0.8); geos.push(leaf); } return mergeGeos(geos); } });
-def({ key: 'flower_stem', bl: '3741', name: 'Plant Flower Stem', zh: '花茎', cat: 'plant', w: 1, d: 1, h: 3, studs: 'none', accepts: true, verified: true, showColor: 'BrightGreen', note: '顶端可插花瓣板', build: () => { const geos = [cyl(0.49, 0.4, 16, 0.49, 0, -0.4, 0)]; for (const [x, z] of [[0, 0], [0.28, 0.16], [-0.28, 0.16]]) geos.push(cyl(0.07, 1.0, 8, 0.07, x, 0.3, z), cyl(0.16, 0.14, 8, 0.16, x, 0.87, z)); return mergeGeos(geos); } });
+def({ key: 'flower_stem', bl: '3741', name: 'Plant Flower Stem', zh: '花茎', cat: 'plant', w: 1, d: 1, h: 3, studs: 'center', accepts: true, verified: true, showColor: 'BrightGreen', note: '顶端可插花瓣板', build: () => { const geos = [cyl(0.49, 0.4, 16, 0.49, 0, -0.4, 0)]; for (const [x, z] of [[0, 0], [0.28, 0.16], [-0.28, 0.16]]) geos.push(cyl(0.07, 1.0, 8, 0.07, x, 0.3, z), cyl(0.16, 0.14, 8, 0.16, x, 0.87, z)); return mergeGeos(geos); } });
 def({ key: 'bamboo_leaves', bl: '30176', name: 'Plant Bamboo Leaves', zh: '竹叶', cat: 'plant', w: 1, d: 1, h: 2, studs: 'none', accepts: true, verified: true, showColor: 'Lime', note: '竹林、棕榈叶', build: () => { const geos = [cyl(0.3, 0.4, 12, 0.3, 0, -0.2, 0)]; for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.3; const leaf = box(1.4, 0.08, 0.28, 0.75, 0.2, 0); leaf.rotateZ(0.35); leaf.rotateY(-a); geos.push(leaf); } return mergeGeos(geos); } });
 
 // ---- SET-SPECIFIC (按需入库: real parts added for one city, never invented shapes) -------------------
-def({ key: 'fish', bl: '64648', name: 'Animal Fish Straight', zh: '鱼（锦鲤）', cat: 'plant', w: 1, d: 1, h: 1, studs: 'none', accepts: true, verified: true, showColor: 'Orange', note: '首次用于：京都。底部一个反凸点，坐在池面的透明板上', build: () => { const body = cyl(0.22, 1.1, 10); body.scale(1, 1, 0.55); body.rotateZ(Math.PI / 2); body.translate(0, -0.05, 0); const tail = box(0.3, 0.22, 0.05, 0.62, -0.02, 0); tail.rotateY(0.6); return mergeGeos([body, tail]); } });
 
 // ---- MINIFIGURE ----------------------------------------------------------------------------
-def({ key: 'fig_legs', bl: '970c00', name: 'Minifig Hips and Legs', zh: '人仔腿', cat: 'minifig', w: 2, d: 1, h: 4, studs: 'all', accepts: true, verified: true, showColor: 'DarkBlue', build: () => { const geos: THREE.BufferGeometry[] = []; for (const x of [-0.5, 0.5]) geos.push(box(0.8, 1.15, 0.72, x, -0.8 + 0.575, 0)); geos.push(box(1.9, 0.45, 0.7, 0, 0.8 - 0.225, 0)); return mergeGeos(geos); } });
-def({ key: 'fig_torso', bl: '973', name: 'Minifig Torso with Arms', zh: '人仔躯干（含手臂）', cat: 'minifig', w: 2, d: 1, h: 3, studs: 'center', accepts: true, verified: true, showColor: 'BrightRed', build: () => { const s = new THREE.Shape(); s.moveTo(-0.75, -0.6); s.lineTo(0.75, -0.6); s.lineTo(0.95, 0.6); s.lineTo(-0.95, 0.6); s.closePath(); const body = new THREE.ExtrudeGeometry(s, { depth: 0.7, bevelEnabled: false }); body.translate(0, 0, -0.35); body.deleteAttribute('uv'); const geos: THREE.BufferGeometry[] = [body]; for (const side of [-1, 1]) { const arm = cyl(0.23, 0.95, 12); arm.translate(0, -0.35, 0); arm.rotateZ(side * 0.18); arm.translate(side * 1.05, 0.45, 0); geos.push(arm); } geos.push(cyl(0.3, 0.15, 12, 0.3, 0, 0.675, 0)); return mergeGeos(geos); } });
-def({ key: 'fig_hands', bl: '3820', name: 'Minifig Hands (pair)', zh: '人仔手', cat: 'minifig', w: 2, d: 1, h: 3, studs: 'none', accepts: false, verified: true, showColor: 'Yellow', note: '装在手臂末端', build: () => { const geos: THREE.BufferGeometry[] = []; for (const side of [-1, 1]) geos.push(cyl(0.2, 0.32, 10, 0.2, side * 1.22, -0.5, 0)); return mergeGeos(geos); } });
-def({ key: 'fig_head', bl: '3626c', name: 'Minifig Head', zh: '人仔头', cat: 'minifig', w: 1, d: 1, h: 3, studs: 'center', accepts: true, verified: true, showColor: 'Yellow', build: () => lathe([[0.3, -0.6], [0.5, -0.55], [0.56, -0.42], [0.56, 0.32], [0.5, 0.45], [0.3, 0.48], [0.3, 0.6], [0, 0.6]], 24) });
-def({ key: 'fig_hair', bl: '3901', name: 'Minifig Hair (short)', zh: '人仔头发', cat: 'minifig', w: 1, d: 1, h: 2, studs: 'none', accepts: true, verified: true, showColor: 'Black', build: () => { const pts: [number, number][] = [[0, -0.4], [0.6, -0.4], [0.62, -0.2]]; for (let k = 1; k <= 7; k++) { const t = k / 7 * Math.PI / 2; pts.push([0.62 * Math.cos(t), -0.2 + 0.6 * Math.sin(t)]); } return lathe(pts, 24); } });
-def({ key: 'fig_kasa', bl: '93059', name: 'Minifig Headgear Hat, Conical Asian', zh: '人仔草帽', cat: 'minifig', w: 2, d: 2, h: 1, studs: 'none', accepts: true, verified: true, showColor: 'Tan', build: () => lathe([[0, -0.2], [1.1, -0.2], [1.1, -0.12], [0.55, 0.05], [0.08, 0.22], [0, 0.22]], 28) });
 
 // ---- BASEPLATES ----------------------------------------------------------------------------
 def({ key: 'baseplate_32x32', bl: '3811', name: 'Baseplate 32 x 32', zh: '底板 32×32', cat: 'baseplate', w: 32, d: 32, h: 1, studs: 'all', accepts: false, verified: true, showColor: 'DarkBluishGray', note: '厚度以 1 板近似；底面不可再接', build: boxPart(32, 32, 1) });
 def({ key: 'baseplate_16x32', bl: '3857', name: 'Baseplate 16 x 32', zh: '底板 16×32', cat: 'baseplate', w: 16, d: 32, h: 1, studs: 'all', accepts: false, verified: true, showColor: 'DarkBluishGray', note: '与 32×32 拼成 48×32', build: boxPart(16, 32, 1) });
 
+
+// ---- MINIFIG RIG (real LDraw minifig parts posed per the LDraw minifig standard; baked by tools/ldraw/minifig-asm.mjs) ----
+// Stack: legs y..y+6, torso y+6..y+9, head y+9..y+12, hair/hat y+12. Hands are separate parts at the wrist per arm pose
+// (d down · f forward 45° · h forward 90° · u raised); held accessories grip the hand, never the body.
+ldrawPart({ key: 'fig_legs', id: '970c00', bl: '970c00', name: 'Minifig Hips and Legs', zh: '人仔腿', cat: 'minifig', w: 2, d: 1, h: 6, studs: 'all', accepts: true, anchor: 'origin', lift: 5, body: true, ext: [-0.97, 0.97, -0.5, 0.55], showColor: 'DarkBlue' });
+for (const pose of ['d', 'f', 'h', 'u'].flatMap((l) => ['d', 'f', 'h', 'u'].map((r) => l + r)))
+  ldrawPart({ key: `fig_torso_${pose}`, id: `figtorso_${pose}`, bl: '973', bom: ['973', '3818', '3819'], name: `Minifig Torso with Arms (L ${pose[0]}, R ${pose[1]})`, zh: `人仔躯干（左${pose[0]} 右${pose[1]}）`, cat: 'minifig', w: 2, d: 1, h: 3, studs: 'all', accepts: true, anchor: 'origin', lift: 3, body: true, ext: [-0.95, 0.95, -0.5, 0.5], showColor: 'BrightRed' }); // ext = body only; arms are covered by the hands
+for (const l of ['d', 'f', 'h', 'u']) for (const r of ['d', 'f', 'h', 'u'])
+  ldrawPart({ key: `fig_hands_${l}${r}`, id: `fighands_${l}${r}`, bl: '3820', bom: ['3820', '3820'], name: `Minifig Hands (L ${l}, R ${r})`, zh: '人仔手（一对）', cat: 'minifig', w: 2, d: 1, h: 3, studs: 'none', accepts: false, anchor: 'origin', lift: 3, hand: true, attach: true, showColor: 'Yellow', note: '与躯干同格同高：手的位置来自 LDraw 官方装配，永远不会与手臂脱节' });
+ldrawPart({ key: 'fig_head', id: '3626c', bl: '3626c', name: 'Minifig Head', zh: '人仔头', cat: 'minifig', w: 1, d: 1, h: 3, studs: 'center', accepts: true, anchor: 'origin', lift: 3, body: true, showColor: 'Yellow' });
+ldrawPart({ key: 'fig_hair', id: '3901', bl: '3901', name: 'Minifig Hair Male', zh: '发型·短发', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'Black' });
+ldrawPart({ key: 'hair_tousled', id: '62810', bl: '62810', name: 'Minifig Hair Short Tousled with Side Parting', zh: '发型·侧分乱发', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'DarkBrown' });
+ldrawPart({ key: 'hair_short', id: '40233', bl: '40233', name: 'Minifig Hair Short Tousled', zh: '发型·短乱发', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'DarkOrange' });
+ldrawPart({ key: 'leaves_4x3', id: '2423', bl: '2423', name: 'Plant Leaves 4 x 3', zh: '树叶 4×3', cat: 'plant', w: 1, d: 1, h: 1, studs: 'center', accepts: true, anchor: 'origin', lift: 1, showColor: 'Green', note: '只占茎根一格，叶片向 +z 伸出三格半' });
+
+// ---- L1 SPECIALTY MOULDS (geometry baked from the LDraw official library; stud semantics by hand) ------------------------
+// Shared life layer — open to every country.
+const ACC = { cat: 'accessory' as Category, studs: 'none' as StudPattern, accepts: true, held: true, anchor: 'oxz' as Anchor };
+ldrawPart({ ...ACC, key: 'cup', id: '3899', bl: '3899', name: 'Minifig Cup', zh: '茶杯', w: 1, d: 1, h: 3, showColor: 'White', note: '手持或放在桌上；生活层' });
+ldrawPart({ ...ACC, key: 'goblet', id: '2343', bl: '2343', name: 'Minifig Goblet', zh: '高脚杯', w: 1, d: 1, h: 5, showColor: 'TransClear' });
+ldrawPart({ ...ACC, key: 'camera', id: '30089b', bl: '30089', name: 'Minifig Camera Snapshot', zh: '相机', w: 2, d: 1, h: 3, showColor: 'Black', note: '游客举相机' });
+ldrawPart({ ...ACC, key: 'pushbroom', id: '3836', bl: '3836', name: 'Minifig Pushbroom', zh: '扫帚', w: 2, d: 1, h: 11, showColor: 'ReddishBrown', note: '手柄在手里，刷头落地' });
+ldrawPart({ ...ACC, key: 'hand_fan', id: '93553', bl: '93553', name: 'Minifig Hand Fan', zh: '折扇', w: 2, d: 1, h: 5, showColor: 'White', note: '首次用于：京都' });
+ldrawPart({ ...ACC, key: 'tray', id: '29635', bl: '29635', name: 'Minifig Serving Tray 2 x 3', zh: '托盘 2×3', w: 3, d: 2, h: 2, studs: 'all', showColor: 'ReddishBrown', note: '上面可放杯碗' });
+ldrawPart({ ...ACC, key: 'rice_bowl', id: '34172', bl: '34172', name: 'Minifig Rice Bowl', zh: '饭碗', w: 1, d: 1, h: 2, studs: 'center', showColor: 'White', note: '首次用于：京都' });
+ldrawPart({ ...ACC, key: 'teapot', id: '23986', bl: '23986', name: 'Minifig Teapot', zh: '茶壶', w: 2, d: 2, h: 4, showColor: 'DarkGreen', note: '首次用于：京都' });
+ldrawPart({ ...ACC, key: 'swirl_1x1', id: '15470', bl: '15470', name: 'Plate 1 x 1 Round with Swirled Top', zh: '旋顶圆板（抹茶冰）', w: 1, d: 1, h: 2, held: false, showColor: 'BrightGreen', note: 'NPU：抹茶软冰、和菓子' });
+ldrawPart({ ...ACC, key: 'lantern', id: '37776', bl: '37776', name: 'Minifig Lantern', zh: '提灯', w: 1, d: 1, h: 5, bar: true, loop: 1, accepts: false, showColor: 'Black', note: '盒子只算灯体 5 板；顶部提手（杆）伸出盒外，挂进夹子或握在手里' });
+ldrawPart({ ...ACC, key: 'bottle', id: '95228', bl: '95228', name: 'Minifig Bottle 1 x 1 x 2', zh: '瓶子', w: 1, d: 1, h: 6, showColor: 'TransGreen', note: '清酒瓶、水瓶' });
+ldrawPart({ ...ACC, key: 'basket', id: '4523', bl: '4523', name: 'Minifig Container D-Basket', zh: '篓', w: 2, d: 2, h: 4, studs: 'all', showColor: 'ReddishBrown' });
+ldrawPart({ ...ACC, key: 'umbrella', id: '4094b', bl: '4094', name: 'Minifig Umbrella', zh: '伞面', w: 6, d: 6, h: 4, held: false, accepts: false, hollow: true, studs: 'none', showColor: 'BrightRed', note: '中心孔套在竖杆上（杆在手里）' });
+ldrawPart({ key: 'seat_2x2', id: '4079', bl: '4079', name: 'Minifig Seat 2 x 2', zh: '座椅 2×2', cat: 'accessory', w: 2, d: 2, h: 6, studs: 'all', accepts: true, showColor: 'ReddishBrown', note: '长凳、缘侧坐具' });
+ldrawPart({ key: 'barrel_2x2', id: '2489', bl: '2489', name: 'Barrel 2 x 2 x 1 2/3', zh: '木桶 2×2', cat: 'accessory', w: 2, d: 2, h: 5, studs: 'none', accepts: true, showColor: 'ReddishBrown', note: '手水、酒桶' });
+const ANI = { cat: 'animal' as Category, studs: 'none' as StudPattern, accepts: true, anchor: 'oxz' as Anchor };
+ldrawPart({ ...ANI, anchor: 'bbox', key: 'fish', id: '64648', bl: '64648', name: 'Animal Fish Straight', zh: '鱼（锦鲤）', w: 1, d: 3, h: 3, showColor: 'Orange', note: '首次用于：京都。底部反凸点坐在池面的透明板上' });
+// Footprint = the part's real connection, not its body: one socket → 1×1, two anti-studs → 1×2. An even box centres the origin on a
+// stud boundary and the socket lands between two studs (the bird on the torii, Eric 2026-09-18). `ext` still covers the overhanging body.
+ldrawPart({ ...ANI, key: 'cat', id: '11602', bl: '11602', name: 'Animal Cat Sitting', zh: '猫（坐）', w: 1, d: 2, h: 7, showColor: 'White', note: '底部两个反凸点，1×2' });
+ldrawPart({ ...ANI, key: 'songbird', id: '41835', bl: '41835', name: 'Animal Bird Songbird', zh: '小鸟', w: 1, d: 1, h: 4, lift: -0.5, showColor: 'DarkPink', note: '一个底座套一个凸点：1×1，身体悬出；下沉半板让脚座贴板面' });
+ldrawPart({ ...ANI, key: 'frog', id: '33320', bl: '33320', name: 'Animal Frog', zh: '青蛙', w: 1, d: 1, h: 3, showColor: 'BrightGreen' });
+ldrawPart({ ...ANI, key: 'butterfly', id: '80674', bl: '80674', name: 'Animal Butterfly with Stud Tube', zh: '蝴蝶', w: 1, d: 1, h: 2, showColor: 'Lavender', note: '一个套管套一个凸点：1×1' });
+ldrawPart({ ...ANI, key: 'duckling', id: '49661', bl: '49661', name: 'Animal Duckling', zh: '小鸭', w: 1, d: 1, h: 4, showColor: 'Yellow' });
+const PLT = { cat: 'plant' as Category, accepts: true };
+ldrawPart({ ...PLT, key: 'flower_7', id: '32606', bl: '32606', name: 'Plant Flower with 7 Alternate Petals with Bar and Pin Hole', zh: '七瓣花（带杆）', w: 1, d: 1, h: 2, studs: 'none', accepts: false, bar: true, hollow: true, showColor: 'BrightPink', note: '杆插进空心凸点（1×1 圆板、花瓣板、花茎）；顶孔可再插' });
+ldrawPart({ ...PLT, key: 'leaves_6x5', id: '2417', bl: '2417', name: 'Plant Leaves 6 x 5', zh: '树叶 6×5', w: 1, d: 1, h: 1, studs: 'center', hollow: true, anchor: 'origin', lift: 1, showColor: 'Green', note: '只占茎根一格，叶片向外悬出五格；官方樱花/松树做法（10315 用白色当樱花）' });
+ldrawPart({ ...PLT, key: 'flower_small', id: '3742', bl: '3742', name: 'Plant Flower', zh: '小花簇', w: 1, d: 1, h: 1, studs: 'none', showColor: 'White', note: '插在花茎顶上' });
+ldrawPart({ ...PLT, key: 'grass_stem', id: '15279', bl: '15279', name: 'Plant Grass Stem', zh: '草茎', w: 1, d: 1, h: 8, studs: 'none', accepts: false, bar: true, showColor: 'BrightGreen', note: '杆插进空心凸点' });
+ldrawPart({ ...PLT, key: 'lilypad', id: '4727', bl: '4727', name: 'Plant Flower 2 x 2 Leaves', zh: '睡莲叶 2×2', w: 2, d: 2, h: 3, studs: 'center', hollow: true, showColor: 'Green' });
+ldrawPart({ ...PLT, key: 'lotus', id: '4728', bl: '4728', name: 'Plant Flower 2 x 2 with Hollow Stud', zh: '莲花 2×2', w: 2, d: 2, h: 3, studs: 'center', hollow: true, showColor: 'BrightPink' });
+ldrawPart({ key: 'fence_lattice_1x4x2', id: '3185', bl: '3185', name: 'Fence Lattice 1 x 4 x 2', zh: '竹垣栅栏 1×4×2', cat: 'arch', w: 4, d: 1, h: 6, studs: 'none', accepts: true, showColor: 'ReddishBrown', note: '竹垣、露地围栏' });
+ldrawPart({ key: 'arch_1x8x2', id: '3308a', bl: '3308', name: 'Arch 1 x 8 x 2', zh: '拱 1×8×2', cat: 'arch', w: 8, d: 1, h: 6, studs: 'all', accepts: true, showColor: 'BrightRed', note: '太鼓桥的拱腹' });
+ldrawPart({ key: 'rock_4x4', id: '30294c01', bl: '30294', name: 'Rock 4 x 4 x 3', zh: '岩石 4×4×3', cat: 'brick-mod', w: 4, d: 4, h: 9, studs: (i, j) => i >= 1 && i <= 2 && j >= 1 && j <= 2, accepts: true, showColor: 'DarkBluishGray', note: '石组主石' });
+ldrawPart({ key: 'nugget', id: '35646', bl: '35646', name: 'Rock 1.25 x 1.25 x 1.2 Nugget', zh: '小石块', cat: 'brick-mod', w: 1, d: 1, h: 3, studs: 'none', accepts: true, showColor: 'LightBluishGray', note: '添石、河石' });
+ldrawPart({ key: 'clip_v', clip: true, id: '4085c', bl: '4085c', name: 'Plate 1 x 1 with Clip Vertical', zh: '竖夹板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 1, studs: 'none', accepts: true, hollow: true, showColor: 'Black', note: '夹竖杆：挂提灯、立幟旗；夹口伸出格外 0.7' });
+ldrawPart({ key: 'clip_h', clip: true, id: '61252', bl: '61252', name: 'Plate 1 x 1 with Clip Horizontal', zh: '横夹板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 1, studs: 'none', accepts: true, hollow: true, showColor: 'Black' });
+ldrawPart({ key: 'flag_trapezoid', clip: true, id: '44676b', bl: '44676', name: 'Flag 2 x 2 Trapezoid', zh: '梯形旗 2×2（幟）', cat: 'plate-mod', w: 1, d: 3, h: 5, studs: 'none', accepts: false, hollow: true, showColor: 'DarkBlue', note: '夹子夹住竖杆，做幟旗与暖帘布' });
+ldrawPart({ key: 'flag_square', clip: true, id: '11055', bl: '11055', name: 'Flag 2 x 2 Square', zh: '方旗 2×2', cat: 'plate-mod', w: 1, d: 3, h: 5, studs: 'none', accepts: false, hollow: true, showColor: 'White' });
+ldrawPart({ key: 'window_1x2x3', id: '60593', bl: '60593', name: 'Window 1 x 2 x 3 Frame', zh: '窗框 1×2×3', cat: 'window', w: 2, d: 1, h: 9, studs: 'all', accepts: true, anchor: 'origin', lift: 9, showColor: 'DarkBrown' });   // origin at the top: frame and pane share it, so the pane hangs from the hinge line
+ldrawPart({ key: 'pane_lattice_1x2x3', id: 'pane_lattice', bl: '2529', name: 'Window 1 x 2 x 3 Pane Latticed', zh: '格子窗扇 1×2×3（障子）', cat: 'window', w: 2, d: 1, h: 9, studs: 'none', accepts: false, anchor: 'origin', lift: 9, showColor: 'White', note: '装在 1×2×3 窗框里；白色 = 障子。烘的是转进框平面并居中的装配，和窗框同原点' });
+ldrawPart({ key: 'door_lattice', id: '92589', bl: '92589', name: 'Door 1 x 4 x 6 Lattice', zh: '格子门 1×4×6', cat: 'window', w: 4, d: 1, h: 18, studs: 'none', accepts: false, showColor: 'DarkBrown', note: '装在 1×4×6 门框里' });
+// Kyoto-exclusive moulds (≤ 12 per country)
+ldrawPart({ key: 'fig_kasa', id: '93059', bl: '93059', name: 'Minifig Hat Conical Asian', zh: '人仔草帽', cat: 'minifig', w: 3, d: 3, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'Tan' });
+ldrawPart({ key: 'hair_topknot', id: '93562', bl: '93562', name: 'Minifig Hair Female with Top Knot Bun and Forelock', zh: '发型·高髻', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'Black', note: '首次用于：京都' });
+ldrawPart({ key: 'hair_highbun', id: '27186', bl: '27186', name: 'Minifig Hair with Large High Bun', zh: '发型·大圆髻', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'Black', note: '首次用于：京都' });
+ldrawPart({ key: 'hair_long', id: '12890', bl: '12890', name: 'Minifig Hair Female Long Straight', zh: '发型·长直发', cat: 'minifig', w: 2, d: 2, h: 2, studs: 'none', accepts: true, attach: true, anchor: 'origin', showColor: 'Black' });
+
+// ---- CHERRY-TREE VOCABULARY (the elements LEGO's own sakura builds are made of: 10315, 10281, 21060, 40725) -----------------
+ldrawPart({ cat: 'plant' as Category, accepts: true, key: 'plant_3leaves', id: '32607', bl: '32607', name: 'Plate 1 x 1 Round with 3 Leaves', zh: '三叶圆板 1×1', w: 1, d: 1, h: 1, studs: 'center', anchor: 'origin', lift: 1, showColor: 'BrightGreen', note: '花萼，也是花团挂到枝上的接口（10315）' });
+ldrawPart({ cat: 'plant' as Category, accepts: true, key: 'petal_1x1', id: '24866', bl: '24866', name: 'Plate 1 x 1 with 5 Petals', zh: '五瓣花 1×1', w: 1, d: 1, h: 1, studs: 'none', hollow: true, anchor: 'origin', lift: 1, showColor: 'BrightPink', note: '官方樱花的花本体；顶面空心凸点可再插花' });
+ldrawPart({ key: 'travis_1x1', id: '4733', bl: '4733', name: 'Brick 1 x 1 with Studs on Four Sides', zh: '四面凸点砖 1×1', cat: 'brick-mod', w: 1, d: 1, h: 3, studs: 'all', accepts: true, hollow: true, showColor: 'ReddishBrown', note: '五个空心凸点 = 五向插杆接口；官方拼树的树心' });
+ldrawPart({ key: 'roundplate_open', id: '85861', bl: '85861', name: 'Plate 1 x 1 Round with Open Stud', zh: '空心凸点圆板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 1, studs: 'all', accepts: true, hollow: true, showColor: 'ReddishBrown' });
+ldrawPart({ key: 'angle_bar', id: '65578', bl: '65578', name: 'Plate 1 x 1 Round with Angled Bar', zh: '斜杆圆板 1×1', cat: 'plate-mod', w: 1, d: 1, h: 3, studs: 'center', accepts: false, bar: true, anchor: 'oxz', showColor: 'ReddishBrown', note: '杆插进空心凸点，花板斜伸出去（40725 的组花做法）' });
+ldrawPart({ key: 'crown_5pt', id: '39262', bl: '39262', name: 'Minifig Crown with 5 Points', zh: '五爪冠（花瓣）', cat: 'plant', w: 1, d: 1, h: 3, studs: 'center', accepts: true, hollow: true, anchor: 'oxz', showColor: 'White', note: '40725 用它当五片花瓣，中心再落一朵五瓣花' });
+
+
+// ---- SINGAPORE VOCABULARY (2026-09-18) — life layer first (open to every country), then Singapore-exclusive moulds ---------------
+// Held food and tools. The frypan is gripped by its handle (−z canonical); the ice-cream cone by its shaft, its scoops sit on the cone's stud.
+ldrawPart({ ...ACC, key: 'frypan', id: '4528', bl: '4528', name: 'Minifig Frypan', zh: '煎锅', w: 2, d: 3, h: 2, showColor: 'Black', note: '把手朝 −z；手握把手。首次用于：新加坡（小贩炒锅）' });
+ldrawPart({ ...ACC, key: 'icecream_cone', id: '11610', bl: '11610', name: 'Cone 1 x 1 Inverted with Shaft', zh: '冰淇淋筒', w: 1, d: 1, h: 4.5, studs: 'center', accepts: false, showColor: 'Tan', note: '杆在手里；盒高 4.5 板 = 真实高度，顶上凸点正好接 6254 冰淇淋球' });
+ldrawPart({ ...ACC, key: 'icecream_scoops', id: '6254', bl: '6254', name: 'Minifig Food Ice Cream Scoops', zh: '冰淇淋球', w: 1, d: 1, h: 4, held: false, showColor: 'White', note: '底部反凸点坐在筒的凸点上' });
+ldrawPart({ ...ACC, key: 'popsicle', id: '30222', bl: '30222', name: 'Minifig Food Popsicle', zh: '雪条', w: 1, d: 1, h: 6, showColor: 'Coral', note: '棍在下，握棍；推车招牌上的展示品' });
+ldrawPart({ ...ANI, key: 'otter', id: '67631', bl: '67631', name: 'Animal Otter', zh: '水獭', w: 1, d: 1, h: 4, showColor: 'ReddishBrown', note: '一个底座套一个凸点：1×1，身体前后各悬出一格半；头朝 +z。首次用于：新加坡（滨海湾水獭）' });
+// Classic LEGO palm. 2536b trunk segments are exactly 4 plates tall and stack at 4. The palm top 2566b was baked and rejected: its leaf slots
+// need a 25° tilt our grid has not got, and used as a pedestal its four slot lips read as a claw holding a disc. Instead a bar in the last
+// segment's core (the hole meant for the top's pin) carries a 1×1 round plate and a 2×2 round-plate hub; the 1×2-plate-based leaves mount on that.
+ldrawPart({ ...PLT, key: 'palm_trunk', id: '2536b', bl: '2536b', name: 'Plant Tree Palm Trunk with Short Indented Connector', zh: '椰树干段', w: 2, d: 2, h: 4, studs: 'center', hollow: true, anchor: 'origin', extY: [0, 4], showColor: 'ReddishBrown', note: '段高 4 板，叠段间距 4；底部销钉插进下一段的管芯或 2×2 圆板的中孔（碰撞只算段身）；顶部管芯是 3.18 杆孔（原本给顶帽 2566b 的销钉）' });
+ldrawPart({ ...PLT, key: 'palm_leaf_l', id: '2518', bl: '2518', name: 'Plant Tree Palm Leaf Large', zh: '椰树叶·大', w: 2, d: 1, h: 1, studs: 'all', anchor: 'origin', lift: 1, extY: [0, 1.5], showColor: 'Green', note: '叶座是 1×2 板（两凸点、两反凸点），叶片向 +x 伸出 8 格并下垂 5 板；碰撞只算叶座，叶片靠渲染自查' });
+ldrawPart({ ...PLT, key: 'palm_leaf_s', id: '6148', bl: '6148', name: 'Plant Palm Leaf Small', zh: '椰树叶·小', w: 2, d: 1, h: 1, studs: 'all', anchor: 'origin', lift: 1, extY: [0, 1.5], showColor: 'Green', note: '同上，伸出 7 格、下垂 4 板' });
+// Shophouse and street furniture
+ldrawPart({ key: 'shutter_1x2x3', id: 'shutter_closed', bl: '3856', name: 'Window 1 x 2 x 3 Shutter (closed)', zh: '百叶窗扇 1×2×3（关）', cat: 'window', w: 2, d: 1, h: 9, studs: 'none', accepts: false, anchor: 'origin', lift: 9, showColor: 'DarkGreen', note: '装在 1×2×3 窗框上，贴着窗框 +z 面关闭；与窗框同格同原点（宿主规则）。娘惹店屋的百叶' });
+ldrawPart({ key: 'plate_4x4_cut', id: '30503', bl: '30503', name: 'Plate 4 x 4 without Corner', zh: '切角板 4×4', cat: 'plate-mod', w: 4, d: 4, h: 1, studs: 'all', accepts: true, anchor: 'origin', lift: 1, mask: (i, j) => i + j < 5, showColor: 'White', note: '对角切去 (+x,+z) 一角；圆角岸线、甲板端头' });
+ldrawPart({ key: 'roundplate_6x6', id: '11213', bl: '11213', name: 'Plate 6 x 6 Round with Hole', zh: '圆板 6×6（中孔）', cat: 'plate-mod', w: 6, d: 6, h: 1, studs: 'all', accepts: true, anchor: 'origin', lift: 1, mask: (i, j) => Math.hypot(i + 0.5 - 3, j + 0.5 - 3) < 2.9, showColor: 'LightBluishGray', note: '擎天树冠顶：1→2→4→6 逐级张开的最后一级' });
+ldrawPart({ key: 'wheelplate_2x2', id: '4600', bl: '4600', name: 'Plate 2 x 2 with 2 Wheel Pins', zh: '轮销板 2×2', cat: 'plate-mod', w: 2, d: 2, h: 1, studs: 'all', accepts: true, anchor: 'origin', lift: 1, ext: [-1.7, 1.7, -1, 1], showColor: 'LightBluishGray', note: '±x 各一根轮销；轮子是与它同格同原点的装配件' });
+ldrawPart({ key: 'cart_wheel_l', id: 'cart_wheel_l', bl: '4624', name: 'Wheel Rim 6.4 x 8 on the +x pin', zh: '小轮（+x 销）', cat: 'accessory', w: 2, d: 2, h: 1, studs: 'none', accepts: false, anchor: 'origin', lift: 1, showColor: 'Black', note: '与 4600 同格同原点；轮底比板底低 0.9 板，所以推车停在一块地色 2×2 板上（轮子离地 0.1 板）' });
+ldrawPart({ key: 'cart_wheel_r', id: 'cart_wheel_r', bl: '4624', name: 'Wheel Rim 6.4 x 8 on the -x pin', zh: '小轮（−x 销）', cat: 'accessory', w: 2, d: 2, h: 1, studs: 'none', accepts: false, anchor: 'origin', lift: 1, showColor: 'Black' });
+
 export const PART_LIST = Object.values(PARTS);
 export { PLATE, STUD_R, STUD_H };
+
+// ---- SINGAPORE STUDS-OUT ASSEMBLIES (2026-09-19, tools/ldraw/asm-singapore.mjs → vendor/ldraw/asm/*.ldr → bake). Real parts on real side studs
+// (87087 / 26604 / 11211), baked per colour and hosted on the body part; the scene grid sees one 3×3 or 6×2 box. Eric lifted the no-SNOT rule.
+ldrawPart({ key: 'merlion_body', id: 'merlion_body', bl: 'asm', bom: ['26604', '87087', '3005', '24866', '6141', '3020', '3710', '3023', '3024', '3623', '3021', '4070', '11477', '49307', '3040b', '54200', '60481a'], name: 'Merlion statue (studs-out assembly, white)', zh: '鱼尾狮（侧凸点装配，白）', cat: 'brick-mod', w: 6, d: 3, h: 25, studs: 'none', accepts: true, anchor: 'origin', ext: [-3.6, 3, -2.3, 2.5], showColor: 'White', note: 'x −1..4：头 −1..1 前伸一格、身 0..2、鬃毛罩 2..3（宽 −1..3）、尾 3..4。鳞片 = 侧凸点上的花瓣板/圆板；眼与嘴 = 车灯砖的凹槽；鬃毛 = 柱顶弧坡逐级后退；尾 = 两块 65° 陡坡上扬' });
+ldrawPart({ key: 'merlion_jet', id: 'merlion_jet', bl: 'asm', bom: ['6141'], name: 'Merlion nozzle (trans-light blue round plate in the mouth recess)', zh: '鱼尾狮喷口（嘴槽里的透明浅蓝圆板）', cat: 'brick-mod', w: 6, d: 3, h: 25, studs: 'none', accepts: false, anchor: 'origin', ext: [-3.6, 3, -2.3, 2.5], showColor: 'TransLightBlue', note: '宿主 merlion_body' });
+ldrawPart({ key: 'mbs_core', id: 'mbstower_core', bl: 'asm', bom: ['11211', '3004', '3023', '3937', '3938'], name: 'MBS tower core (two 2-deep slabs of side-stud bricks, the bay slab on hinge bricks leaning in 3°)', zh: '金沙塔芯（两片 2 格厚侧凸点砖板，海湾侧一片立在铰链砖上内倾 3°）', cat: 'brick', w: 6, d: 5, h: 49, studs: 'all', accepts: true, anchor: 'origin', ext: [-3, 3, -3.1, 3.05], showColor: 'White', note: '21057 的技法 + 真实的纸牌倾斜：后板直立，前板站在三块 1×2 铰链砖上向内靠到板顶相接；顶面 6×4，空中花园正好压在上面' });
+ldrawPart({ key: 'mbs_glass', id: 'mbstower_glass', bl: 'asm', bom: ['3023'], name: 'MBS tower glazing (trans-dark blue 1×2 plates)', zh: '金沙玻璃幕墙（透明深蓝 1×2 板）', cat: 'brick', w: 6, d: 5, h: 49, studs: 'none', accepts: false, anchor: 'origin', ext: [-3, 3, -3.1, 3.05], showColor: 'TransDarkBlue', note: '宿主 mbs_core' });
+ldrawPart({ key: 'stree_cone', id: 'streecanopy_cone', bl: 'asm', bom: ['87994', '3942c'], name: 'Supertree canopy stem (3L bar + cone 2×2×2 upside down)', zh: '擎天树冠茎（杆 + 倒置圆锥）', cat: 'round', w: 6, d: 6, h: 9, studs: 'none', accepts: false, bar: true, anchor: 'origin', showColor: 'DarkPurple', note: '杆插进树干顶的空心凸点圆板；圆锥倒置套在杆上，宽口朝上就是树冠的喇叭口' });
+ldrawPart({ key: 'stree_bowl', id: 'streecanopy_bowl', bl: 'asm', bom: ['4285b'], name: 'Supertree canopy (6×6 webbed dish upside down, studs into the cone)', zh: '擎天树冠（倒扣的 6×6 网格碟，凸点插进圆锥底）', cat: 'round', w: 6, d: 6, h: 9, studs: 'none', accepts: false, anchor: 'origin', showColor: 'Magenta', note: '宿主 stree_cone；辐条镂空 = 紫色钢格网' });
