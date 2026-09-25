@@ -1,21 +1,15 @@
-# 设计简报 · 日本 · 京都（形态 B · 花园式立体岛）
+# Kyoto — refinement review brief (2026-09-16)
 
-**一句话**：一座漂浮的日式庭园岛，五重塔立在土丘上，人从鸟居走进来，过太鼓桥，绕过锦鲤池到茶室。春天，樱花盛开。
+Current candidate: `kyoto-refined`; original reference: `kyoto`. Historical brief and original code are preserved in the baseline snapshot.
 
-**必备特征（缺一项就不像京都）**
-- 五重塔：五层屋檐向上逐层收分，檐角上翘（反宇），朱红柱、白墙、青绿/深绿瓦、金色相轮。
-- 鸟居：严格左右对称；两根柱、下横梁（贯）、上横梁（笠木）黑色且两端上翘、中央短柱（额束）。
-- 太鼓桥：朱红、明显拱起、有栏杆。
-- 锦鲤池与石组、枯山水（白砂纹 + 立石）。
-- 茶室 / 数寄屋：木构、障子门格、缘侧、入母屋或寄栋屋顶带出檐、纸灯笼。
-- 樱花：粉白渐变，树冠饱满、不规则；树干有姿态。
-- 石灯笼、竹、松。
-- 人仔：和服、僧人、撑伞或拿相机的游客，正在做事。
+**One scene:** a spring lane in Higashiyama, linking timber tea shops and a five-storey pagoda across a quiet water garden. Judge relationships and silhouette before counting landmarks.
 
-**色板**：主色朱红（Bright Red）、白；辅色青绿瓦（Dark Turquoise）与深红木构（Dark Red）；点缀樱花粉（Bright Pink / Dark Pink）、金（Pearl Gold）。草地 Bright Green 为底，Green 做深色斑。
+- Hero: five full roof tiers, tapering timber structure, dark Japanese roof palette, restrained metal finial and connected stone approach.
+- Supporting architecture: real lattice doors/windows, coherent timber construction, readable entrances and verandas at minifigure scale. The compressed tower is a separate landmark scale; do not demand a full minifigure doorway in every upper tier.
+- Nature: branched pink/white crowns, grounded trunks and attached flowers; enough open water and lawn to read the scene. No floating flower scatter or omitted leaf collision envelopes.
+- People: two, maximum three. Each should have a readable reason to be there. A technically aligned accessory must also pass near-view inspection from two angles. The current observer's weak activity is a remaining review issue, not an automatic pass.
+- Palette: dark roofs, timber, warm stone, restrained green, pink/white flowers; red torii as a focal accent. No requirement to make every roof turquoise or every bridge red.
+- Connection checks, full-scene render and detail shots are separate gates. A validator PASS is not a visual score or physical build certificate.
+- Target remains all judge dimensions ≥8 and weighted ≥8.5. This candidate is not yet awarded that score.
 
-**尺度**：人仔尺度（约 1:40）。塔高约为岛宽的 0.55 到 0.6。
-
-**禁忌**：中式歇山顶和琉璃瓦色；对称物不对称；灰色方盒子当建筑；随机撒点当植被。
-
-**参考**：LEGO Icons 10315 静谧庭园（桥、锦鲤池、亭）；LEGO Architecture 21060 姬路城（日式屋檐层次）；LEGO 40725 樱花（官方樱花拼法）；Teddy「Tokyo · City Diorama」的零件多样性。
+See `docs/kyoto-refinement/REVIEW.md` for findings, tests, limitations and rollback. Do not expand to other countries until Eric accepts the direction.

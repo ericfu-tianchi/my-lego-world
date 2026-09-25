@@ -1,4 +1,10 @@
 import type { SceneDef } from './lib';
+import { buildKyotoRefined } from './kyoto-refined';
 import { buildKyoto } from './kyoto';
 import { buildTokyo } from './tokyo';
-export const SCENES: Record<string, SceneDef> = { kyoto: { seed: 7, build: buildKyoto }, tokyo: { seed: 11, build: buildTokyo } };
+import { buildPartsheet } from './partsheet';
+import { buildTrees } from './trees';
+import { buildSgParts } from './sg-parts';
+import { buildSingapore } from './singapore-island';
+import { buildSgV3 } from './sg-v3';
+export const SCENES: Record<string, SceneDef> = { 'sg-v3': { seed: 5, build: buildSgV3 }, 'kyoto-refined': { seed: 19, build: buildKyotoRefined }, kyoto: { seed: 7, build: buildKyoto }, tokyo: { seed: 11, build: buildTokyo }, partsheet: { seed: 3, build: buildPartsheet }, trees: { seed: 5, build: buildTrees }, 'sg-parts': { seed: 23, build: buildSgParts }, singapore: { seed: 29, build: buildSingapore } };

@@ -1,7 +1,7 @@
 // A · Tokyo — micro skyline city on a 48×32 baseplate. Tokyo Tower and Skytree as heroes; Senso-ji, Tokyo Station,
 // Shibuya crossing, Rainbow Bridge over the Sumida, Tokyo Dome, a sakura park, Mt Fuji in the corner, and a figure stand.
 import { Blueprint } from '../core/builder';
-import { Reserve, patch, minifig, sakura, bush, type SceneMeta } from './lib';
+import { Reserve, patch, minifig2, sakura, bush, type SceneMeta } from './lib';
 
 export function buildTokyo(bp: Blueprint): SceneMeta {
   const W = 48, D = 32; const R = new Reserve(); const G = 2; // ground plates sit at y=1 (top 2)
@@ -108,9 +108,9 @@ export function buildTokyo(bp: Blueprint): SceneMeta {
   bp.tag = 'boats'; for (const x of [12, 26, 41]) { bp.clear(x, 1, 27, 2, 1, 1); bp.vox1('plate', x, 1, 27, 'TransLightBlue'); bp.vox1('plate', x + 1, 1, 27, 'TransLightBlue'); bp.part('plate_1x2', x, 2, 27, 'White', 1); bp.part('tile_1x1', x, 3, 27, 'BrightRed'); }
   // ---- figure stand beside the base
   bp.tag = 'figures'; bp.part('plate_4x8', 50, 0, 20, 'Tan');
-  minifig(bp, 51.5, 1, 21.5, 3, { legs: 'DarkTan', torso: 'DarkBlue', hair: 'Black' });      // Eric, the traveller
-  minifig(bp, 51.5, 1, 24.5, 3, { legs: 'DarkRed', torso: 'DarkRed', hair: 'Black' });       // kimono colours
-  minifig(bp, 51.5, 1, 27, 3, { legs: 'BrightBlue', torso: 'White', hair: 'DarkOrange' });    // schoolkid
+  minifig2(bp, 51.5, 1, 21.5, 3, { legs: 'DarkTan', torso: 'DarkBlue', hair: 'Black' });      // Eric, the traveller
+  minifig2(bp, 51.5, 1, 24.5, 3, { legs: 'DarkRed', torso: 'DarkRed', hair: 'Black' });       // kimono colours
+  minifig2(bp, 51.5, 1, 27.5, 3, { legs: 'BrightBlue', torso: 'White', hair: 'DarkOrange' });    // schoolkid
   bp.part('brick_1x2', 53, 1, 21, 'Black', 0); // suitcase
   bp.tag = ''; bp.pack();
   return { id: 'tokyo', title: 'Japan', caption: 'Tokyo', subtitle: 'Tokyo Tower · Skytree · Senso-ji · Tokyo Station · Rainbow Bridge', size: [W, D], center: [W / 2, 6, D / 2], camera: { az: 0.62, el: 0.42, dist: 80 } };
