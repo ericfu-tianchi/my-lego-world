@@ -39,7 +39,7 @@ Eric (PM, technical, writes little code) is building a LEGO-style world of the ~
 - Camera for `tools/shot.mjs`: position = target + (sin az·c, sin el·dist, cos az·c) — az 0 is +z, π/2 +x, π −z, 3π/2 −x. World x = grid x − W/2, z = grid z − D/2, y = plates × 0.4. The table (y = 0) counts as ground for the validator alongside `SceneMeta.base`.
 - **Eric's issue loop** (2026-09-11): he lists problems from the live model; for each I find the root-cause level (placement / grammar / catalogue semantics / validator / renderer / judge / rule), fix at that level so the class of problem cannot recur, record it in the owning file, re-render only affected views. Never rebuild a scene from zero; a broken foundation means rebuilding one element, not the island.
 - Minifigs: `minifig2()` = real LDraw legs / posed torso+arms / hands / head (`tools/ldraw/minifig-asm.mjs`), printed face + torso, any baked hair, accessories via `HOLD_DEFAULTS` (pose, grip point, side rotation). Hands must not touch anything but the body; held things must not touch the body.
-- Keep HANDOFF.md current at the end of every working session.
+- Keep HANDOFF.md current at the end of every working session. **Commit at milestones** (a delivered round, a major pipeline change, a rule change) with a message that says what changed and why; this is Eric's personal repo (`main`, no remote yet — ask before pushing). Never commit HANDOFF.md or `.snapshots/`; end commit messages with the attribution line the session prescribes. Backlog was caught up 2026-09-25 (`62228da`…`9d33238`).
 
 ## Archived · Codex candidate (2026-09-16)
 - Candidate `?scene=kyoto-refined`; original layout `?scene=kyoto` remains. Eric has not accepted the candidate as the master sample.
