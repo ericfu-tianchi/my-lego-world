@@ -197,3 +197,8 @@ _v6, 2026-09-25 — Eric's nine points redone by Fable 5.1 after the 09-20 round
 - Height tiers, plates above the lawn: MBS deck 50 > Supertrees 48.6 / 45.6 / 42.6 > Merlion 42 > terrace ~31. Perspective makes the grove look level with the Merlion from the front (it stands further back).
 - Planting candidates are now spaced against the Sites rules up front (rain-tree canopy 4.5, palm 2); `DEBUG_PLANT=1` logs every rejected candidate and why.
 - Layouts A and C stay in `LAYOUTS` as a record but are no longer registered as scenes; `?scene=singapore` is B.
+
+### 1.13 Round v10 (2026-10-01)
+- Eric: otters apart (one each side of the bay's mouth); the terrace in front of the grove so heights step down toward the viewer (MBS → grove → terrace); drop a left palm so the terrace and the tourist show from the front.
+- Bug he found: palm fronds inside the Merlion. Root cause: `palm_leaf_*` declared only the 1×2 seat as its collision box, so the 8-stud blade was never tested. Fix in `validate.ts`: an overhang-hull check (real baked bounds of any part reaching ≥ 0.5 stud past its box, against non-plant parts of other elements). It also caught tufts touching the Shoppes and an otter. Archived `kyoto-refined` has one (foliage into a roof slope), left alone.
+- Second bug class: scripted edits splicing `//` comments mid-line swallowed code six times in one day. `scripts/lint-comments.mjs` now fails the gate. `npm run gate` = lint + typecheck + assembly audit + validator (singapore, sg-v4, kyoto).

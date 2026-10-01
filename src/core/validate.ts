@@ -1,6 +1,6 @@
 // Buildability gate. A blueprint passes only if every part is reachable from the ground (y = 0)
 // through real stud connections, nothing interpenetrates, and every part exists in the catalogue.
-import { PARTS, footprint, hasStud, PLATE, type PartDef } from './catalog';
+import { PARTS, footprint, hasStud, PLATE, geometryFor, type PartDef } from './catalog';
 import type { Placement } from './builder';
 
 export interface Issue { kind: 'floating' | 'overlap' | 'unknown' | 'below-ground'; index: number; other?: number; msg: string }
@@ -94,6 +94,29 @@ export function validate(all: Placement[], base = 0): Report {
       if (!bodiesIntersect(A, B) || allowedPair(A, B)) continue;
       // bars through hollow parts are handled above; everything else interpenetrating is an error
       overlaps++; issues.push({ kind: 'overlap', index: A.i, other: B.i, msg: `${A.p.key}@(${A.p.x},${A.p.y},${A.p.z}) overlaps ${B.p.key}@(${B.p.x},${B.p.y},${B.p.z})` });
+    }
+  }
+  // overhang hulls (2026-10-01: a palm leaf ran through the Merlion — the leaf's collision box was only its 1×2 seat, so the blade, eight studs
+  // long, was never checked). A part whose real geometry reaches well past its declared box (leaves, fronds, canopies) is also tested with its
+  // real baked bounds against every non-plant part's box. Plants may overlap plants (foliage interleaves) and their own element (same tag: the trunk); everything else is a clash.
+  const HULL_PAD = 0.5, HULL_TOL = 0.3, HULL_TOL_Y = 1;   // studs past the box that count as overhang; studs / plates of overlap allowed
+  const hullOf = (it: Item): [number, number, number, number, number, number] | null => {
+    if (!it.def.ldraw || it.def.member) return null; const g = geometryFor(it.p.key); if (!g.boundingBox) g.computeBoundingBox(); const b = g.boundingBox!;
+    const cs = [[b.min.x, b.min.z], [b.max.x, b.min.z], [b.min.x, b.max.z], [b.max.x, b.max.z]].map(([x, z]) => rotOffset(x, z, (4 - it.p.rot) & 3));
+    const cx = (it.x0 + it.x1) / 2, cz = (it.z0 + it.z1) / 2, cy = it.p.y + it.def.h / 2;
+    const h: [number, number, number, number, number, number] = [cx + Math.min(...cs.map((c) => c[0])), cx + Math.max(...cs.map((c) => c[0])), cz + Math.min(...cs.map((c) => c[1])), cz + Math.max(...cs.map((c) => c[1])), cy + b.min.y / PLATE, cy + b.max.y / PLATE];
+    const [sy0, sy1] = spanOf(it); const R = rectOf(it);
+    return h[0] < R[0] - HULL_PAD || h[1] > R[1] + HULL_PAD || h[2] < R[2] - HULL_PAD || h[3] > R[3] + HULL_PAD || h[4] < sy0 - 2 || h[5] > sy1 + 2 ? h : null;
+  };
+  const isPlant = (it: Item) => it.def.cat === 'plant';
+  for (const A of valid) {
+    const H = hullOf(A); if (!H) continue;
+    for (const B of valid) {
+      // a tree's own trunk carries its leaves (same tag)
+      if (B === A || isPlant(B) || (!!A.p.tag && A.p.tag === B.p.tag) || allowedPair(A, B)) continue; const R = rectOf(B), [by0, by1] = spanOf(B);
+      if (Math.min(H[1], R[1]) - Math.max(H[0], R[0]) > HULL_TOL && Math.min(H[3], R[3]) - Math.max(H[2], R[2]) > HULL_TOL && Math.min(H[5], by1) - Math.max(H[4], by0) > HULL_TOL_Y) {
+        overlaps++; issues.push({ kind: 'overlap', index: A.i, other: B.i, msg: `hull: ${A.p.key}@(${A.p.x},${A.p.y},${A.p.z}) reaches into ${B.p.key}@(${B.p.x},${B.p.y},${B.p.z})` });
+      }
     }
   }
   // bars: also connect to hollow parts they pass through; a clip reaches one cell beyond its plate

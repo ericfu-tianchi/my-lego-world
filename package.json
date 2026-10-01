@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gate": "node scripts/lint-comments.mjs && tsc --noEmit -p . && tsx scripts/check-assemblies.ts && tsx scripts/validate.ts singapore && tsx scripts/validate.ts sg-v4 && tsx scripts/validate.ts kyoto"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",

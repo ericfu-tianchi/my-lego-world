@@ -34,7 +34,9 @@ function gap(A: OBB, B: OBB) { const d = [0, 1, 2].map((i) => B.c[i] - A.c[i]); 
   for (const L of axes) { const ra = A.h.reduce((s, h, i) => s + h * Math.abs(dot(A.a[i], L)), 0), rb = B.h.reduce((s, h, i) => s + h * Math.abs(dot(B.a[i], L)), 0); best = Math.max(best, Math.abs(dot(d, L)) - ra - rb); }
   return best; }
 let inner = 0;
-for (const key of KEYS.filter((k) => !HOSTS[k])) {   // a hosted assembly (glass in its tower) is audited together with its host
+// retired v5/v9 builds kept only for the before/after scene ?scene=sg-v3; their inner clashes are why they were rebuilt
+const RETIRED = new Set(['merlion_body', 'mbs_core']);
+for (const key of KEYS.filter((k) => !HOSTS[k] && !RETIRED.has(k))) {   // a hosted assembly (glass in its tower) is audited together with its host
   const bp = new Blueprint(1); for (const k of [key, ...KEYS.filter((g) => HOSTS[g] === key)]) bp.assembly(k, 0, 0, 0, 'White', 0); bp.parts = bp.parts.filter((p) => !p.proxy); const mem = bp.parts.map(obb); const n = mem.length;
   const adj: number[][] = mem.map(() => []); const clashes: string[] = [];
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
