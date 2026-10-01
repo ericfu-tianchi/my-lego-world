@@ -13,7 +13,12 @@ export function placer(bp: Blueprint, ox: number, oz: number, rot: number) {
   };
   const vox = (kind: 'brick' | 'plate' | 'tile', lx: number, y: number, lz: number, color: string) => { const [dx, dz] = rotv(lx + 0.5, lz + 0.5, rot); bp.vox1(kind, Math.floor(ox + dx), y, Math.floor(oz + dz), color); };
   const cell = (lx: number, lz: number): [number, number] => { const [dx, dz] = rotv(lx + 0.5, lz + 0.5, rot); return [Math.floor(ox + dx), Math.floor(oz + dz)]; };
-  return { part, vox, cell };
+  /** an LDraw assembly exploded into its real bricks (bp.assembly), placed like `part` */
+  const asm = (key: string, lx: number, y: number, lz: number, color: string, lrot = 0) => {
+    const [w, d] = footprint(PARTS[key], lrot); const [dx, dz] = rotv(lx + w / 2, lz + d / 2, rot); const [fw, fd] = footprint(PARTS[key], (lrot + rot) & 3);
+    bp.assembly(key, ox + dx - fw / 2, y, oz + dz - fd / 2, color, (lrot + rot) & 3);
+  };
+  return { part, vox, cell, asm };
 }
 
 // ---- Supertree Grove ----------------------------------------------------------------------------------------------------------------

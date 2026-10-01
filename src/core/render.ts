@@ -3,6 +3,7 @@ import { PARTS, geometryFor, footprint, PLATE } from './catalog';
 import { colorHex, isTrans } from './colors';
 import { PRINTS, decalGeometry, printTexture } from './prints';
 import type { Placement } from './builder';
+import { bodyBox } from './ldraw';
 
 export interface Item { mesh: THREE.InstancedMesh; index: number; key: string; home: { p: THREE.Vector3; q: THREE.Quaternion }; half: [number, number, number]; y: number; decal?: { mesh: THREE.InstancedMesh; index: number } }
 
@@ -21,8 +22,9 @@ export class BrickRenderer {
   build(parts: Placement[], origin = new THREE.Vector3()) {
     this.clear();
     const groups = new Map<string, Placement[]>();
-    for (const p of parts) { const gk = p.key + (isTrans(p.color) ? '#t' : '') + (p.print ? '#p' + p.print : ''); (groups.get(gk) ?? groups.set(gk, []).get(gk)!).push(p); }
-    const q = new THREE.Quaternion(), pos = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
+    // an assembly proxy is for the validator; its members are the bricks you see
+    for (const p of parts) { if (p.proxy) continue; const gk = p.key + (isTrans(p.color) ? '#t' : '') + (p.print ? '#p' + p.print : ''); (groups.get(gk) ?? groups.set(gk, []).get(gk)!).push(p); }
+    const q = new THREE.Quaternion(), pos = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0), rm = new THREE.Matrix4();
     for (const [gk, list] of groups) {
       const key = gk.split('#')[0]; const trans = gk.includes('#t'); const printKey = /#p(.+)$/.exec(gk)?.[1]; const def = PARTS[key];
       const ds = !trans && !!def.ldraw;
@@ -34,11 +36,15 @@ export class BrickRenderer {
         decal = new THREE.InstancedMesh(decalGeometry(pd, def), mat, list.length); decal.frustumCulled = false; decal.instanceMatrix.setUsage(THREE.DynamicDrawUsage); decal.receiveShadow = true; decal.renderOrder = 1;
       }
       list.forEach((p, i) => {
-        const [fw, fd] = footprint(def, p.rot);
-        pos.set(origin.x + p.x + fw / 2, origin.y + (p.y + def.h / 2) * PLATE, origin.z + p.z + fd / 2);
-        q.setFromAxisAngle(up, p.rot * Math.PI / 2); this.m.compose(pos, q, this.one); mesh.setMatrixAt(i, this.m); if (decal) decal.setMatrixAt(i, this.m);
+        const [fw, fd] = footprint(def, p.rot); let half: [number, number, number] = [def.w / 2, def.h * PLATE / 2, def.d / 2];
+        if (p.xform) { // assembly member: its own transform; the physics box is its body box (the geometry is centred on it)
+          const { p: xp, m } = p.xform; pos.set(origin.x + xp[0], origin.y + xp[1], origin.z + xp[2]);
+          rm.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1); q.setFromRotationMatrix(rm);
+          const b = bodyBox(def.ldraw!); half = [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2];
+        } else { pos.set(origin.x + p.x + fw / 2, origin.y + (p.y + def.h / 2) * PLATE, origin.z + p.z + fd / 2); q.setFromAxisAngle(up, p.rot * Math.PI / 2); }
+        this.m.compose(pos, q, this.one); mesh.setMatrixAt(i, this.m); if (decal) decal.setMatrixAt(i, this.m);
         c.setHex(colorHex(p.color)); mesh.setColorAt(i, c);
-        this.items.push({ mesh, index: i, key, home: { p: pos.clone(), q: q.clone() }, half: [def.w / 2, def.h * PLATE / 2, def.d / 2], y: p.y, decal: decal ? { mesh: decal, index: i } : undefined });
+        this.items.push({ mesh, index: i, key, home: { p: pos.clone(), q: q.clone() }, half, y: p.y, decal: decal ? { mesh: decal, index: i } : undefined });
       });
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       this.group.add(mesh); this.meshes.push(mesh);

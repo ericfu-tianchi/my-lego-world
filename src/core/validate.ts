@@ -56,7 +56,8 @@ function connected(L: Item, U: Item): boolean {
   return false;
 }
 
-export function validate(parts: Placement[], base = 0): Report {
+export function validate(all: Placement[], base = 0): Report {
+  const parts = all.filter((p) => !p.member);   // an exploded assembly is checked as its proxy box; its members are positioned by the LDraw model
   const items = toItems(parts); const issues: Issue[] = [];
   for (const it of items) { if (!it.def) issues.push({ kind: 'unknown', index: it.i, msg: `unknown part ${it.p.key}` }); if (it.y0 < -6) issues.push({ kind: 'below-ground', index: it.i, msg: `${it.p.key} at y=${it.y0}` }); }
   const valid = items.filter((it) => it.def);
@@ -104,7 +105,7 @@ export function validate(parts: Placement[], base = 0): Report {
   while (stack.length) { const i = stack.pop()!; for (const j of adj[i]) if (!seen[j]) { seen[j] = 1; stack.push(j); } }
   let floating = 0;
   for (const it of valid) if (!seen[it.i]) { floating++; issues.push({ kind: 'floating', index: it.i, msg: `${it.p.key} ${it.p.color} @(${it.p.x},${it.p.y},${it.p.z}) rot${it.p.rot}${it.p.tag ? ' [' + it.p.tag + ']' : ''} not connected to ground` }); }
-  return { ok: issues.length === 0, parts: parts.length, floating, overlaps, issues };
+  return { ok: issues.length === 0, parts: all.filter((p) => !p.proxy).length, floating, overlaps, issues };
 }
 export function summarize(r: Report, max = 25): string {
   const lines = [`${r.ok ? 'PASS' : 'FAIL'} · ${r.parts} parts · ${r.floating} floating · ${r.overlaps} overlaps`];

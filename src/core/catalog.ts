@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PLATE, STUD_R, STUD_H, mergeGeos, roundedBox, box, cyl, stud, studGrid, profileExtrude, footprintPrism, lathe, cornerSlope, pyramid, sideStud } from './geometry';
-import { ldrawGeometry, bakedBox, type Anchor } from './ldraw';
+import { ldrawGeometry, bakedBox, bodyBox, hasBaked, bakedName as LDRAW_NAME, type Anchor } from './ldraw';
+import { ASM } from '../parts/ldraw/asm/index';
 
 // ---- Part catalogue ------------------------------------------------------------
 // Every entry maps to a real LEGO design (BrickLink id). Geometry is our own approximation
@@ -29,6 +30,8 @@ export interface PartDef {
   loop?: number;                                // plates a grippable loop / bar pokes above the part box (lantern handle)
   bar?: boolean;                                // is a bar (3.18 mm) that plugs into hollow parts
   ldraw?: string;                               // geometry baked from this LDraw file (L1 specialty moulds)
+  anchor?: Anchor; lift?: number;               // how the baked geometry sits in the part box (ldrawPart); an assembly proxy needs both to place its members
+  member?: boolean;                             // a real brick generated from an assembly's member list (key ld_<id>): rendered and simulated, never placed by hand
   build: () => THREE.BufferGeometry;
 }
 export const CATEGORIES: { id: Category; zh: string; en: string; blurb: string }[] = [
@@ -81,7 +84,7 @@ export function ldrawPart(p: Omit<PartDef, 'build' | 'verified' | 'ldraw'> & { i
     ext = an !== 'bbox' ? [bb[0], bb[3], bb[2], bb[5]] : [-(bb[3] - bb[0]) / 2, (bb[3] - bb[0]) / 2, -(bb[5] - bb[2]) / 2, (bb[5] - bb[2]) / 2];
     ext = ext.map((v) => +v.toFixed(2)) as [number, number, number, number];
   }
-  def({ ...rest, ext, extY, verified: true, ldraw: id, build: () => ldrawGeometry(id, p.h, lf, an) });
+  def({ ...rest, ext, extY, verified: true, ldraw: id, anchor: an, lift: lf, build: () => ldrawGeometry(id, p.h, lf, an) });
 }
 const boxPart = (w: number, d: number, h: number, studs = true) => () => { const H = h * PLATE; const geos = [roundedBox(w, H, d)]; if (studs) geos.push(...studGrid(w, d, H / 2)); return mergeGeos(geos); };
 // Slopes: canonical studs on the back row (z<0), slope descends toward +z.
@@ -323,3 +326,12 @@ ldrawPart({ key: 'mbs_core', id: 'mbstower_core', bl: 'asm', bom: ['11211', '300
 ldrawPart({ key: 'mbs_glass', id: 'mbstower_glass', bl: 'asm', bom: ['3023'], name: 'MBS tower glazing (trans-dark blue 1×2 plates)', zh: '金沙玻璃幕墙（透明深蓝 1×2 板）', cat: 'brick', w: 6, d: 5, h: 49, studs: 'none', accepts: false, anchor: 'origin', ext: [-3, 3, -3.1, 3.05], showColor: 'TransDarkBlue', note: '宿主 mbs_core' });
 ldrawPart({ key: 'stree_cone', id: 'streecanopy_cone', bl: 'asm', bom: ['87994', '3942c'], name: 'Supertree canopy stem (3L bar + cone 2×2×2 upside down)', zh: '擎天树冠茎（杆 + 倒置圆锥）', cat: 'round', w: 6, d: 6, h: 9, studs: 'none', accepts: false, bar: true, anchor: 'origin', showColor: 'DarkPurple', note: '杆插进树干顶的空心凸点圆板；圆锥倒置套在杆上，宽口朝上就是树冠的喇叭口' });
 ldrawPart({ key: 'stree_bowl', id: 'streecanopy_bowl', bl: 'asm', bom: ['4285b'], name: 'Supertree canopy (6×6 webbed dish upside down, studs into the cone)', zh: '擎天树冠（倒扣的 6×6 网格碟，凸点插进圆锥底）', cat: 'round', w: 6, d: 6, h: 9, studs: 'none', accepts: false, anchor: 'origin', showColor: 'Magenta', note: '宿主 stree_cone；辐条镂空 = 紫色钢格网' });
+// Members of the exploded assemblies (bp.assembly): every real brick an assembly is made of, keyed ld_<LDraw id>, geometry in the LDraw frame
+// centred on its body box. Registered after PART_LIST so the catalogue page lists the moulds we place by hand, not these.
+for (const id of new Set(Object.values(ASM).flat().map((m) => m.id))) {
+  if (!hasBaked(id)) continue;   // a member list whose parts are not baked yet (minifig rigs never explode); bp.assembly throws if it is used
+  const b = bodyBox(id); let name = LDRAW_NAME(id); const moved = /^~Moved to (\S+)/.exec(name); if (moved) name = LDRAW_NAME(moved[1]);   // 3023 → 3023b: same mould, BrickLink keeps 3023
+  const basic = /^(Brick|Plate|Tile)\s+\d+\s+x\s+\d+(\s+x\s+\d+)?$/.test(name);
+  def({ key: `ld_${id}`, bl: id, name, zh: name, cat: basic ? (/^Tile/.test(name) ? 'tile' : /^Plate/.test(name) ? 'plate' : 'brick') : 'brick-mod', w: Math.max(1, Math.round(b[3] - b[0])), d: Math.max(1, Math.round(b[5] - b[2])), h: +((b[4] - b[1]) / PLATE).toFixed(2),
+    studs: 'none', accepts: false, verified: true, ldraw: id, anchor: 'raw', member: true, showColor: 'White', build: () => ldrawGeometry(id, 0, 0, 'raw') });
+}

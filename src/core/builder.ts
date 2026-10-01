@@ -1,10 +1,15 @@
 // Blueprint: the instruction sheet for one diorama. Explicit placements plus a voxel volume that the
 // packer turns into real bricks / plates / tiles with a staggered bond. Grid: x,z in studs, y in plates,
 // rot ∈ {0,1,2,3} quarter turns about Y. Half-stud positions are allowed where a jumper or a minifig neck makes them real.
-import { PARTS } from './catalog';
+import { PARTS, footprint, PLATE } from './catalog';
 import { PRINTS } from './prints';
+import { ASM } from '../parts/ldraw/asm/index';
+import { bodyBox } from './ldraw';
 
-export interface Placement { key: string; x: number; y: number; z: number; rot: number; color: string; tag?: string; print?: string }
+/** A part in the scene. An assembly appears twice over (CLAUDE.md rule 12): one `proxy` — the baked assembly as a single hosted box, which only
+ *  the validator sees — and one `member` per real brick, which the renderer, the dismantle physics and the part counts see. A member carries its
+ *  own `xform`: body-centre position (x, z in studs on the scene grid, y in world units) and row-major 3×3 rotation. */
+export interface Placement { key: string; x: number; y: number; z: number; rot: number; color: string; tag?: string; print?: string; xform?: { p: [number, number, number]; m: number[] }; member?: string; proxy?: true }
 export type VoxKind = 'brick' | 'plate' | 'tile';
 
 function mulberry32(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -31,6 +36,25 @@ export class Blueprint {
     if (!PARTS[key]) throw new Error('Unknown part ' + key);
     if (print) { const pd = PRINTS[print]; if (!pd) throw new Error('Unknown print ' + print); if (!(pd.base.endsWith('*') ? key.startsWith(pd.base.slice(0, -1)) : pd.base === key)) throw new Error(`print ${print} belongs on ${pd.base}, not ${key}`); }
     this.parts.push({ key, x, y, z, rot: ((rot % 4) + 4) % 4, color, tag: this.tag, print }); return this;
+  }
+  /** An LDraw assembly exploded into its real bricks: the proxy (same grid semantics as `part`) plus every member, transformed by the proxy's
+   *  position and rotation. The colour is the proxy's; members keep their own LDraw colours. */
+  assembly(key: string, x: number, y: number, z: number, color: string, rot = 0) {
+    const def = PARTS[key]; const list = def?.ldraw ? ASM[def.ldraw] : undefined; if (!list) throw new Error(`${key} is not an exploded assembly — bake its .ldr`);
+    if (def.anchor !== 'origin') throw new Error(`${key}: assembly proxies use anchor 'origin'`);
+    this.part(key, x, y, z, color, rot); const proxy = this.parts[this.parts.length - 1]; proxy.proxy = true; const r = proxy.rot;
+    const [fw, fd] = footprint(def, r); const C = [x + fw / 2, (y + (def.lift ?? 0)) * PLATE, z + fd / 2];
+    const cs = [1, 0, -1, 0][r], sn = [0, 1, 0, -1][r]; const R = [cs, 0, sn, 0, 1, 0, -sn, 0, cs];   // rotation about +y by r quarter turns, as the renderer applies it
+    const mul = (A: number[], B: number[]) => [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => A[i * 3] * B[j] + A[i * 3 + 1] * B[3 + j] + A[i * 3 + 2] * B[6 + j]));
+    const app = (A: number[], v: number[]) => [0, 1, 2].map((i) => A[i * 3] * v[0] + A[i * 3 + 1] * v[1] + A[i * 3 + 2] * v[2]);
+    const group = `${key}@${this.parts.length - 1}`;
+    for (const mb of list) {
+      const k = `ld_${mb.id}`; if (!PARTS[k]) throw new Error(`member part ${k} not in the catalogue`); const b = bodyBox(mb.id);
+      const local = app(mb.m, [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2]).map((v, i) => v + mb.p[i]);   // body centre in the assembly frame
+      const w = app(R, local); const p: [number, number, number] = [C[0] + w[0], C[1] + w[1], C[2] + w[2]];
+      this.parts.push({ key: k, x, y, z, rot: r, color: mb.color, tag: this.tag, member: group, xform: { p, m: mul(R, mb.m) } });
+    }
+    return this;
   }
   /** Voxel fill; h in plates; packed later. */
   fill(kind: VoxKind, x0: number, y0: number, z0: number, w: number, h: number, d: number, color: string) {
@@ -85,5 +109,5 @@ export class Blueprint {
     const rot = fw <= fd ? 0 : 1; const key = fw <= fd ? `${kind}_${fw}x${fd}` : `${kind}_${fd}x${fw}`;
     this.parts.push({ key, x, y, z, rot, color, tag });
   }
-  stats() { const types = new Set<string>(), colors = new Set<string>(); for (const p of this.parts) { types.add(p.key); colors.add(p.color); } return { parts: this.parts.length, types: types.size, colors: colors.size }; }
+  stats() { const types = new Set<string>(), colors = new Set<string>(); const real = this.parts.filter((p) => !p.proxy); for (const p of real) { types.add(p.key); colors.add(p.color); } return { parts: real.length, types: types.size, colors: colors.size }; }
 }

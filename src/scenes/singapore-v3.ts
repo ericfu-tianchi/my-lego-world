@@ -8,14 +8,14 @@ import { placer } from './singapore';
  *  head one stud forward with headlight-brick eye sockets and mouth, flower-plate scales, a curved-slope mane hood stepping back, two 65° slopes
  *  sweeping up behind as the tail. Faces −x (the bay). `waterY` is the water surface the jet lands on. Footprint x −2..5, z −1..3. */
 export function merlion3(bp: Blueprint, ox: number, y: number, oz: number, rot: number, waterY: number, R?: Reserve) {
-  bp.tag = 'merlion'; const { part, vox, cell } = placer(bp, ox, oz, rot);
+  bp.tag = 'merlion'; const { part, vox, cell, asm } = placer(bp, ox, oz, rot);
   const W = 'White', DB = 'DarkBlue', STONE = 'LightBluishGray', TB = 'TransLightBlue';
   if (R) { const a = cell(-8, -1), b = cell(5, 4); R.add(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]) + 1, Math.abs(b[1] - a[1]) + 1); }
   for (let lx = -2; lx <= 5; lx++) for (let lz = -1; lz <= 4; lz++) vox('plate', lx, y, lz, STONE);                                   // kerb 8×6
   for (let lz = -1; lz <= 4; lz++) { part('cheese_1x1', -2, y + 1, lz, lz === 1 ? W : DB, 3); part('cheese_1x1', 5, y + 1, lz, lz === 2 ? W : DB, 1); }   // wave ring leaning inward, a white crest mid-side
   for (let lx = -1; lx <= 4; lx++) { part('cheese_1x1', lx, y + 1, -1, lx === 1 ? W : DB, 2); part('cheese_1x1', lx, y + 1, 4, lx === 2 ? W : DB, 0); }
   for (let lx = -1; lx <= 4; lx++) for (let lz = 0; lz <= 3; lz++) { vox('plate', lx, y + 1, lz, DB); vox('plate', lx, y + 2, lz, DB); }   // Dark Blue core 6×4 under the statue and the tail beside it
-  part('merlion_body', -1, y + 3, 0, W); part('merlion_jet', -1, y + 3, 0, TB);                                                            // the statue (assembly box x −1..4)
+  asm('merlion_body', -1, y + 3, 0, W); asm('merlion_jet', -1, y + 3, 0, TB);                                                            // the statue (assembly box x −1..4)
   // jet: a clear-blue column rises from the bay at x −7, then plates step in and up one stud at a time to the mouth (row A, 15 plates up the statue)
   const jy = y + 3 + 15; let cy = waterY; while (cy + 3 <= jy - 9) { part('round_1x1', -7, cy, 1, TB); cy += 3; } while (cy < jy - 9) { part('roundplate_1x1', -7, cy, 1, TB); cy += 1; }
   for (let k = 0; k < 4; k++) { part('plate_1x2', -7 + k, jy - 9 + 2 * k, 1, TB, 1); part('roundplate_1x1', -6 + k, jy - 8 + 2 * k, 1, TB); }   // ends a cell short of the spout (plate_1x2 is 1 wide × 2 deep: rot 1 runs it along x)
@@ -28,12 +28,12 @@ export function merlion3(bp: Blueprint, ox: number, y: number, oz: number, rot: 
  *  with the infinity pool recessed one plate along the bay edge in three sections split by two walkways, palms on the pool deck, the prow
  *  cantilevering 5 studs past the −x tower; the Shoppes podium along the bay side. Bay side is +z. */
 export function mbs4(bp: Blueprint, ox: number, y: number, oz: number, rot: number, R?: Reserve, slab = false) {
-  bp.tag = 'mbs'; const { part, vox, cell } = placer(bp, ox, oz, rot); const CORE = 'LightBluishGray', GLASS = 'TransDarkBlue', DECK = 'White', POOL = 'TransLightBlue';
+  bp.tag = 'mbs'; const { part, vox, cell, asm } = placer(bp, ox, oz, rot); const CORE = 'LightBluishGray', GLASS = 'TransDarkBlue', DECK = 'White', POOL = 'TransLightBlue';
   const TW = 6, TX = [0, 9, 18]; const SPAN = TX[2] + TW;
   if (R) { const a = cell(-6, -1), b = cell(SPAN, 8); R.add(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]) + 1, Math.abs(b[1] - a[1]) + 1); }
   if (slab) for (let lx = -6; lx <= SPAN; lx++) for (let lz = -1; lz <= 8; lz++) vox('plate', lx, y, lz, CORE);
   const y0 = slab ? y + 1 : y;
-  for (const tx of TX) { part('mbs_core', tx, y0, 0, 'White'); part('mbs_glass', tx, y0, 0, GLASS); }
+  for (const tx of TX) { asm('mbs_core', tx, y0, 0, 'White'); asm('mbs_glass', tx, y0, 0, GLASS); }
   const dy = y0 + 49;                                                                                                                      // deck level = tower top
   // layer 0: 2×8 strips in two rows (z 0..1 back, 2..3 bay side) from the prow to the far tower
   for (let lx = -4; lx < SPAN; lx += 8) { const L = Math.min(8, SPAN - lx); part(`plate_2x${L}`, lx, dy, 0, DECK, 1); part(`plate_2x${L}`, lx, dy, 2, DECK, 1); }
@@ -80,7 +80,7 @@ export function supertree4(bp: Blueprint, x: number, y: number, z: number, brick
     }
   }
   bp.part('jumper_2x2', x - 1, ty, z - 1, STEEL); ty += 1; bp.part('roundplate_open', x, ty, z, STEEL); ty += 1;
-  bp.part('stree_cone', x - 3, ty, z - 3, 'DarkPurple'); bp.part('stree_bowl', x - 3, ty, z - 3, STEEL); ty += 9;
+  bp.assembly('stree_cone', x - 3, ty, z - 3, 'DarkPurple'); bp.assembly('stree_bowl', x - 3, ty, z - 3, STEEL); ty += 9;
   R?.add(x - 3, z - 3, 6, 6); bp.tag = ''; return { top: ty, ledges };
 }
 /** OCBC Skyway: a thin grey plate from one tree's plant ledge to the other's, at a level where the west tree's ledge points +x and the
