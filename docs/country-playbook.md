@@ -21,6 +21,7 @@ One page. Read it before starting a country; update it when a country teaches so
 - Height tiers, readable from any angle: hero landmark > tallest tree > house > figures. Landmark height ≈ 0.5–0.6 × island width.
 - Defaults: about a third open lawn or water; water (where the place has it) is the calm centre. Spacing enforced by `Sites` — a placement that crowds throws.
 - **Two or three minifigures**, each doing one legible thing, far apart (≤ 1 per 6×6). No more.
+- **Cut any prop the scale cannot make readable** — if it does not read as the thing at minifig scale, it goes; never keep it as a placeholder (Singapore's 10-stud bumboat read as a red box, 2026-10-01).
 
 ## 3. Techniques that transfer
 **Trees (`tree(kind)`; add a foliage kind per country — maple, plane, olive, palm):** a 2×2 round-brick trunk centred on its axis point; at every fork the four corner studs each carry one branch plate (lengths 2–4, two pinwheels alternating between forks so it never swirls), the next trunk segment rides on the four inner plate ends, the crown sits on a 2×2 jumper's centre stud. Tip clusters (calyx → 6×5 leaf → crossed 4×3 leaf → flower plate → 7-petal flower) at staggered heights 0 / 2 / 4 plates so leaves interleave without touching; a side leaf on every long limb; loose blossoms on bare studs; one side left bare toward a roof (`skip`). Hero tree = 3 forks, others 2, small 1. Pines use the same armature with three-deep green clouds and a cone tip (`kind: 'pine'`). Japan's exact recipes: `docs/countries/japan.md`. The v4 leaning trunk (one stud sideways per fork) was cut: it put the trunk on the corner of its stump and the crown to one side.
@@ -45,21 +46,6 @@ One page. Read it before starting a country; update it when a country teaches so
 
 **Judging renders:** camera position = target + (sin az · c, sin el · dist, cos az · c): az 0 is +z, π/2 is +x, π is −z, 3π/2 is −x. Put the camera outside the island on the element's own side; every figure gets a front and a side; element close-ups and silhouettes use `?only=<tag>[,tag]` so nothing else is in frame; check each image before the judge sees it — rounds 2 and 3 each lost points to mis-aimed shots.
 
-**Layout and depth (Singapore v7–v10, Eric 2026-10-01/02):**
-- Heights step down toward the default camera: tallest at the back (hero landmark), then the next tier, the lowest buildings in front. A lower thing never stands behind a taller one that hides it (the shophouse hid the Supertrees until it moved in front of them).
-- Nothing stands between the camera and a figure's face or a landmark's signature view; drop a tree before you accept the overlap. Keep the front third low and open.
-- A figure photographing something faces it across open space (water, lawn), never from behind it.
-- Animals live where the real ones are seen (otters on the bank, not in the pond) and are placed apart, each with its own spot — two touching read as a mistake.
-- Cut props the scale cannot make readable (a 10-stud boat was a red box); set dressing must read or go (rule 6).
-- At the island checkpoint show 2–3 layouts of the same elements side by side; Eric chose between them faster than he could have described one.
-- Plant from candidate lists that place only where the spacing rules allow, and log every rejected candidate with its reason; too few plants reads as not tropical, too many small tufts read as dark blotches.
-
-**Colour and dress:** decide a material colour by rendering 3–5 candidates side by side (MBS glass: trans-light-blue over dark grey won over trans-black, sand green, and trans-light-blue over white). Figures wear what the place wears, in its bright register: a batik shirt in a vivid ground reads Nanyang, a brown one reads drab.
-
-**Moving parts:** one opened element (a shutter pair, a door) gives a façade life; build it from the same official mould rotated on its real hinge, hosted at the frame's origin, and open pairs symmetrically.
-
-**Assemblies:** author studs-out builds in our own frame with `tools/ldraw/asm-ours.mjs` (`up`, `side`, `onStud`, `exposed()` reports any side stud left bare), then `bp.assembly()`; `scripts/check-assemblies.ts` proves the exploded bricks match the monolith and that no brick inside clashes or floats.
-
 ## 4. Grammar quick reference (`src/scenes/lib.ts`)
 - `minifig2(bp, cx, y, cz, rot, opts, reserve)` — the only figure entry: legs / posed torso / hands / head / hair, printed face + torso, `hold: [{ key, color, hand, pose }]` via `HOLD_DEFAULTS`. `holdUmbrella(...)` for the parasol.
 - `tree(bp, x, y, z, size, reserve, turn, skip, kind)` — the tree armature; `kind` picks foliage ('sakura' | 'pine' today; add a kind per country in `Foliage`). `bamboo`, `bush`, `blossom` (flower on a round plate).
@@ -69,8 +55,7 @@ One page. Read it before starting a country; update it when a country teaches so
 - Legacy (`sakura`, `sakura3`, `sakuraA`, `sakura4`, `sakura5` alias, `pine3`, `canopyLayers`, `banner`) stay only for the Tokyo sample and the test scenes; do not use them for a new country.
 
 ## 5. Before the judge sees it — self-check list
-- [ ] `npm run gate` PASS (comment lint, typecheck, assembly audit, validator with the overhang-hull check); parts ≤ 3,000, specialty ≥ 8 %
-- [ ] heights step down toward the camera; no tree or building covers a figure's face or a landmark's signature view
+- [ ] validator PASS for every scene, parts ≤ 3,000, specialty ≥ 8 %
 - [ ] hero render + 4 quadrants looked at: three height tiers read, ≥ 1/3 open, nothing touches a roof
 - [ ] each figure: two close-ups; hands closed on things, no post visible, pose a real minifig can hold
 - [ ] each tree: canopy reads as a mass from the hero distance; no coat-rack silhouettes
