@@ -5,7 +5,7 @@ One page. Read it before starting a country; update it when a country teaches so
 ## 1. Order of work
 1. **Brief** (`judge/briefs/<city>.md`, copy `_TEMPLATE.md`): one-sentence scene, must-have features, life layer, palette *taken from photographs of the real place*, scale, taboos, official-set references.
 2. **Research — a full stage with a deliverable.** Copy `docs/countries/_template.md` to `docs/countries/<country>.md` and fill §1: for the scene and each hero element, the real thing (photos, proportions, colours), the official sets that build it and how, the LEGO Masters / MOC technique, and what we borrow; the palette in LEGO colour names with a do-not-use list; one gpt-image-2 composition reference under `docs/refs/`. **Eric reviews the research page before any brick is placed.** Japan's page is the worked example: it is where five rounds of "go and look at the real thing" would have been avoided.
-3. **Elements first, island second.** Build each element in the test scene (`?scene=partsheet` / `?scene=trees`), validate, render two close-ups, look. Only then place it.
+3. **Elements first, island second — and each element is an iteration, not a shot.** For each element: sketch it on the stud grid from the references (side and top, each surface as a part type) → find the moulds → build in the test scene → validate → render two close-ups beside the reference → swap parts and repeat (2–3 rounds) until it would not embarrass us next to the reference. The element's footprint comes out of the sketch; the layout is drawn after the sketches, not before. Only a passed element goes to Eric's screenshot checkpoint — never a draft labelled as done.
 4. **Validator PASS is the floor, not the score.** `npx tsx scripts/validate.ts` must PASS; then render the pack (hero, four quadrants, each figure from two angles, each tree) and look at every image before a review page goes to Eric.
 5. **Review page → Eric → judge round → one fix round → review page.** Never run ahead of a checkpoint.
 
@@ -15,11 +15,11 @@ One page. Read it before starting a country; update it when a country teaches so
 - **As real as other builders manage.** Study the official set, LEGOLAND Miniland, Rebrickable MOCs and LEGO Masters versions of each subject and take the best technique; never propose a stylised "simpler" stand-in.
 
 ## 2. Numbers that hold for every country
-**Series first (Eric):** the islands are shown together — same footprint, same plinth, same figure scale, same hero-to-island ratio, same restraint. Before adding anything unusual to a country, ask whether Kyoto would carry it.
-- Island ~56×44 studs, earth two brick layers deep from `base`, rim wall hanging lower, a two-brick stone plinth one cell outside the footprint capped with tiles. Aim for ≤ 3,000 parts in the build itself; the plinth and cap add ~200 (Kyoto v10 closes at 3,237).
-- Specialty moulds 8–12 % of pieces, 30–35 % of types. Prints ≤ 12 designs, ≤ 40 pieces, 1–2 % of pieces.
+**Series first — by DNA, not by identical numbers (Eric, 2026-10-01):** the islands are shown together — same scale, same plinth treatment, same figure scale, same hero-to-island ratio, same restraint, same render pack. Footprint area 2,000–3,500 studs² (Kyoto 2,464), outline free (follows the landmarks), water optional.
+- Earth two brick layers deep from `base`, rim wall hanging lower, a two-brick stone plinth one cell outside the footprint capped with tiles. Aim for ≤ 3,000 parts in the build itself; the plinth and cap add ~200 (Kyoto v10 closes at 3,237).
+- Diagnostics, not gates: specialty moulds ≥ ~8 % of pieces (a floor: fewer means under-detailed; no ceiling). Prints ≤ 12 designs, ≤ 40 pieces.
 - Height tiers, readable from any angle: hero landmark > tallest tree > house > figures. Landmark height ≈ 0.5–0.6 × island width.
-- ≥ 1/3 open lawn or water; water is the calm centre (≥ 6 % of the island). Spacing enforced by `Sites` — a placement that crowds throws.
+- Defaults: about a third open lawn or water; water (where the place has it) is the calm centre. Spacing enforced by `Sites` — a placement that crowds throws.
 - **Two or three minifigures**, each doing one legible thing, far apart (≤ 1 per 6×6). No more.
 
 ## 3. Techniques that transfer
