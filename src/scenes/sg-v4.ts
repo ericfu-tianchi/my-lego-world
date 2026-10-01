@@ -11,7 +11,7 @@ export function buildSgV4(bp: Blueprint): SceneMeta {
   bp.tag = 'promenade'; for (let x = 1; x < 13; x++) for (let z = 22; z < 34; z++) { bp.vox1('plate', x, 1, z, 'LightBluishGray'); bp.vox1('plate', x, 2, z, 'LightBluishGray'); }
   bp.tag = 'water'; for (let x = 13; x < 30; x++) for (let z = 20; z < 36; z++) bp.vox1('plate', x, 1, z, 'TransLightBlue');
   merlion6(bp, 3, 3, 25, 0, 2);
-  bp.tag = 'supertree'; bp.assembly('grove6', 31, 1, 24, 'Magenta');
+  bp.tag = 'supertree'; bp.assembly('grove6', 32, 1, 25, 'Magenta');
   bp.tag = ''; bp.pack();
   return { id: 'sg-v4', title: 'Singapore landmarks v4', caption: 'Marina Bay Sands', subtitle: 'test scene', size: [W, D], center: [W / 2, 10, D / 2], camera: { az: 0.45, el: 0.3, dist: 80 } };
 }

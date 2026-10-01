@@ -190,3 +190,10 @@ _v6, 2026-09-25 — Eric's nine points redone by Fable 5.1 after the 09-20 round
 - Grove: three trees (tall, medium, short in front), a three-leaf plate every course on opposite corners, eight bar-tube clips on each dish's spokes carrying 3L bars at 38° as the fringe. Eric to judge whether it reads as web or as spikes.
 - Water: otters swimming with a white wake three cells behind (the body overhangs 1.5 studs); bumboat (`bumboat()`, red-and-white awning on four posts, wedge-plate bow) in B.
 - Known: 3,400–3,500 bricks, terrain ~1,600 of them.
+
+### 1.12 Round v9 (2026-10-01): Eric chose B, five notes
+- Otters out of the water (on the east bank of the mouth); bumboat removed (unreadable at this scale); bay shrunk to 22 × 13; tourist moved right onto the west bank; the ice-cream uncle moved from the crowded front-left to the back lawn between the stall and the Merlion.
+- The terrace hid the grove: the terrace now stands in the back-left corner and the grove in front of it.
+- Height tiers, plates above the lawn: MBS deck 50 > Supertrees 48.6 / 45.6 / 42.6 > Merlion 42 > terrace ~31. Perspective makes the grove look level with the Merlion from the front (it stands further back).
+- Planting candidates are now spaced against the Sites rules up front (rain-tree canopy 4.5, palm 2); `DEBUG_PLANT=1` logs every rejected candidate and why.
+- Layouts A and C stay in `LAYOUTS` as a record but are no longer registered as scenes; `?scene=singapore` is B.

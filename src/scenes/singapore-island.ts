@@ -31,8 +31,12 @@ interface Layout {
 const LAYOUTS: Record<string, Layout> = {
   a: { id: 'singapore', title: 'Singapore', lagoon: [34, 25, 11, 7.5], mouth: [40, 29, 56, 46, 4.2], grove: [3, 1, 0], merlion: [15, 21, 0, 9], terrace: [2, 42, 1], hawker: [21, 33, 0], cart: [38, 37, 0], uncle: [42.5, 38.5, 3], tourist: [47.5, 24.5, 3], otters: [[30, 26, 1], [36, 28, 1], [44, 33, 2]],
     rain: [[11, 17], [44, 15]], palms: [[13, 30], [10, 34], [26, 18], [53, 31], [16, 41], [48, 35], [21, 28], [52, 16]], bushes: [[11, 26], [14, 15], [20, 16], [42, 14], [50, 33], [46, 40], [8, 22], [26, 40]], orchids: [16, 31] },
-  b: { id: 'singapore-b', title: 'Singapore · B', lagoon: [28, 33, 15, 8], mouth: [28, 38, 28, 46, 6], grove: [2, 1, 0], merlion: [51, 30, 2, 9], terrace: [3, 17, 0], hawker: [26, 15, 0], cart: [7, 36, 0], uncle: [11.5, 37.5, 3], tourist: [12.5, 30.5, 1], otters: [[32, 36, 1], [36, 35, 1], [18, 35, 3]], boat: [22, 29, 0],
-    rain: [[46, 17], [6, 40]], palms: [[41, 24], [52, 20], [19, 23], [10, 26], [44, 42], [50, 38], [15, 41], [38, 19], [4, 31], [53, 41]], bushes: [[21, 15], [36, 16], [48, 24], [3, 26], [13, 26], [40, 41], [18, 40]], orchids: [32, 18] },
+  // B v9 (Eric picked B, 2026-10-01): a smaller bay; the terrace moved to the back-left behind the grove (it hid the trees), so the depth reads
+  // back → front as MBS + terrace, then grove + stall + cart + Merlion, then the bay with the tourist; the ice-cream uncle between the stall and the
+  // Merlion (in front of the Merlion he hid its base),
+  // the otters on the bank (not in the water); no boat.
+  b: { id: 'singapore-b', title: 'Singapore · B', lagoon: [27, 32, 11, 6.5], mouth: [27, 37, 27, 46, 5], grove: [2, 14, 0], merlion: [50, 31, 2, 9], terrace: [4, 5, 0], hawker: [26, 15, 0], cart: [35, 16, 0], uncle: [39.5, 17.5, 3], tourist: [14.5, 31.5, 1], otters: [[35, 40, 1], [37, 41, 3]],
+    rain: [[7, 39], [50, 15]], palms: [[16, 40], [3, 31], [53, 25], [43, 22], [52, 38], [3, 41]], bushes: [[48, 25], [13, 35], [31, 12], [46, 40], [19, 34], [2, 36]], orchids: [11, 28] },
   c: { id: 'singapore-c', title: 'Singapore · C', lagoon: [26, 30, 12, 7.5], mouth: [18, 35, 0, 46, 4.2], grove: [2, 1, 0], merlion: [27, 12, 3, 10], terrace: [38, 14, 0], hawker: [45, 30, 0], cart: [8, 31, 0], uncle: [12.5, 32.5, 3], tourist: [31.5, 41.5, 2], otters: [[17, 30, 1], [31, 33, 3], [20, 35, 0]],
     rain: [[8, 21], [42, 17]], palms: [[18, 18], [35, 18], [14, 25], [40, 24], [38, 33], [44, 29], [20, 41], [30, 18], [3, 26], [52, 40]], bushes: [[11, 16], [16, 22], [36, 22], [39, 28], [45, 25], [24, 40], [35, 40]], orchids: [4, 21] },
 };
@@ -79,7 +83,7 @@ export function buildSingaporeLayout(bp: Blueprint, L: Layout): SceneMeta {
 
   // ---- landmarks
   for (const tx of [29, 39, 49]) ground.add('mbs-tower', tx, 3, 3.5, 'mbs'); mbs10(bp, 20, G, 1, 0, R);
-  { const w = grot % 2 ? 13 : 16, d = grot % 2 ? 16 : 13; ground.add('grove', gx + w / 2, gz + d / 2, 6); R.add(gx - 2, gz - 2, w + 4, d + 4); bp.tag = 'supertree';   // the canopies and their fringe reach two studs past the box
+  { const w = grot % 2 ? 13 : 16, d = grot % 2 ? 16 : 13; ground.add('grove', gx + w / 2, gz + d / 2, 6); R.add(gx - 2, gz - 2, w + 5, d + 5); bp.tag = 'supertree';   // the canopies and their fringe reach two studs past the box
      bp.assembly('grove6', gx, G, gz, 'Magenta', grot); }
   { const [cx, cz] = mc(3, 2); ground.add('merlion', cx + 0.5, cz + 0.5, 3.5); merlion6(bp, mox, G, moz, mrot, WATER_TOP, reach, R); }
   { const [tx, tz, tr] = L.terrace; const tc = placer(bp, tx, tz, tr).cell; for (const bxl of [2, 7, 12]) { const [cx, cz] = tc(bxl, 3); ground.add('shophouse', cx + 0.5, cz + 0.5, 3, 'terrace'); } shophouse2(bp, tx, G, tz, tr, R, 'plaque_shophouse', 'tile_majolica'); }
@@ -101,9 +105,10 @@ export function buildSingaporeLayout(bp: Blueprint, L: Layout): SceneMeta {
   // ---- planting (Eric: 热带植被太少): rain trees, palms, bougainvillea and ferns wherever there is room; a candidate is planted only on dry
   //      grass clear of everything (Sites spacing, reservations, promenade)
   const dry = (x0: number, z0: number, w: number, d: number) => { for (let x = x0; x < x0 + w; x++) for (let z = z0; z < z0 + d; z++) if (!inIsland(x, z) || isWater(x, z) || promenade(x, z) || R.has(x, z)) return false; return true; };
-  const tryAdd = (name: string, x: number, z: number, r: number, cr: number) => { try { ground.add(name, x, z, r); } catch { return false; } try { canopy.add(name, x, z, cr); } catch { return false; } return true; };
-  L.rain.forEach(([x, z], i) => { if (dry(x - 2, z - 2, 4, 4) && tryAdd('raintree' + i, x, z, 1.5, 5.5)) tree(bp, x, G, z, 'M', R, i, undefined, 'raintree'); });
-  L.palms.forEach(([x, z], i) => { if (dry(x - 1, z - 1, 2, 2) && tryAdd('palm' + i, x, z, 1, 2.5)) palm(bp, x, G, z, 3 + (i % 2), i & 3, R); });
+  const why = (m: string) => { if (typeof process !== 'undefined' && process.env?.DEBUG_PLANT) console.log(m); return false; };
+  const tryAdd = (name: string, x: number, z: number, r: number, cr: number) => { try { ground.add(name, x, z, r); } catch (e) { return why(String(e)); } try { canopy.add(name, x, z, cr); } catch (e) { return why(String(e)); } return true; };
+  L.rain.forEach(([x, z], i) => { if (dry(x - 2, z - 2, 4, 4) && tryAdd('raintree' + i, x, z, 1.5, 4.5)) tree(bp, x, G, z, 'M', R, i, undefined, 'raintree'); });
+  L.palms.forEach(([x, z], i) => { if ((dry(x - 1, z - 1, 2, 2) || why(`palm ${x},${z} not dry`)) && tryAdd('palm' + i, x, z, 1, 2)) palm(bp, x, G, z, 3 + (i % 2), i & 3, R); });
   const BOUG = ['DarkPink', 'Magenta', 'BrightPink'];
   L.bushes.forEach(([x, z], i) => { if (!dry(x, z, 2, 2) || !tryAdd('bush' + i, x + 1, z + 1, 1, 1)) return; bp.tag = 'bush'; bush(bp, x, G, z, ['Green', 'DarkGreen', 'BrightGreen'], R); bp.part('flower_1x1', x, G + 2, z, BOUG[i % 3]); });   // bougainvillea
   bp.tag = 'orchid'; { const [ox, oz] = L.orchids; orchidBed(bp, ([[ox, oz], [ox + 1, oz + 1], [ox + 2, oz], [ox, oz + 2], [ox + 2, oz + 2], [ox + 1, oz + 3]] as Pt[]).filter(([x, z]) => dry(x, z, 1, 1)), G, R); }
@@ -116,6 +121,5 @@ export function buildSingaporeLayout(bp: Blueprint, L: Layout): SceneMeta {
   bp.tag = ''; bp.pack();
   return { id: L.id, title: L.title, caption: 'Marina Bay', subtitle: 'Marina Bay Sands · Supertrees · Merlion · shophouses', size: [W, D], center: [W / 2, 11, D / 2], base: BASE, camera: { az: 0.62, el: 0.42, dist: 100 } };
 }
-export const buildSingapore = (bp: Blueprint) => buildSingaporeLayout(bp, LAYOUTS.a);
-export const buildSingaporeB = (bp: Blueprint) => buildSingaporeLayout(bp, LAYOUTS.b);
-export const buildSingaporeC = (bp: Blueprint) => buildSingaporeLayout(bp, LAYOUTS.c);
+// Eric chose B (2026-10-01); A and C stay in LAYOUTS as the record of the comparison but are no longer registered as scenes
+export const buildSingapore = (bp: Blueprint) => buildSingaporeLayout(bp, { ...LAYOUTS.b, id: 'singapore', title: 'Singapore' });

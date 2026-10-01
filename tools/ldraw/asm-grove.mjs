@@ -25,7 +25,7 @@ function snot(x, y, z, d, color) {
 }
 /** one Supertree; trunk min corner (tx, tz), `periods` = courses per planter ring; returns the plate level of each ring */
 function tree(tx, tz, periods, big, skywayRing, skywayDir) {
-  const rings = []; let y = 0, k = 0;
+  const rings = []; let y = 0, k = 0, prevDir = '';
   a.up('4032a', DG, tx, y, tz); y += 1;                                      // planter at the foot
   const cells = [[0, 0], [1, 0], [0, 1], [1, 1]]; const out = { '0,0': [neg(X), neg(Z)], '1,0': [X, neg(Z)], '0,1': [neg(X), Z], '1,1': [X, Z] };
   periods.forEach((n, pi) => {
@@ -35,9 +35,9 @@ function tree(tx, tz, periods, big, skywayRing, skywayDir) {
       for (const [i, j] of cells) {
         const col = (i + j + k) % 2 ? MAG : DG;                                   // steel and planting in a checker
         const nearDeck = (pi === skywayRing && c === n - 1) || (pi === skywayRing + 1 && c <= 1);
-        const leaf = !(nearDeck && leafCell[0] === (skywayDir > 0 ? 1 : 0));   // a leaf every course, turning round the trunk; none into the skyway
-        if (leaf && i === leafCell[0] && j === leafCell[1]) { const s = snot(tx + i, y, tz + j, leafDir, col); a.onStud('32607', LEAVES[k % 4], s, leafDir[0] ? Z : X, 'x'); }
-        else a.up('3062b', col, tx + i, y, tz + j);
+        const leaf = !(nearDeck && leafCell[0] === (skywayDir > 0 ? 1 : 0)) && leafDir.join() !== prevDir;   // two leaves facing the same way on consecutive courses would touch   // a leaf every course, turning round the trunk; none into the skyway
+        if (leaf && i === leafCell[0] && j === leafCell[1]) { prevDir = leafDir.join(); const s = snot(tx + i, y, tz + j, leafDir, col); a.onStud('32607', LEAVES[k % 4], s, leafDir[0] ? Z : X, 'x'); }
+        else { if (i === leafCell[0] && j === leafCell[1]) prevDir = ''; a.up('3062b', col, tx + i, y, tz + j); }
       }
       y += 3;
     }
@@ -64,10 +64,10 @@ function tree(tx, tz, periods, big, skywayRing, skywayDir) {
   }
   return rings;
 }
-const A = tree(3, 3, [3, 3, 2], true, 1, +1);                                // tall: rings at 10, 20, 27 → canopy to ~36
-const B = tree(12, 3, [3, 3, 1], false, 1, -1);                              // medium
+const A = tree(3, 3, [4, 4, 2], true, 1, +1);                                // heights (Eric 10-01): MBS deck 50 > tall 48.6 > medium 45.6 > short 42.6 > the Merlion 42 > the terrace ~31 (plates above the lawn)
+const B = tree(12, 3, [4, 4, 1], false, 1, -1);                              // medium
 if (A[1] !== B[1]) throw new Error('skyway rings differ');
-const C = tree(7, 9, [2, 2, 1], false, -1, 0);                               // short, in front between the two: three heights in a cluster, not a row
+const C = tree(7, 9, [4, 2, 2], false, -1, 0);                               // short, in front between the two: three heights in a cluster, not a row
 // skyway on the two 2×3 ledges (A: x 3..6 → ledge cell x 5; B: x 11..14 → ledge cell x 11)
 const sy = A[1] + 1;
 a.up('3710', DECKC, 5, sy, 3); a.up('3623', DECKC, 9, sy, 3); a.up('3623', DECKC, 5, sy, 4); a.up('3710', DECKC, 8, sy, 4);
