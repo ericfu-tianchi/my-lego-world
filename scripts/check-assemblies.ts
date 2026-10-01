@@ -22,7 +22,8 @@ for (const rot of [0, 1, 2, 3]) for (const key of KEYS) {
 }
 console.log(bad ? `FAIL · ${bad} mismatches` : `PASS · ${KEYS.length} assemblies × 4 rotations`);
 
-const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937']); const BARS = new Set(['87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706']);   // a bar through a hollow stud, an axle through axle holes
+// interlocks: hinge halves, a clip round a dish spoke; BARS: a bar through a hollow stud or tube, an axle through axle holes
+const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706']);
 type OBB = { c: number[]; a: number[][]; h: number[]; id: string };
 const obb = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB => { const id = PARTS[p.key].ldraw!; const b = bodyBox(id); const m = p.xform!.m; return { id, c: p.xform!.p, a: [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]), h: [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2] }; };
 const dot = (u: number[], v: number[]) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];

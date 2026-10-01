@@ -2,6 +2,7 @@
 import { Blueprint } from '../core/builder';
 import { Reserve } from './lib';
 import { placer } from './singapore';
+import { spanPlates, spanPlatesX, hipCorners } from './lib';
 
 /** Marina Bay Sands v10. Proportions from docs/refs/mbs-moc/real-mbs-jays-photo.jpg: SkyPark 34 long ≈ 1.7 × tower height, towers 6 wide with
  *  4-stud gaps, the cantilever one tower-width past the north tower (−x), the south end a 2-stud rounded lip. Three `mbs10_tower` assemblies
@@ -79,5 +80,76 @@ export function merlion6(bp: Blueprint, ox: number, y: number, oz: number, rot: 
     if (i < reach - 1) part('plate_1x2', x, lo, 2, TLB, 1); else part('roundplate_1x1', x, lo, 2, TLB);
   }
   const lx = 7 + reach - 1; for (const [fx, fz] of [[lx + 1, 2], [lx, 1], [lx, 3], [lx - 1, 1]]) part('roundplate_1x1', fx, waterY, fz, W);   // foam
+  bp.tag = '';
+}
+
+/** Koon Seng Road terrace v2 (2026-10-01, Eric: 糙了一点). Against `real-koon-seng-road-commons-colorful.jpg`: each house is its own pastel
+ *  from foot to eave with white ornament on it, not white with a coloured strip. Per bay (5 wide: white pilaster + 4): ground floor folding
+ *  timber doors under a pastel fascia, the five-foot way behind white round columns; upper floor a pair of tall louvred windows in white
+ *  frames, the shutters in the bay's contrasting colour (pink → azure, azure → white, yellow → green, as on the street), over a white sill;
+ *  above the windows a white lintel, a dentil course of alternating white and pastel 1×1 plates, a white cornice; a forecourt wall in front
+ *  with white gate pillars capped by pyramid slopes, the gate open in the middle with a potted plant. Hip roof as before.
+ *  Local: body x 0..15, z 0..5 (z 5 = five-foot way), forecourt z 6; front toward local +z. */
+export function shophouse2(bp: Blueprint, ox: number, y0: number, oz: number, rot: number, R?: Reserve, plaque?: string, floorPrint?: string) {
+  bp.tag = 'shophouse'; const { part, vox, cell } = placer(bp, ox, oz, rot); const W = 16, D = 6;
+  const TRIM = 'White', TIMBER = 'DarkBrown', ROOF = 'DarkOrange';
+  const BAYS = [{ c: 'BrightPink', s: 'MediumAzure' }, { c: 'MediumAzure', s: 'White' }, { c: 'BrightLightYellow', s: 'DarkGreen' }];
+  if (R) { const cs = [cell(-1, -1), cell(W, D + 1)]; R.add(Math.min(cs[0][0], cs[1][0]), Math.min(cs[0][1], cs[1][1]), Math.abs(cs[1][0] - cs[0][0]) + 1, Math.abs(cs[1][1] - cs[0][1]) + 1); }
+  for (let lx = 0; lx < W; lx++) for (let lz = 0; lz <= D; lz++) vox('plate', lx, y0, lz, 'Tan');
+  const GF = 12, UF = 12; const slabY = y0 + 1 + GF;
+  for (let i = 0; i < 3; i++) {
+    const bx = 5 * i, { c: C, s: S } = BAYS[i];
+    const PW = i === 0 ? C : TRIM;                                                                     // the terrace's end wall is plaster in the end house's colour
+    for (let dy = 0; dy < GF; dy++) { for (let lz = 0; lz <= 4; lz++) vox('brick', bx, y0 + 1 + dy, lz, lz === 4 ? TRIM : PW); for (let lx = bx + 1; lx <= bx + 4; lx++) vox('brick', lx, y0 + 1 + dy, 0, C); }
+    for (const fx of [bx + 1, bx + 3]) { part('window_1x2x3', fx, y0 + 1, 4, TIMBER); if (i !== 1) part('shutter_1x2x3', fx, y0 + 1, 4, TIMBER); }
+    if (i === 1 && plaque) part('brick_1x4', bx + 1, y0 + GF - 2, 4, 'Black', 3, plaque); else for (let dy = 0; dy < 3; dy++) for (let lx = bx + 1; lx <= bx + 4; lx++) vox('brick', lx, y0 + GF - 2 + dy, 4, C);
+    for (let lz = 1; lz <= 3; lz++) for (let lx = bx + 1; lx <= bx + 4; lx++) vox('tile', lx, y0 + 1, lz, 'DarkTan');
+    for (let k = 0; k < 4; k++) part('round_1x1', bx, y0 + 1 + 3 * k, 5, TRIM);
+    if (floorPrint) { part('tile_1x2', bx + 1, y0 + 1, 5, 'Tan', 1, floorPrint); part('tile_1x2', bx + 3, y0 + 1, 5, 'Tan', 1, floorPrint); } else for (let lx = bx + 1; lx <= bx + 4; lx++) vox('tile', lx, y0 + 1, 5, 'Tan');
+    // upper floor: the pilaster and the whole front in the bay's pastel; the windows, sill, lintel, dentils and cornice in white
+    const uy = slabY + 1;
+    for (let dy = 0; dy < 9; dy++) {                                                                   // three brick courses
+      for (let lz = 0; lz <= 4; lz++) vox('brick', bx, uy + dy, lz, PW);                               // party wall
+      for (const lx of [bx + 1, bx + 4]) vox('brick', lx, uy + dy, 0, C);                                // back wall either side of the back window
+      vox('brick', bx, uy + dy, 5, C);                                                                 // the pilaster between the two windows of a house
+    }
+    for (const [dy, dent] of [[9, false], [10, true], [11, false]] as const) {                         // lintel, dentil course, cornice
+      for (let lz = 0; lz <= 4; lz++) vox('plate', bx, uy + dy, lz, TRIM);
+      for (let lx = bx + 1; lx <= bx + 4; lx++) vox('plate', lx, uy + dy, 0, TRIM);
+      for (let lx = bx; lx <= bx + 4; lx++) vox('plate', lx, uy + dy, 5, dent && (lx - bx) % 2 === 0 ? C : TRIM);
+    }
+    for (const wx of [bx + 1, bx + 3]) { part('window_1x2x3', wx, uy, 5, TRIM); part('shutter_1x2x3', wx, uy, 5, S); }
+    part('window_1x2x3', bx + 2, uy, 0, TRIM, 2); part('shutter_1x2x3', bx + 2, uy, 0, S, 2);
+    // forecourt (z 6): low pastel walls each side of an open gate, white gate pillars with pyramid caps at the pilasters, a potted plant in the gate
+    for (const lx of [bx + 1, bx + 4]) { part('brick_1x1', lx, y0 + 1, 6, C); part('tile_1x1', lx, y0 + 4, 6, TRIM); }
+    part('brick_1x1', bx, y0 + 1, 6, TRIM); part('brick_1x1', bx, y0 + 4, 6, TRIM); part('pyramid_1x1', bx, y0 + 7, 6, TRIM);
+    part('round_1x1', bx + 2, y0 + 1, 6, 'DarkOrange'); part('plant_3leaves', bx + 2, y0 + 4, 6, 'Green', i);
+  }
+  for (let dy = 0; dy < GF; dy++) for (let lz = 0; lz <= 4; lz++) vox('brick', W - 1, y0 + 1 + dy, lz, lz === 4 ? TRIM : BAYS[2].c); for (let k = 0; k < 4; k++) part('round_1x1', W - 1, y0 + 1 + 3 * k, 5, TRIM);
+  for (let dy = 0; dy < 9; dy++) for (let lz = 0; lz <= 5; lz++) vox('brick', W - 1, slabY + 1 + dy, lz, BAYS[2].c);
+  for (let dy = 9; dy < UF; dy++) for (let lz = 0; lz <= 5; lz++) vox('plate', W - 1, slabY + 1 + dy, lz, TRIM);
+  part('brick_1x1', W - 1, y0 + 1, 6, TRIM); part('brick_1x1', W - 1, y0 + 4, 6, TRIM); part('pyramid_1x1', W - 1, y0 + 7, 6, TRIM);
+  { const a = cell(0, 0), b = cell(W - 1, D - 1); const X = Math.min(a[0], b[0]), Z = Math.min(a[1], b[1]), Wd = Math.abs(b[0] - a[0]) + 1, Dd = Math.abs(b[1] - a[1]) + 1; if (rot % 2) spanPlatesX(bp, X, Z, Wd, Dd, slabY, TRIM); else spanPlates(bp, X, Z, Wd, Dd, slabY, TRIM); }
+  const ry = slabY + 1 + UF; const [rx0w, rz0w] = cell(-1, -1), [rx1w, rz1w] = cell(W, D); const RX = Math.min(rx0w, rx1w), RZ = Math.min(rz0w, rz1w), RW = Math.abs(rx1w - rx0w) + 1, RD = Math.abs(rz1w - rz0w) + 1;
+  spanPlates(bp, RX, RZ, RW, RD, ry, ROOF); hipCorners(bp, 'slope_corner_3x3', RX, RZ, RW, RD, ry + 1, ROOF);
+  for (let x = RX + 3; x < RX + RW - 3; x += 2) { const two = x + 2 <= RX + RW - 3; bp.part(two ? 'slope_2x3' : 'slope_1x3', x, ry + 1, RZ, ROOF, 2); bp.part(two ? 'slope_2x3' : 'slope_1x3', x, ry + 1, RZ + RD - 3, ROOF, 0); if (!two) break; }
+  for (let z = RZ + 3; z < RZ + RD - 3; z += 2) { const two = z + 2 <= RZ + RD - 3; bp.part(two ? 'slope_2x3' : 'slope_1x3', RX, ry + 1, z, ROOF, 3); bp.part(two ? 'slope_2x3' : 'slope_1x3', RX + RW - 3, ry + 1, z, ROOF, 1); if (!two) break; }
+  bp.fill('brick', RX + 3, ry + 1, RZ + 3, RW - 6, 3, RD - 6, ROOF);
+  const along = RW >= RD; const L = along ? RW - 6 : RD - 6; let k = 0; while (k < L) { const s = L - k >= 4 ? 4 : 2; bp.part(s === 4 ? 'ridge_4x2' : 'ridge_2x2', along ? RX + 3 + k : RX + 3, ry + 4, along ? RZ + 3 : RZ + 3 + k, ROOF, along ? 0 : 1); k += s; }
+  bp.tag = '';
+}
+
+/** A Singapore River bumboat (the river-cruise boat on Marina Bay): a reddish-brown timber hull 4 wide with a pointed bow of wedge plates,
+ *  white gunwales with a red stripe, a tan deck, and a red-and-white awning on four slim posts. No one aboard (rule 6). Bow toward local −x.
+ *  Local: hull x 0..10, z 0..3 on the water at `y` (the water tiles must carry studs under it). */
+export function bumboat(bp: Blueprint, ox: number, y: number, oz: number, rot: number, R?: Reserve) {
+  bp.tag = 'boat'; const { part, cell } = placer(bp, ox, oz, rot); const HULL = 'ReddishBrown';
+  if (R) { const a = cell(0, 0), b = cell(9, 3); R.add(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]) + 1, Math.abs(b[1] - a[1]) + 1); }
+  part('plate_4x6', 4, y, 0, HULL, 1); part('wedge_4x2_r', 0, y, 0, HULL, 2); part('wedge_4x2_l', 0, y, 2, HULL, 2);
+  for (const z of [0, 3]) { part('brick_1x4', 5, y + 1, z, 'White', 1); part('brick_1x1', 4, y + 1, z, 'White'); part('brick_1x1', 9, y + 1, z, 'White'); part('plate_1x6', 4, y + 4, z, 'BrightRed', 1); }
+  part('plate_1x2', 9, y + 1, 1, 'White'); part('brick_1x2', 9, y + 2, 1, 'White'); part('tile_1x2', 9, y + 5, 1, 'BrightRed');    // stern transom
+  for (let x = 4; x < 9; x++) for (const z of [1, 2]) part('tile_1x1', x, y + 1, z, 'Tan');
+  for (const [px, pz] of [[4, 0], [8, 0], [4, 3], [8, 3]]) { part('round_1x1', px, y + 5, pz, 'White'); part('round_1x1', px, y + 8, pz, 'White'); }
+  part('plate_4x6', 4, y + 11, 0, 'White', 1); for (let x = 4; x < 10; x += 2) part('tile_2x2', x, y + 12, 1, 'BrightRed'); for (let x = 4; x < 10; x++) for (const z of [0, 3]) part('tile_1x1', x, y + 12, z, 'White');
   bp.tag = '';
 }

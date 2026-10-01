@@ -182,3 +182,11 @@ _v6, 2026-09-25 — Eric's nine points redone by Fable 5.1 after the 09-20 round
 - **Island** (`singapore-island.ts`, 3,275 bricks): §1.9 layout with one change — the grove moved from back-left to the east lawn (it crowded the Merlion and left the east empty; Gardens by the Bay is east of MBS in reality). Flagged to Eric.
 - Tools: `tools/ldraw/asm-ours.mjs` (assemblies in our frame, `exposed()` side-stud audit); `scripts/check-assemblies.ts` audits clashes and ground connectivity inside every assembly (old `merlion_body` had 21 clashes).
 - Lesson for the pipeline: a `//` comment inserted mid-line by a script swallows the rest of the line (it hid a dish, a stats variable, a renderer guard this session) — insert comments on their own line.
+
+### 1.11 Round v8 (2026-10-01, Eric's notes on v7)
+- Notes: too little tropical planting (empty lawn behind the Merlion); terrace, stall and cart sat in one front row and hid the Merlion, the two stalls touched; the tourist stood behind the Merlion — he should shoot it from across the water; try several layouts; a third Supertree and the canopy's fine web; the terrace looked crude; the water was empty.
+- Island is now data-driven (`LAYOUTS` in `singapore-island.ts`): A bay centre (`?scene=singapore`), B Merlion Park with a bumboat (`singapore-b`), C postcard — Merlion straight in front of MBS facing the viewer (`singapore-c`, recommended). Planting is candidate lists that plant only where they fit (Sites + reservations + dry grass), plus ferns and grass scattered by noise.
+- Terrace v2 (`shophouse2`): each house its own pastel to the eave including the end walls, shutters in the street's contrasting colours (pink→azure, azure→white, yellow→green), lintel + dentil course + cornice, forecourt with white gate pillars capped by pyramid slopes and potted plants.
+- Grove: three trees (tall, medium, short in front), a three-leaf plate every course on opposite corners, eight bar-tube clips on each dish's spokes carrying 3L bars at 38° as the fringe. Eric to judge whether it reads as web or as spikes.
+- Water: otters swimming with a white wake three cells behind (the body overhangs 1.5 studs); bumboat (`bumboat()`, red-and-white awning on four posts, wedge-plate bow) in B.
+- Known: 3,400–3,500 bricks, terrain ~1,600 of them.
