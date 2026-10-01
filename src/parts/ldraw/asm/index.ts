@@ -8,6 +8,7 @@ import a_merlion6 from './merlion6';
 import a_merlion_body from './merlion_body';
 import a_merlion_jet from './merlion_jet';
 import a_shutter_open from './shutter_open';
+import a_shutter_open_r from './shutter_open_r';
 import a_streecanopy_bowl from './streecanopy_bowl';
 import a_streecanopy_cone from './streecanopy_cone';
-export const ASM: Record<string, Member[]> = { 'grove6': a_grove6, 'mbs10_tower': a_mbs10_tower, 'mbstower_core': a_mbstower_core, 'mbstower_glass': a_mbstower_glass, 'merlion6': a_merlion6, 'merlion_body': a_merlion_body, 'merlion_jet': a_merlion_jet, 'shutter_open': a_shutter_open, 'streecanopy_bowl': a_streecanopy_bowl, 'streecanopy_cone': a_streecanopy_cone };
+export const ASM: Record<string, Member[]> = { 'grove6': a_grove6, 'mbs10_tower': a_mbs10_tower, 'mbstower_core': a_mbstower_core, 'mbstower_glass': a_mbstower_glass, 'merlion6': a_merlion6, 'merlion_body': a_merlion_body, 'merlion_jet': a_merlion_jet, 'shutter_open': a_shutter_open, 'shutter_open_r': a_shutter_open_r, 'streecanopy_bowl': a_streecanopy_bowl, 'streecanopy_cone': a_streecanopy_cone };
