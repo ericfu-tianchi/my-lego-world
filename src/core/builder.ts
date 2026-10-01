@@ -52,7 +52,7 @@ export class Blueprint {
       const k = `ld_${mb.id}`; if (!PARTS[k]) throw new Error(`member part ${k} not in the catalogue`); const b = bodyBox(mb.id);
       const local = app(mb.m, [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2]).map((v, i) => v + mb.p[i]);   // body centre in the assembly frame
       const w = app(R, local); const p: [number, number, number] = [C[0] + w[0], C[1] + w[1], C[2] + w[2]];
-      this.parts.push({ key: k, x, y, z, rot: r, color: mb.color, tag: this.tag, member: group, xform: { p, m: mul(R, mb.m) } });
+      this.parts.push({ key: k, x, y, z, rot: r, color: mb.color || color, tag: this.tag, member: group, xform: { p, m: mul(R, mb.m) } });
     }
     return this;
   }

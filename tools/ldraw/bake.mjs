@@ -17,7 +17,8 @@ const LIB = process.env.LDRAW_DIR ? path.resolve(process.env.LDRAW_DIR) : null;
 const REMOTE = 'https://library.ldraw.org/library/official/'; const LOCAL = 'http://ldraw.local/';
 const args = process.argv.slice(2); const force = args.includes('--force'); const ids = args.filter((a) => !a.startsWith('--'));
 const ASM_OUT = path.join(OUT, 'asm');
-// LDraw colour code → our colour key (src/core/colors.ts). An unmapped code is an error, never a silent default.
+// LDraw colour code → our colour key (src/core/colors.ts). An unmapped code is an error, never a silent default; 16 (inherit) becomes '' and
+// takes the proxy's colour when the assembly is exploded.
 const LDCOLOR = { 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange' };
 /** Flatten an assembly's type-1 lines into members in our frame. LDraw → ours is F = diag(1, −1, −1)/20, so p' = F·p and m' = F·M·F⁻¹. */
 function members(name, src) {
@@ -25,7 +26,7 @@ function members(name, src) {
   for (const line of String(src).split('\n')) {
     const t = line.trim().split(/\s+/); if (t[0] !== '1') continue;
     const file = t.slice(14).join(' '); if (!/\.dat$/i.test(file)) throw new Error(`${name}: nested model ${file} — flatten it in the assembly script`);
-    const color = LDCOLOR[t[1]]; if (!color) throw new Error(`${name}: LDraw colour ${t[1]} has no key in LDCOLOR`);
+    const color = t[1] === '16' ? '' : LDCOLOR[t[1]]; if (color === undefined) throw new Error(`${name}: LDraw colour ${t[1]} has no key in LDCOLOR`);
     const [x, y, z, a, b, c, d, e, f, g, h, i] = t.slice(2, 14).map(Number); const s = [1, -1, -1]; const M = [a, b, c, d, e, f, g, h, i];
     const m = M.map((v, k) => +(s[Math.floor(k / 3)] * s[k % 3] * v).toFixed(6));
     const det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g); if (det < 0) throw new Error(`${name}: mirrored member ${file} — a mirrored brick is not a brick`);

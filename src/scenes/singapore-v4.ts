@@ -118,7 +118,8 @@ export function shophouse2(bp: Blueprint, ox: number, y0: number, oz: number, ro
       for (let lx = bx + 1; lx <= bx + 4; lx++) vox('plate', lx, uy + dy, 0, TRIM);
       for (let lx = bx; lx <= bx + 4; lx++) vox('plate', lx, uy + dy, 5, dent && (lx - bx) % 2 === 0 ? C : TRIM);
     }
-    for (const wx of [bx + 1, bx + 3]) { part('window_1x2x3', wx, uy, 5, TRIM); part('shutter_1x2x3', wx, uy, 5, S); }
+    // one shutter of the terrace pushed open (Eric 10-01): the middle house's left window, so the street front has a gesture of life
+    for (const wx of [bx + 1, bx + 3]) { part('window_1x2x3', wx, uy, 5, TRIM); part(i === 1 && wx === bx + 1 ? 'shutter_open_1x2x3' : 'shutter_1x2x3', wx, uy, 5, S); }
     part('window_1x2x3', bx + 2, uy, 0, TRIM, 2); part('shutter_1x2x3', bx + 2, uy, 0, S, 2);
     // forecourt (z 6): low pastel walls each side of an open gate, white gate pillars with pyramid caps at the pilasters, a potted plant in the gate
     for (const lx of [bx + 1, bx + 4]) { part('brick_1x1', lx, y0 + 1, 6, C); part('tile_1x1', lx, y0 + 4, 6, TRIM); }

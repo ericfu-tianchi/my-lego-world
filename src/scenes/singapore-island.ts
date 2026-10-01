@@ -93,7 +93,7 @@ export function buildSingaporeLayout(bp: Blueprint, L: Layout): SceneMeta {
   // ---- life layer
   bp.tag = 'cart'; ground.add('cart', L.cart[0] + 1, L.cart[1] + 1, 1.5, 'uncle'); iceCreamCart(bp, L.cart[0], G, L.cart[1], L.cart[2], 'LightBluishGray', R, 'cart_side');
   bp.tag = 'minifig'; ground.add('uncle', L.uncle[0], L.uncle[1], 1, 'uncle'); minifig2(bp, L.uncle[0], G, L.uncle[1], L.uncle[2], { legs: 'DarkBlue', torso: 'White', face: 'face_uncle', torsoPrint: 'torso_vendor', hair: 'DarkBluishGray', hairKey: 'hair_tousled', hold: [{ key: 'icecream_cone', color: 'Tan', hand: 'R' }] }, R);
-  ground.add('tourist', L.tourist[0], L.tourist[1], 1); minifig2(bp, L.tourist[0], G, L.tourist[1], L.tourist[2], { legs: 'DarkTan', torso: 'Coral', face: 'face_grin', torsoPrint: 'torso_batik', hair: 'DarkBrown', hairKey: 'hair_tousled', hold: [{ key: 'camera', color: 'Black', hand: 'R' }] }, R);
+  ground.add('tourist', L.tourist[0], L.tourist[1], 1); minifig2(bp, L.tourist[0], G, L.tourist[1], L.tourist[2], { legs: 'Tan', torso: 'ReddishBrown', face: 'face_grin', torsoPrint: 'torso_batik', hair: 'DarkBrown', hairKey: 'hair_tousled', hold: [{ key: 'camera', color: 'Black', hand: 'R' }] }, R);
   // otters: on the bank, or swimming — on the water with a white wake behind (Marina Bay's otter families swim the bay daily)
   bp.tag = 'animals';
   for (const [x, z, r] of L.otters) {
