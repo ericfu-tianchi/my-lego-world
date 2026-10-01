@@ -14,7 +14,7 @@
 //   y 25–28  lower jaw plate to x 7; mouth two plates open from x 5, a two-plate trans-light-blue nozzle at the front; upper jaw to x 7
 //   y 29–32  head with black round-tile eyes at x 5; y 32 brow; forehead curved slopes falling forward to x 7; crest high at the back; ears
 import { Asm, bbox } from './asm-ours.mjs';
-const W = 15, TLB = 43, BLK = 0;
+const W = 15, TLB = 43, EYE = 15;                                            // white eyes: the statue has no painted pupils (Eric, 2026-10-01)
 const a = new Asm('merlion6', [3.5, 0, 2.5]);                                  // box x 0..7, z 0..5: the LDraw origin at its bottom centre
 const X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], neg = (v) => v.map((x) => -x);
 
@@ -70,6 +70,11 @@ for (let c = 0; c < 5; c++) {
   fill(y, minus(rect(1, 6, 1, 4), taken));
   scales(L, X, c); scales(Rr, X, c); scales(F, Z, c);
 }
+// ---- the tail: off the back of the body at the foot, rising and curling up and outward (the real tail fin curls up behind the statue) ----
+a.up('3005', W, 0, 0, 2); a.up('3005', W, 0, 3, 2);                        // tail root against the back, two courses
+a.up('54200', W, 0, 0, 1, 2); a.up('54200', W, 0, 0, 3, 0);                // the tail flaring at the root: cheese slopes falling to the sides…
+a.up('3023', W, -1, 6, 2, 1); a.up('3005', W, -1, 7, 2);                     // …the tail leaves the body on a plate cantilevered one stud out and rises…
+a.up('54200', W, -1, 10, 2, 3);                                              // …and the fin tip curls back toward the body (cheese, high end outward)
 a.up('11212', W, 1, 15, 1); a.up('11212', W, 4, 15, 1);                     // binding plates, chest out to x 7
 // ---- mane hem / chest y 16, neck y 19, y 22 ------------------------------------------------------------------------------------------
 fill(16, rect(1, 7, 1, 4));
@@ -83,7 +88,7 @@ for (const y of [26, 27]) { fill(y, rect(1, 5, 1, 4), PLATES); a.up('3024', W, 5
 for (const z of [1, 2, 3]) a.up('3666', W, 1, 28, z);                        // upper jaw to x 7
 // ---- head course y 29: eyes, upper mane studs; brow ---------------------------------------------------------------------------------
 { const taken = [];
-  for (const s of [...snot(5, 29, 1, [neg(Z)]), ...snot(5, 29, 3, [Z])]) a.onStud('98138', BLK, s, X, 'x'); taken.push([5, 1], [5, 3]);
+  for (const s of [...snot(5, 29, 1, [neg(Z)]), ...snot(5, 29, 3, [Z])]) a.onStud('98138', EYE, s, X, 'x'); taken.push([5, 1], [5, 3]);
   for (const z of [1, 2, 3]) mane.backHi.push(...snot(1, 29, z, [neg(X)])); taken.push([1, 1], [1, 2], [1, 3]);
   fill(29, minus(rect(1, 7, 1, 4), taken)); }
 for (const z of [1, 2, 3]) a.up('3666', W, 1, 32, z);                        // brow

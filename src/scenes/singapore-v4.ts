@@ -7,12 +7,12 @@ import { placer } from './singapore';
  *  4-stud gaps, the cantilever one tower-width past the north tower (−x), the south end a 2-stud rounded lip. Three `mbs10_tower` assemblies
  *  (straight bay leaf + back leaf leaning on hinges, trans tiles on side studs); the SkyPark is a white hull: a brick course whose underside
  *  sweeps up to the cantilever tip on inverted 6×1 curved slopes, a 4-wide binding plate course with round-ended plates fore and aft, and a
- *  tiled deck — grey observation deck at the tip, the infinity pool flush along the bay edge over the middle tower, palms on the pool deck,
- *  trees on the back half, two white lift-core pavilions. The Shoppes podium: the towers' glass over a dark backing under a saw-tooth white roof. Bay side is +z.
+ *  tiled deck — grey observation deck at the tip, the infinity pool in three deep basins along the bay edge with loungers and palms behind,
+ *  two white lift-core pavilions. The Shoppes podium: the towers' glass over a dark backing under a saw-tooth white roof. Bay side is +z.
  *  Local footprint x 0..34, z 0..9 (towers z 0..4, deck z 1..5, walk z 5, podium z 6..9); 45 + 5 plates. */
 export function mbs10(bp: Blueprint, ox: number, y: number, oz: number, rot: number, R?: Reserve) {
   bp.tag = 'mbs'; const { part, vox, cell, asm } = placer(bp, ox, oz, rot);
-  const W = 'White', DECK = 'LightBluishGray', POOL = 'MediumAzure', GLASS = 'TransLightBlue', BACKING = 'DarkBluishGray';
+  const W = 'White', DECK = 'LightBluishGray', POOL = 'TransLightBlue', GLASS = 'TransLightBlue', BACKING = 'DarkBluishGray';
   if (R) { const a = cell(0, 0), b = cell(33, 8); R.add(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]) + 1, Math.abs(b[1] - a[1]) + 1); }
   const TX = [6, 16, 26]; for (const tx of TX) asm('mbs10_tower', tx, y, 0, W);
   const H = y + 45;
@@ -26,19 +26,27 @@ export function mbs10(bp: Blueprint, ox: number, y: number, oz: number, rot: num
   // ---- binding course (H+3): every row of the hull hangs from a 4-wide plate; round ends fore and aft
   part('plate_4x6_round', 0, H + 3, 1, W); part('plate_4x12', 6, H + 3, 1, W, 1); part('plate_4x10', 18, H + 3, 1, W, 1); part('plate_4x6_round', 28, H + 3, 1, W);
   // ---- deck (H+4): what is on the real SkyPark, top to bottom of the plan
-  const D = H + 4; const used = new Set<string>(); const take = (x: number, z: number) => used.add(x + ',' + z);
+  const D = H + 4;
   // round ends: quarter-circle tiles step round the round plate's curve (the corner cells of the plate are not there)
   const Q = (x: number, z: number, r: number, c: string) => part('tile_quarter_1x1', x, D, z, c, r);
   Q(0, 2, 2, DECK); Q(0, 3, 3, DECK); Q(1, 1, 2, DECK); Q(1, 4, 3, DECK); part('tile_1x2', 1, D, 2, DECK); part('tile_2x4', 2, D, 1, DECK, 1); part('tile_2x4', 2, D, 3, DECK, 1);   // observation deck at the tip
   Q(33, 2, 1, W); Q(33, 3, 0, W); Q(32, 1, 1, W); Q(32, 4, 0, W); part('tile_1x2', 32, D, 2, W);                                                                 // south lip                                                                     // south lip
-  for (let x = 0; x < 6; x++) for (let z = 1; z < 5; z++) take(x, z); for (let x = 32; x < 34; x++) for (let z = 1; z < 5; z++) take(x, z);
-  run('tile', 4, D, 12, [8, 6], POOL); for (let x = 12; x < 26; x++) take(x, 4);                                                                       // the infinity pool, flush with the bay edge
-  // trees are 8 m on a 194 m tower: one flower plate (a crown seen from above) on a stud of the deck; palms along the pool, the grove behind
-  for (const x of [13, 16, 19, 22, 25]) { part('plate_1x1', x, D, 3, W); part('flower_1x1', x, D + 1, 3, 'BrightGreen'); take(x, 3); }
-  const TREES: [number, number, string][] = [[11, 1, 'Green'], [12, 2, 'DarkGreen'], [14, 1, 'DarkGreen'], [15, 2, 'Green'], [17, 1, 'Green'], [18, 2, 'DarkGreen'], [20, 1, 'DarkGreen'], [21, 2, 'Green'], [23, 1, 'Green'], [24, 2, 'DarkGreen'], [26, 1, 'DarkGreen']];
-  for (const [x, z, c] of TREES) { part('plate_1x1', x, D, z, W); part('flower_1x1', x, D + 1, z, c); take(x, z); }
-  for (const px of [7, 28]) { part('plate_2x2', px, D, 2, W); part('plate_2x2', px, D + 1, 2, W); part('tile_2x2', px, D + 2, 2, W); take(px, 2); take(px + 1, 2); take(px, 3); take(px + 1, 3); }   // lift-core pavilions
-  for (let z = 1; z < 5; z++) { let x = 6; while (x < 32) { if (used.has(x + ',' + z)) { x++; continue; } let L = 0; while (x + L < 32 && !used.has(x + L + ',' + z) && L < 8) L++; const fit = [8, 6, 4, 3, 2, 1].find((n) => n <= L)!; part(`tile_1x${fit}`, x, D, z, W, 1); x += fit; } }
+  // The SkyPark between the ends (2026-10-01, Eric: the pool should make you want to swim): two plate layers so the pool can be built in depth —
+  // Dark Azure basin under Trans-Light-Blue water, flush with the deck like the real vanishing edge, two studs deep along the bay side in three
+  // basins (one per tower) split by white walkways; behind each basin a row of white sun loungers on raised plates with palms between them;
+  // the lift-core pavilions at either end of the pool deck.
+  const SECT: [number, number][] = [[8, 13], [15, 22], [24, 29]]; const inPool = (x: number) => SECT.some(([a, b]) => x >= a && x <= b);
+  for (let x = 6; x < 32; x++) for (let z = 1; z < 5; z++) {
+    if (inPool(x) && z >= 3) { vox('plate', x, D, z, 'DarkAzure'); vox('tile', x, D + 1, z, POOL); continue; }
+    vox('plate', x, D, z, W);
+    const pav = (x <= 7 || x >= 30) && z <= 2; if (pav || (inPool(x) && z <= 2)) continue;
+    vox('tile', x, D + 1, z, W);
+  }
+  for (const px of [6, 30]) { part('plate_2x2', px, D + 1, 1, W); part('plate_2x2', px, D + 2, 1, W); part('tile_2x2', px, D + 3, 1, W); }   // lift-core pavilions
+  for (const [s0, s1] of SECT) for (let x = s0; x <= s1; x++) {
+    if ((x - s0) % 3 === 0) { part('tile_1x1', x, D + 1, 1, W); part('plate_1x1', x, D + 1, 2, W); part('flower_1x1', x, D + 2, 2, x % 2 ? 'Green' : 'BrightGreen'); }   // a palm crown on the pool edge (three-leaf plates read as lily pads at this scale)
+    else { part('plate_1x2', x, D + 1, 1, W); part('grilletile_1x2', x, D + 2, 1, W, 1); }                                                                     // a sun lounger
+  }
   // ---- walk and the Shoppes podium: smoked glass storey, white roof, saw-tooth of 1×2 cheese slopes
   for (let x = 2; x < 34; x++) vox('tile', x, y, 5, DECK);
   for (let x = 2; x + 4 <= 34; x += 4) part('brick_1x4', x, y, 8, GLASS, 1);

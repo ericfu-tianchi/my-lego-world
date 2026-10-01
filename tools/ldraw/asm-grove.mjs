@@ -8,11 +8,11 @@
 //            turning a quarter round the trunk each course
 //   canopy   2×2 round plate with axle hole → round tile with hole → a 4×4×2 cone upside down on a 3L axle (2 → 4 wide) → an inverted
 //            webbed 6×6 dish upside down, its studs in the cone: 4 → 6, the ribs radiating to the rim
-//   skyway   at the second planter ring both trees carry a 2×3 plate pointing at each other; two rows of Bright Light Orange plates span
-//            between them; 1×2 plates with handles along both edges are the railings
+//   skyway   at the second planter ring both trees carry a 2×3 plate pointing at each other; two rows of white plates span
+//            between them; grey 1×2 plates with handles along both edges are the railings
 // Frame: box x 0..16 × z 0..8 (the tall tree's canopy spans z 0..8); trunks at x 3..5 and 12..14, z 3..5.
 import { Asm, bbox, PLATE } from './asm-ours.mjs';
-const MAG = 26, DP = 85, DG = 288, G = 2, BG = 10, LIME = 27, ORANGE = 191;
+const MAG = 26, DP = 85, DG = 288, G = 2, BG = 10, LIME = 27, DECKC = 15, RAIL = 71;                   // the skyway: white deck, grey rails (orange on magenta read wrong — Eric, 2026-10-01)
 const a = new Asm('grove6', [8, 0, 4]);
 const X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1], neg = (v) => v.map((x) => -x);
 const FLIP = [1, 0, 0, 0, -1, 0, 0, 0, -1];                                 // upside down (π about x)
@@ -59,7 +59,7 @@ const B = tree(12, 3, [3, 3, 1], false, 1, -1);                              // 
 if (A[1] !== B[1]) throw new Error('skyway rings differ');
 // skyway on the two 2×3 ledges (A: x 3..6 → ledge cell x 5; B: x 11..14 → ledge cell x 11)
 const sy = A[1] + 1;
-a.up('3710', ORANGE, 5, sy, 3); a.up('3623', ORANGE, 9, sy, 3); a.up('3623', ORANGE, 5, sy, 4); a.up('3710', ORANGE, 8, sy, 4);
-for (let x = 6; x < 11; x += 2) { a.up('48336', ORANGE, x, sy + 1, 3, 2); a.up('48336', ORANGE, x, sy + 1, 4, 0); }   // railings, handles outward
+a.up('3710', DECKC, 5, sy, 3); a.up('3623', DECKC, 9, sy, 3); a.up('3623', DECKC, 5, sy, 4); a.up('3710', DECKC, 8, sy, 4);
+for (let x = 6; x < 11; x += 2) { a.up('48336', RAIL, x, sy + 1, 3, 2); a.up('48336', RAIL, x, sy + 1, 4, 0); }   // railings, handles outward
 const bare = a.exposed(); if (bare.length) console.warn(`${bare.length} exposed side studs`, JSON.stringify(bare.slice(0, 8)));
 const out = a.write(); console.log('grove:', out.file, a.parts.length, 'parts', JSON.stringify(out.bom), 'rings', A, B);
