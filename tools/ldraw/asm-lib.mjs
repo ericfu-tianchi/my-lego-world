@@ -34,7 +34,7 @@ export function connectors(part) {
 /** heights (LDU, top face to bottom) of parts we attach sideways */
 /** distance (LDU) from a part's origin to the face that goes against the host: bricks/plates/tiles have the origin at the top face (body 0..h),
  *  curved slopes and cheese have it at the bottom face (body -h..0) so their offset is 0 (measured with tools/ldraw/bbox.mjs) */
-export const THICK = { '3024': 8, '3023': 8, '3710': 8, '3623': 8, '24866': 8, '6141': 8, '3070b': 8, '3069b': 8, '98138': 8, '54200': 0, '11477': 0, '15068': 0, '49307': 0, '3005': 24, '3004': 24, '3040b': 24, '3665': 24 };
+export const THICK = { '3024': 8, '3023': 8, '3710': 8, '3623': 8, '24866': 8, '6141': 8, '3070b': 8, '3069b': 8, '2412b': 8, '98138': 8, '54200': 0, '11477': 0, '15068': 0, '49307': 0, '3005': 24, '3004': 24, '3040b': 24, '3665': 24 };
 /** quarter turn about the stud axis that puts a 1×2 curved slope's or cheese's high end UP when hung on a face pointing `dir` */
 export const hangSpin = (dir) => (dir[2] < 0 ? 2 : dir[2] > 0 ? 0 : dir[0] > 0 ? 1 : 3);   // checked in a render 2026-09-19: the first guess hung them thick-end down
 export class Model {
