@@ -18,16 +18,24 @@ type State = 'idle' | 'building' | 'built' | 'dismantling' | 'settled' | 'rebuil
  *  home; 'float' — they hang a little apart in the air, as if just taken apart, and draw together. Both start while the globe is still moving. */
 type Enter = 'floor' | 'float';
 interface Anim { it: Item; fromP: THREE.Vector3; fromQ: THREE.Quaternion; delay: number; dur: number; arc: number }
+/** How the globe is held at home — three candidates for Eric (2026-10-02: the places are all in the north, and the tilted desk globe seen from
+ *  the side squeezes the north into a sliver).
+ *  desk:  the desk globe, but looked at from above (camera ~30° up), so the northern lands face you.
+ *  float: no stand — a planet floating, north up; drag sideways spins it, drag up/down tips it to show more of the north or south.
+ *  free:  no stand — a ball you can roll any way, like a trackball; it opens with 40°N facing you. */
+type GlobeMode = 'desk' | 'float' | 'free';
 type CamPose = { tx: number; ty: number; tz: number; az: number; el: number; dist: number };
 
 const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, viewLat: 38, latVel: 0, freeQ: new THREE.Quaternion(), mode: 'float' as GlobeMode, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
   drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
+try { const g = localStorage.getItem('globeMode') as GlobeMode | null; if (g === 'desk' || g === 'float' || g === 'free') app.mode = g; } catch { /* */ }
+if (qs.get('mode')) app.mode = qs.get('mode') as GlobeMode;
 try { const e = localStorage.getItem('enter') as Enter | null; if (e === 'floor' || e === 'float') app.enter = e; } catch { /* storage blocked */ }
 if (qs.get('enter')) app.enter = qs.get('enter') as Enter;
 app.enter = 'float';   // Eric's pick (B, from the air)
@@ -47,17 +55,27 @@ function init() {
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
   for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.title = P.scene ? '' : 'Coming soon'; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
-  let drag: { x: number; t: number } | null = null, pressAt: [number, number] | null = null;
-  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, t: performance.now() }; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
+  let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
+  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: performance.now() }; app.spinVel = 0; app.latVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
   canvas.addEventListener('pointermove', (e) => {
-    if (drag && app.view === 'globe') { const now = performance.now(); const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = (d / Math.max(1, now - drag.t)) * 1000; drag = { x: e.clientX, t: now }; app.idle = 0; }
+    if (drag && app.view === 'globe') { const now = performance.now(); const d = (e.clientX - drag.x) * 0.006, dv = (e.clientY - drag.y) * 0.006; turnBall(d, dv); app.spinVel = (d / Math.max(1, now - drag.t)) * 1000; app.latVel = (dv / Math.max(1, now - drag.t)) * 1000; drag = { x: e.clientX, y: e.clientY, t: now }; app.idle = 0; }
     const pin = pickPin(e); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
   canvas.addEventListener('pointerup', (e) => { drag = null; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
-  canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += (e.deltaX + e.deltaY) * 0.004; app.idle = 0; }, { capture: true, passive: false });
+  canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004 + (app.mode === 'desk' ? e.deltaY * 0.004 : 0); if (app.mode !== 'desk') app.latVel += e.deltaY * 0.002; app.idle = 0; }, { capture: true, passive: false });
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => { b.onclick = () => setMode(b.dataset.mode as GlobeMode); }); markMode();
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
 }
+/** a hand on the ball: dx turns it about its axis (desk, float) or the screen's vertical (free); dy tips it (float: view latitude; free: about the screen's horizontal) */
+function turnBall(dx: number, dy: number) {
+  if (app.mode === 'free') { const qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx), qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy); app.freeQ.premultiply(qx).premultiply(qy); return; }
+  app.spin += dx; if (app.mode === 'float') app.viewLat = THREE.MathUtils.clamp(app.viewLat + dy * 57.3, -20, 75);
+}
+function setMode(m: GlobeMode) { if (app.view !== 'globe') return; app.mode = m; try { localStorage.setItem('globeMode', m); } catch { /* */ } initFree(); markMode(); showGlobe(); }
+const markMode = () => document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === app.mode));
+/** free mode opens with 40°N facing the camera, north up, Asia–Europe in view */
+function initFree() { app.freeQ.copy(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 40 * Math.PI / 180).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), app.spin))); }
 function replay() { if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.drift = null; app.bricks.resetHome(); prepareEntrance(); startEntrance(); }
 
 function loadScene(id: string) {
@@ -83,7 +101,13 @@ function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'buil
 
 const STAGE_SCALE = 3.2, STAGE_DROP = 30;
 const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;
-const HOME_CAM: CamPose = { tx: 0, ty: -7, tz: 0, az: 0, el: 0.16, dist: 158 };
+const homeCam = (): CamPose => (app.mode === 'desk' ? { tx: 0, ty: -9, tz: 0, az: 0, el: 0.52, dist: 158 } : { tx: 0, ty: 0, tz: 0, az: 0, el: 0, dist: 150 });
+/** the ball's rotation at home, by mode */
+function homeQ(): THREE.Quaternion {
+  if (app.mode === 'desk') return app.globe.homeQuat(app.spin);
+  if (app.mode === 'float') return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), app.viewLat * Math.PI / 180).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), app.spin));
+  return app.freeQ.clone();
+}
 /** the set's opening view (Eric 10-02): close enough that the island fills the width, looking down at about 33° from the side */
 const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 4, tz: app.center.z, az: 0.3, el: 0.36, dist: app.radius * 2.15 });   // Eric's reference view (10-02): ~20° down, three-quarter
 const setCam = (c: CamPose) => { const o = app.orbit; o.target.set(c.tx, c.ty, c.tz); o.az = c.az; o.el = c.el; o.dist = c.dist; };
@@ -94,8 +118,8 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
 function stageQuat(place: Place) { const pin = app.globe.pins.find((p) => p.place === place)!; const q = GlobeView.facing(pin.dir, new THREE.Vector3(0, 1, 0)); const north = new THREE.Vector3(0, 1, 0).applyQuaternion(q); north.y = 0; if (north.lengthSq() > 1e-6) { north.normalize(); const yaw = Math.atan2(north.x, north.z) - Math.PI; q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)); } return q; }
 function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
-  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(app.globe.homeQuat(app.spin)); app.globe.fixtures.visible = true; 
-  const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(HOME_CAM);   // the camera is fixed at home; the hand turns the ball
+  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.globe.fixtures.visible = app.mode === 'desk'; $('mode-pick').hidden = false; 
+  const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
   $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('hint').textContent = 'Drag or scroll to turn the globe · Click a pin to visit';
 }
 /** Labels: every visible pin gets one, in rank order (built → next up → the rest, nearer the viewer first); a label that would overlap one
@@ -129,7 +153,7 @@ async function enterPlace(place: Place) {
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
   loadScene(place.scene!); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
-  $('card-globe').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
+  $('card-globe').hidden = true; $('mode-pick').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   // one motion (Eric 10-02): the globe grows and rolls down while, above it, the set is already gathering itself
   await tween(2.8, (k) => {
@@ -143,14 +167,28 @@ async function enterPlace(place: Place) {
   if (!started) startEntrance(); app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0);
   app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; $('hint').textContent = 'Drag to orbit · Scroll to zoom · Shift-drag to pan'; setState(app.state);
 }
+/** Back to the globe (Eric 10-02: the set should not just vanish): the set rains back up — top pieces first, spiralling the same way, off
+ *  the top of the screen — while the globe rises, shrinks and turns home underneath, the set riding its crown as it shrinks. */
 async function goGlobe() {
   if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return;
-  app.view = 'moving'; app.physics.stop(); app.drift = null; app.anims = []; app.orbit.enabled = false; app.bricks.clear(); app.items = []; setState('idle'); app.table.visible = false;
+  app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.table.visible = false;
   $('card-place').hidden = true; $('actions').hidden = true;
+  const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys);
+  app.drift = null; const exits = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); const h = it.home.p;
+    return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25 }; });
+  setState('idle');
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
-  const toQ = app.globe.homeQuat(app.spin); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
-  await tween(1.8, (k) => { const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); g.scale.setScalar(Math.exp(Math.log(STAGE_SCALE) * (1 - e))); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, HOME_CAM, e)); if (k > 0.85) app.globe.fixtures.visible = true; });
-  showGlobe();
+  const toQ = homeQ(); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12); const finalCrown = stageY() + GLOBE_RADIUS * STAGE_SCALE; let t = 0;
+  await tween(1.9, (k) => {
+    const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); const gs = Math.exp(Math.log(STAGE_SCALE) * (1 - e)); g.scale.setScalar(gs); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, homeCam(), e)); if (k > 0.85) app.globe.fixtures.visible = app.mode === 'desk';
+    const ss = gs / STAGE_SCALE, crown = g.position.y + GLOBE_RADIUS * gs; app.bricks.group.scale.setScalar(ss); app.bricks.group.position.set(0, crown - finalCrown * ss * (1 - e), 0);
+    t = k * 1.9; const _a = new THREE.Vector3(), _b = new THREE.Quaternion();
+    for (const x of exits) { const u = THREE.MathUtils.clamp((t - x.delay) / 0.9, 0, 1), w = u * u * u;   // eases out of its seat, then accelerates up
+      _a.lerpVectors(x.p, x.to, w); const ang = -w * 1.1, c = Math.cos(ang), sn = Math.sin(ang), ax = _a.x, az = _a.z; _a.x = ax * c + az * sn; _a.z = -ax * sn + az * c;   // keeps turning the same way as it rose in
+      _b.copy(x.q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(w * 2, w * 1.5, w))); app.bricks.setPose(x.it, _a, _b); }
+    app.bricks.commit();
+  });
+  app.bricks.clear(); app.items = []; app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0); showGlobe();
 }
 
 // ---- the entrance: Rebuild (Eric's choice, 2026-10-02) ------------------------------------------------------
@@ -254,8 +292,9 @@ function frame() {
   const dt = Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
-    app.idle += dt; app.spin += app.spinVel * dt; app.spinVel *= Math.exp(-dt * 2.2); if (app.idle > 2.5) app.spin += dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2);
-    app.globe.group.quaternion.copy(app.globe.homeQuat(app.spin));
+    app.idle += dt; const idleSpin = app.idle > 2.5 ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0;
+    turnBall(app.spinVel * dt + idleSpin, app.latVel * dt); app.spinVel *= Math.exp(-dt * 2.2); app.latVel *= Math.exp(-dt * 2.2);
+    app.globe.group.quaternion.copy(homeQ());
   }
   app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
 }
@@ -263,9 +302,9 @@ declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
   init(); window.__app = app;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
-  if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
+  if (!direct) { app.spin = app.mode === 'desk' ? 2.45 : 2.1; initFree(); showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
+  app.view = 'scene'; $('card-globe').hidden = true; $('mode-pick').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
