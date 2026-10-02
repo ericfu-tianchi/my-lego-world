@@ -56,7 +56,7 @@ function init() {
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
-  for (const pin of globe.pins) { const l = document.createElement('button'); l.className = 'pin-label'; l.innerHTML = `<b>${pin.place.name}</b><span>${pin.place.city}</span>`; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
+  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.title = P.scene ? '' : 'Coming soon'; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
   // choosers (temporary, until Eric picks): entrance timing replays on the globe; star belt applies to the next Take it apart
   document.querySelectorAll<HTMLButtonElement>('[data-timing]').forEach((b) => { b.onclick = () => { app.timing = b.dataset.timing as Timing; try { localStorage.setItem('timing', app.timing); } catch { /* */ } markPick(); }; });
   document.querySelectorAll<HTMLButtonElement>('[data-belt]').forEach((b) => { b.onclick = () => { app.belt = b.dataset.belt as Belt; try { localStorage.setItem('belt', app.belt); } catch { /* */ } markPick(); if (app.state === 'settled' || app.state === 'dismantling') { rebuild(); } }; });
@@ -114,14 +114,25 @@ function showGlobe() {
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(HOME_CAM);   // the camera is fixed at home; the hand turns the ball
   $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('belt-pick').hidden = true; $('hint').textContent = 'Drag or scroll to turn the globe · Click a pin to visit';
 }
+/** Labels: every visible pin gets one, in rank order (built → next up → the rest, nearer the viewer first); a label that would overlap one
+ *  already placed collapses to a dot and opens on hover. Dense Europe stays readable at any turn of the globe. */
 function updateLabels() {
   const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const p = new THREE.Vector3(), d = new THREE.Vector3();
+  const cand: { i: number; x: number; y: number; rank: number; facing: number }[] = [];
   app.globe.pins.forEach((pin, i) => {
-    const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const visible = app.view === 'globe' && d.dot(camDir) < -0.15;
-    l.style.opacity = visible ? '1' : '0'; l.style.pointerEvents = visible ? 'auto' : 'none'; if (!visible) return;
-    pin.group.getWorldPosition(p); p.addScaledVector(d, 3); p.project(app.camera);
-    l.style.transform = `translate(-50%, -100%) translate(${(p.x * 0.5 + 0.5) * innerWidth}px, ${(-p.y * 0.5 + 0.5) * innerHeight}px)`; l.classList.toggle('hover', app.hover === pin.place);
+    const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const facing = -d.dot(camDir); const visible = app.view === 'globe' && facing > 0.15;
+    if (!visible) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; return; }
+    pin.group.getWorldPosition(p); p.addScaledVector(d, pin.place.scene ? 3 : 2); p.project(app.camera);
+    cand.push({ i, x: (p.x * 0.5 + 0.5) * innerWidth, y: (-p.y * 0.5 + 0.5) * innerHeight, rank: (pin.place.scene ? 0 : pin.place.priority ? 1 : 2) - facing * 0.5, facing });
   });
+  cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = [];
+  for (const c of cand) {
+    const l = app.labels[c.i]; const pin = app.globe.pins[c.i]; const hover = app.hover === pin.place; if (!l.classList.contains('dot') && l.offsetWidth) { l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);   // the full label's size, measured while it is full (a dot would measure 10)
+    const box = [c.x - w / 2 - 3, c.y - h - 3, c.x + w / 2 + 3, c.y + 3]; const clash = boxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
+    const full = hover || !clash; if (full) boxes.push(box);
+    l.classList.toggle('dot', !full); l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
+    l.style.transform = `translate(-50%, -100%) translate(${c.x}px, ${c.y}px)`; l.classList.toggle('hover', hover); l.style.zIndex = hover ? '5' : String(3 - Math.round(c.rank));
+  }
 }
 function pickPin(e: PointerEvent): Place | null {
   if (app.view !== 'globe') return null;
@@ -130,9 +141,10 @@ function pickPin(e: PointerEvent): Place | null {
 }
 const tween = (dur: number, step: (k: number) => void) => new Promise<void>((done) => { app.tween = { t: 0, dur, step, done }; });
 async function enterPlace(place: Place) {
+  if (!place.scene) { const l = app.labels[app.globe.pins.findIndex((p) => p.place === place)]; l.classList.remove('shake'); void l.offsetWidth; l.classList.add('shake'); return; }   // not built yet
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
-  loadScene(place.scene); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
+  loadScene(place.scene!); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
   $('card-globe').hidden = true; $('timing-pick').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   // one motion (Eric 10-02): the globe grows and rolls down while, above it, the set is already gathering itself

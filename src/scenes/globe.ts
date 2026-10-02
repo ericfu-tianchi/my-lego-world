@@ -4,10 +4,30 @@ import { Blueprint } from '../core/builder';
 import { isLand } from './landmask';
 
 export const GLOBE_R = 15;
-export interface Place { id: string; name: string; city: string; lat: number; lon: number; scene: string }
+/** A place Eric has been. `scene` once its set is built; `priority` marks the ones to build next (Eric, 2026-10-02). Where he did not
+ *  remember the city the capital stands in. */
+export interface Place { id: string; name: string; city: string; lat: number; lon: number; scene?: string; priority?: boolean }
 export const PLACES: Place[] = [
   { id: 'japan', name: 'Japan', city: 'Kyoto', lat: 35.0, lon: 135.8, scene: 'kyoto' },
   { id: 'singapore', name: 'Singapore', city: 'Marina Bay', lat: 1.35, lon: 103.8, scene: 'singapore' },
+  { id: 'china', name: 'China', city: 'Shanghai', lat: 31.23, lon: 121.47, priority: true },
+  { id: 'korea', name: 'South Korea', city: 'Seoul', lat: 37.57, lon: 126.98, priority: true },
+  { id: 'thailand', name: 'Thailand', city: 'Bangkok', lat: 13.76, lon: 100.5, priority: true },
+  { id: 'indonesia', name: 'Indonesia', city: 'Jakarta', lat: -6.2, lon: 106.85 },
+  { id: 'malaysia', name: 'Malaysia', city: 'Kuala Lumpur', lat: 3.14, lon: 101.69 },
+  { id: 'usa', name: 'United States', city: 'Los Angeles', lat: 34.05, lon: -118.24, priority: true },
+  { id: 'denmark', name: 'Denmark', city: 'Copenhagen', lat: 55.68, lon: 12.57 },
+  { id: 'sweden', name: 'Sweden', city: 'Stockholm', lat: 59.33, lon: 18.07 },
+  { id: 'norway', name: 'Norway', city: 'Oslo', lat: 59.91, lon: 10.75 },
+  { id: 'iceland', name: 'Iceland', city: 'Reykjavík', lat: 64.15, lon: -21.94 },
+  { id: 'france', name: 'France', city: 'Paris', lat: 48.86, lon: 2.35, priority: true },
+  { id: 'germany', name: 'Germany', city: 'Berlin', lat: 52.52, lon: 13.4, priority: true },
+  { id: 'italy', name: 'Italy', city: 'Rome', lat: 41.9, lon: 12.5, priority: true },
+  { id: 'vatican', name: 'Vatican City', city: 'Vatican City', lat: 41.9, lon: 12.45 },
+  { id: 'switzerland', name: 'Switzerland', city: 'Interlaken', lat: 46.69, lon: 7.86, priority: true },
+  { id: 'belgium', name: 'Belgium', city: 'Brussels', lat: 50.85, lon: 4.35 },
+  { id: 'austria', name: 'Austria', city: 'Vienna', lat: 48.21, lon: 16.37 },
+  { id: 'czechia', name: 'Czechia', city: 'Prague', lat: 50.08, lon: 14.43, priority: true },
 ];
 
 export function buildGlobe(bp: Blueprint, R = GLOBE_R) {

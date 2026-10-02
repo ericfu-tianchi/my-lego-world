@@ -95,10 +95,14 @@ export class GlobeView {
     // ---- pins: a white 2×2 round plate, a red 1×1 round brick post, a red 2×2 round plate head
     const red = new THREE.MeshStandardMaterial({ color: colorHex('BrightRed'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), white = new THREE.MeshStandardMaterial({ color: colorHex('White'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
     const up = new THREE.Vector3(0, 1, 0);
+    // places not built yet: a slimmer pin, a 1×1 round plate on a 1×1 round brick, grey; priority ones yellow
+    const grey = new THREE.MeshStandardMaterial({ color: colorHex('LightBluishGray'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), yellow = new THREE.MeshStandardMaterial({ color: colorHex('BrightLightOrange'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
     for (const place of PLACES) {
       const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + 0.7); g.quaternion.setFromUnitVectors(up, dir);
-      for (const [k, m, y] of [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] as [string, THREE.Material, number][]) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
-      const hit = new THREE.Mesh(new THREE.SphereGeometry(2.6, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); this.group.add(g);
+      const head = place.scene ? red : place.priority ? yellow : grey;
+      const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['round_1x1', white, 0.6], ['roundplate_1x1', head, 1.4]];
+      for (const [k, m, y] of parts) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(place.scene ? 2.6 : 1.4, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); this.group.add(g);
       this.pins.push({ place, group: g, hit, dir });
     }
   }
