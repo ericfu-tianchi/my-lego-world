@@ -6,7 +6,7 @@ import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
 import { SCENES } from '../scenes/index';
 import { type Place } from '../scenes/globe';
-import { GlobeView, GLOBE_RADIUS } from './globe-view';
+import { GlobeView, GLOBE_RADIUS, type GlobeStyle } from './globe-view';
 
 const TABLE_Y = -6;
 const qs = new URLSearchParams(location.search);
@@ -25,10 +25,13 @@ const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, animDone: null as null | (() => void), radius: 30,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
-  tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), apart: 'floor' as Apart,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
+  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), apart: 'floor' as Apart,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
+let globeStyle: GlobeStyle = 'tiles';
+try { const g = localStorage.getItem('globe2') as GlobeStyle | null; if (g === 'dots' || g === 'tiles' || g === 'bands') globeStyle = g; } catch { /* storage blocked */ }
+if (qs.get('globe')) globeStyle = qs.get('globe') as GlobeStyle;
 try { const a = localStorage.getItem('apart') as Apart | null; if (a === 'floor' || a === 'float' || a === 'tray') app.apart = a; } catch { /* storage blocked */ }
 if (qs.get('apart')) app.apart = qs.get('apart') as Apart;
 
@@ -40,9 +43,11 @@ function init() {
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
-  const globe = new GlobeView(env); scene.add(globe.group, globe.fixtures);
+  const globe = new GlobeView(env, globeStyle); scene.add(globe.group, globe.fixtures);
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
-  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe });
+  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
+  // globe surface chooser (temporary, until Eric picks one)
+  document.querySelectorAll<HTMLButtonElement>('[data-globe]').forEach((b) => { b.onclick = () => setGlobe(b.dataset.globe as GlobeStyle); }); markGlobe();
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
   for (const pin of globe.pins) { const l = document.createElement('button'); l.className = 'pin-label'; l.innerHTML = `<b>${pin.place.name}</b><span>${pin.place.city}</span>`; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
@@ -59,7 +64,12 @@ function init() {
   canvas.addEventListener('pointerup', (e) => { drag = null; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
   canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += (e.deltaX + e.deltaY) * 0.004; app.idle = 0; }, { capture: true, passive: false });
   orbit.onInteract = () => { orbit.autoRotate = 0; };
-  app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
+  app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.apart === 'float' && app.state === 'dismantling' && f.simT >= 2.4) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
+}
+const markGlobe = () => document.querySelectorAll<HTMLButtonElement>('[data-globe]').forEach((b) => b.classList.toggle('on', b.dataset.globe === globeStyle));
+function setGlobe(style: GlobeStyle) {
+  if (style === globeStyle || app.view !== 'globe') return; globeStyle = style; try { localStorage.setItem('globe2', style); } catch { /* */ }
+  app.scene.remove(app.globe.group, app.globe.fixtures); app.globe = new GlobeView(app.env, style); app.scene.add(app.globe.group, app.globe.fixtures); markGlobe(); showGlobe();
 }
 const markApart = () => document.querySelectorAll<HTMLButtonElement>('[data-apart]').forEach((b) => b.classList.toggle('on', b.dataset.apart === app.apart));
 
@@ -96,7 +106,7 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
 function stageQuat(place: Place) { const pin = app.globe.pins.find((p) => p.place === place)!; const q = GlobeView.facing(pin.dir, new THREE.Vector3(0, 1, 0)); const north = new THREE.Vector3(0, 1, 0).applyQuaternion(q); north.y = 0; if (north.lengthSq() > 1e-6) { north.normalize(); const yaw = Math.atan2(north.x, north.z) - Math.PI; q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)); } return q; }
 function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
-  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(app.globe.homeQuat(app.spin)); app.globe.fixtures.visible = true;
+  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(app.globe.homeQuat(app.spin)); app.globe.fixtures.visible = true; $('globe-pick').hidden = false;
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(HOME_CAM);   // the camera is fixed at home; the hand turns the ball
   $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('apart-pick').hidden = true; $('hint').textContent = 'Drag or scroll to turn the globe · Click a pin to visit';
 }
@@ -119,7 +129,7 @@ async function enterPlace(place: Place) {
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
   loadScene(place.scene); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.apart !== 'float'; app.globe.pins.forEach((p) => (p.group.visible = false));
-  $('card-globe').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
+  $('card-globe').hidden = true; $('globe-pick').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   await tween(2.4, (k) => {
     const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, to.q, easeInOut(Math.min(1, k * 1.15)));   // the spin lands a beat before the zoom does
@@ -131,7 +141,7 @@ async function enterPlace(place: Place) {
 }
 async function goGlobe() {
   if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return;
-  app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.bricks.clear(); app.items = []; setState('idle'); app.table.visible = false;
+  app.view = 'moving'; app.physics.stop(); app.drift = null; app.anims = []; app.orbit.enabled = false; app.bricks.clear(); app.items = []; setState('idle'); app.table.visible = false;
   $('card-place').hidden = true; $('actions').hidden = true; $('apart-pick').hidden = true;
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
   const toQ = app.globe.homeQuat(app.spin); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
@@ -181,7 +191,7 @@ function drawPhysics() {
   app.bricks.commit();
 }
 function dismantle() {
-  if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0; app.lastPoses = app.prevPoses = null;
+  if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0; app.lastPoses = app.prevPoses = null; app.drift = null;
   const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3), fixed = new Uint8Array(n);
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   const strength = +($('strength') as HTMLInputElement).value;
@@ -190,10 +200,34 @@ function dismantle() {
     float ? { gravity: 0, damping: [1.2, 0.8], burst: 0.6 } : app.apart === 'tray' ? { wallR: app.radius * 1.15 } : {});
 }
 function rebuild() {
-  if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); setState('rebuilding');
+  if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); app.drift = null; setState('rebuilding');
   const maxY = Math.max(...app.items.map((i) => i.home.p.y));
   app.anims = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); return { it, fromP: p, fromQ: q, delay: (it.home.p.y - TABLE_Y) / (maxY - TABLE_Y) * 1.2 + Math.random() * 0.1, dur: 1.6, arc: 4 }; });
   app.animT = 0; app.animDone = () => { setState('built'); app.orbit.autoRotate = app.autoRotate; app.table.visible = app.apart !== 'float'; };
+}
+// ---- zero-g drift (Eric 10-02: in a vacuum the pieces should keep floating round each other, never freeze) -----------------------------
+// Once the burst has spent itself the solver is stopped and each brick drifts procedurally about where it ended up: the whole cloud turns
+// slowly round the island's axis (inner pieces a little faster, like a loose nebula), every brick bobs on its own slow three-axis wave and
+// tumbles slowly about its own random axis. Pure maths per frame — no physics, ~3,400 matrix updates.
+function startDrift(poses: Float32Array) {
+  app.physics.stop(); const n = app.items.length; const w = new Float32Array(n * 8);
+  for (let i = 0; i < n; i++) { const o = i * 8; const ax = new THREE.Vector3(rnd(2), rnd(2), rnd(2)).normalize();
+    w[o] = ax.x; w[o + 1] = ax.y; w[o + 2] = ax.z; w[o + 3] = (0.15 + Math.random() * 0.35) * (Math.random() < 0.5 ? -1 : 1);   // tumble axis, rad/s
+    w[o + 4] = Math.random() * 6.28; w[o + 5] = 0.25 + Math.random() * 0.35; w[o + 6] = 0.3 + Math.random() * 0.6; w[o + 7] = Math.random(); }   // phase, bob freq, bob amplitude, swirl jitter
+  app.drift = { t: 0, base: poses.slice(), w }; setState('settled');
+}
+const _dq = new THREE.Quaternion(), _da = new THREE.Vector3(), _yq = new THREE.Quaternion(), _Y = new THREE.Vector3(0, 1, 0);
+function drawDrift(dt: number) {
+  const d = app.drift!; d.t += dt; const t = d.t, ease = Math.min(1, t / 1.5);   // ease the drift in from the burst's last frame
+  for (let i = 0; i < app.items.length; i++) {
+    const o = i * 7, k = i * 8; const bx = d.base[o], by = d.base[o + 1], bz = d.base[o + 2]; const r = Math.hypot(bx, bz) + 1;
+    const ang = ease * t * (0.05 + 0.6 / r) * (0.8 + d.w[k + 7] * 0.4);   // differential swirl
+    const c = Math.cos(ang), s = Math.sin(ang), ph = d.w[k + 4], f = d.w[k + 5], A = d.w[k + 6] * ease;
+    _pa.set(bx * c - bz * s + Math.sin(t * f + ph) * A * 0.6, by + Math.sin(t * f * 0.8 + ph * 1.7) * A, bx * s + bz * c + Math.cos(t * f * 0.9 + ph) * A * 0.6);
+    _qa.set(d.base[o + 3], d.base[o + 4], d.base[o + 5], d.base[o + 6]); _da.set(d.w[k], d.w[k + 1], d.w[k + 2]); _dq.setFromAxisAngle(_da, d.w[k + 3] * t * ease); _yq.setFromAxisAngle(_Y, ang);
+    _qa.premultiply(_dq).premultiply(_yq); app.bricks.setPose(app.items[i], _pa, _qa);
+  }
+  app.bricks.commit();
 }
 // ---- loop ---------------------------------------------------------------------------------------------
 function frame() {
@@ -203,7 +237,7 @@ function frame() {
     app.idle += dt; app.spin += app.spinVel * dt; app.spinVel *= Math.exp(-dt * 2.2); if (app.idle > 2.5) app.spin += dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2);
     app.globe.group.quaternion.copy(app.globe.homeQuat(app.spin));
   }
-  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
+  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
@@ -211,7 +245,7 @@ async function start() {
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
+  app.view = 'scene'; $('card-globe').hidden = true; $('globe-pick').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = app.apart !== 'float'; setState('built');

@@ -1,8 +1,5 @@
-// The home globe, v3 (2026-10-02): a desk globe after LEGO Ideas 21332, built the way that set is built. Eric chose the desk globe and asked
-// that it be something you could really put together: the surface is not loose bricks on a sphere but flat mosaic panels — a cube projected
-// onto the sphere and cut into 6 × 6 panels per face (216), each panel a square grid of 1×1 tiles and plates lying flat on one plane, the way
-// 21332 clads its frame with flat panels; the facets show, as they do on the real set. Land is 1×1 plates (studs up, the continents stand
-// proud), sea is 1×1 tiles. The ball turns on a 23.4° axis inside a half-meridian of 1×2 plates laid end to end (dark bluish grey, like
+// The home globe, v4 (2026-10-02): a desk globe after LEGO Ideas 21332. The flat-panel cladding of v3 was rejected (ugly facets and seams);
+// the surface now comes in three candidates (see `GlobeStyle`) on latitude rings, one element per stud of surface. The ball turns on a 23.4° axis inside a half-meridian of 1×2 plates laid end to end (dark bluish grey, like
 // pewter), with round 2×2 plates as pole caps, on a turned reddish-brown stand. A home screen, not a set the validator checks.
 import * as THREE from 'three';
 import { geometryFor } from '../core/catalog';
@@ -12,6 +9,7 @@ import { latLonToDir, PLACES, type Place } from '../scenes/globe';
 
 export const GLOBE_RADIUS = 26;   // studs
 export const TILT = 23.4 * Math.PI / 180;
+export type GlobeStyle = 'dots' | 'tiles' | 'bands';
 export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3 }
 
 const hash = (a: number, b: number) => { let h = Math.imul(a, 73856093) ^ Math.imul(b, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
@@ -32,31 +30,39 @@ export class GlobeView {
   group = new THREE.Group();
   /** the stand and meridian: never turn */
   fixtures = new THREE.Group(); pins: Pin[] = [];
-  constructor(env: THREE.Texture) {
+  constructor(env: THREE.Texture, public style: GlobeStyle = 'tiles') {
     const R = GLOBE_RADIUS; const one = new THREE.Vector3(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0, envMap: env, envMapIntensity: 0.9 });
     const inst = (key: string, ms: THREE.Matrix4[], cs: string[], parent: THREE.Object3D, m: THREE.Material = mat) => { const im = new THREE.InstancedMesh(geometryFor(key), m, ms.length); const c = new THREE.Color(); ms.forEach((mm, k) => { im.setMatrixAt(k, mm); im.setColorAt(k, c.setHex(colorHex(cs[k]))); }); im.castShadow = true; im.receiveShadow = true; parent.add(im); return im; };
     const backing = new THREE.Mesh(new THREE.SphereGeometry(R - 0.15, 96, 64), new THREE.MeshStandardMaterial({ color: colorHex('DarkBlue'), roughness: 0.7 })); this.group.add(backing);   // the frame behind the panels: the seams between panels read as sea
-    // ---- the panels
-    const land: THREE.Matrix4[] = [], landC: string[] = [], sea: THREE.Matrix4[] = [], seaC: string[] = [];
-    const FACES: [THREE.Vector3, THREE.Vector3, THREE.Vector3][] = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].map(([x, y, z]) => {
-      const n = new THREE.Vector3(x, y, z); const u = Math.abs(y) > 0.5 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0).cross(n).normalize(); const v = n.clone().cross(u); return [n, u, v];
-    });
-    const P = 6; const onSphere = (n: THREE.Vector3, u: THREE.Vector3, v: THREE.Vector3, a: number, b: number) => n.clone().add(u.clone().multiplyScalar(Math.tan(a * Math.PI / 4))).add(v.clone().multiplyScalar(Math.tan(b * Math.PI / 4))).normalize();   // equal-angle cube map: even panels
-    FACES.forEach(([n, u, v], f) => { for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) {
-      const a0 = -1 + 2 * i / P, a1 = -1 + 2 * (i + 1) / P, b0 = -1 + 2 * j / P, b1 = -1 + 2 * (j + 1) / P, am = (a0 + a1) / 2, bm = (b0 + b1) / 2;
-      const c = onSphere(n, u, v, am, bm); const ea = onSphere(n, u, v, a1, bm).sub(onSphere(n, u, v, a0, bm)), eb = onSphere(n, u, v, am, b1).sub(onSphere(n, u, v, am, b0));
-      const ex = ea.clone().addScaledVector(c, -ea.dot(c)).normalize(), ez = c.clone().cross(ex).normalize();   // the panel plane: x along the panel's a edge, y out
-      const k = Math.max(3, Math.round(ea.length() * R)), kb = Math.max(3, Math.round(eb.length() * R));          // studs across the panel
-      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ex, c, ez.clone().negate()));
-      const centre = c.clone().multiplyScalar(R * Math.cos(Math.atan(Math.hypot(k, kb) / 2 / R)));                 // the plane sits inside the sphere so the panel's corners touch it
-      for (let x = 0; x < k; x++) for (let z = 0; z < kb; z++) {
-        const p = centre.clone().addScaledVector(ex, x - (k - 1) / 2).addScaledVector(ez, z - (kb - 1) / 2); const [lat, lon] = toLatLon(p.clone().normalize()); const h = hash(f * 997 + i * 131 + x * 7, j * 97 + z * 3);
-        const m = new THREE.Matrix4().compose(p.clone().addScaledVector(c, 0.2), q, one);
-        if (isLand(lat, lon)) { land.push(m); landC.push(landColor(lat, lon, h)); } else { sea.push(m); seaC.push(seaColor(lat, lon, h)); }
+    // ---- the surface: three candidates (Eric, 2026-10-02 — the flat-panel cladding was rejected as ugly)
+    //   dots  — round 1×1 elements on latitude rings: land round plates (studs up), sea round tiles (LEGO Art World Map on a ball)
+    //   tiles — square 1×1 tiles and plates on latitude rings, each square aligned east–west (the first desk globe)
+    //   bands — the sea laid in 1×2 tiles running along the latitude rings, the land in 1×1 plates raised a plate above the sea, coasts in
+    //           round 1×1 tiles: long smooth bands of ocean, continents standing up in relief
+    const land: THREE.Matrix4[] = [], landC: string[] = [], sea: THREE.Matrix4[] = [], seaC: string[] = [], sea2: THREE.Matrix4[] = [], sea2C: string[] = [], coast: THREE.Matrix4[] = [], coastC: string[] = [];
+    const up = new THREE.Vector3(0, 1, 0); const rings = Math.round(Math.PI * R);
+    for (let i = 0; i < rings; i++) {
+      const lat = 90 - (i + 0.5) * 180 / rings; const n = Math.max(1, Math.round(2 * Math.PI * R * Math.cos(lat * Math.PI / 180))); const off = style === 'dots' ? hash(i, 7) * 360 : 0;
+      const cell = (j: number) => { const lon = ((off + (j + 0.5) * 360 / n) % 360 + 360) % 360 - 180; return { lon, L: !!isLand(lat, lon) }; };
+      for (let j = 0; j < n; j++) {
+        const { lon, L } = cell(j); const d = new THREE.Vector3(...latLonToDir(lat, lon)); const h = hash(i * 977 + j, 3);
+        const east = new THREE.Vector3(0, 1, 0).cross(d).normalize(); if (east.lengthSq() < 1e-6) east.set(1, 0, 0); const north = d.clone().cross(east);
+        const q = style === 'dots' ? new THREE.Quaternion().setFromUnitVectors(up, d) : new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(north, d, east));   // z along the ring (east)
+        const at = (lift: number, along = 0) => { const lon2 = lon + along * 180 / n; const d2 = new THREE.Vector3(...latLonToDir(lat, lon2)); return new THREE.Matrix4().compose(d2.multiplyScalar(R + lift), q, one); };
+        if (style === 'bands') {
+          if (L) { land.push(at(0.6)); landC.push(landColor(lat, lon, h)); continue; }
+          const nb = cell(j + 1); const nearL = cell(j - 1).L || nb.L;
+          if (nearL) { coast.push(at(0.2)); coastC.push(h < 0.5 ? 'MediumAzure' : 'DarkAzure'); continue; }
+          if (j % 2 === 0 && j + 1 < n && !nb.L && !cell(j + 2).L) { sea2.push(at(0.2, 0.5)); sea2C.push(seaColor(lat, lon, h)); j++; continue; }   // a 1×2 tile spans this cell and the next
+          sea.push(at(0.2)); seaC.push(seaColor(lat, lon, h)); continue;
+        }
+        if (L) { land.push(at(0.2)); landC.push(landColor(lat, lon, h)); } else { sea.push(at(0.2)); seaC.push(seaColor(lat, lon, h)); }
       }
-    } });
-    inst('plate_1x1', land, landC, this.group); inst('tile_1x1', sea, seaC, this.group);
+    }
+    if (style === 'dots') { inst('roundplate_1x1', land, landC, this.group); inst('roundtile_1x1', sea, seaC, this.group); }
+    else if (style === 'tiles') { inst('plate_1x1', land, landC, this.group); inst('tile_1x1', sea, seaC, this.group); }
+    else { inst('plate_1x1', land, landC, this.group); inst('tile_1x1', sea, seaC, this.group); inst('tile_1x2', sea2, sea2C, this.group); inst('roundtile_1x1', coast, coastC, this.group); }
     // ---- the meridian, pole caps and stand (fixed). The arc lies in the axis plane: from the north cap round the west side to the south cap.
     const steel = new THREE.MeshStandardMaterial({ color: colorHex('DarkBluishGray'), roughness: 0.3, metalness: 0.35, envMap: env, envMapIntensity: 1.2 });
     const wood = new THREE.MeshStandardMaterial({ color: colorHex('ReddishBrown'), roughness: 0.45, envMap: env, envMapIntensity: 0.8 });
@@ -84,9 +90,8 @@ export class GlobeView {
     this.fixtures.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     // ---- pins: a white 2×2 round plate, a red 1×1 round brick post, a red 2×2 round plate head
     const red = new THREE.MeshStandardMaterial({ color: colorHex('BrightRed'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), white = new THREE.MeshStandardMaterial({ color: colorHex('White'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
-    const up = new THREE.Vector3(0, 1, 0);
     for (const place of PLACES) {
-      const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + 0.3); g.quaternion.setFromUnitVectors(up, dir);
+      const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + (style === 'bands' ? 0.7 : 0.3)); g.quaternion.setFromUnitVectors(up, dir);
       for (const [k, m, y] of [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] as [string, THREE.Material, number][]) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
       const hit = new THREE.Mesh(new THREE.SphereGeometry(2.6, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); this.group.add(g);
       this.pins.push({ place, group: g, hit, dir });
