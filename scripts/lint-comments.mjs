@@ -5,7 +5,7 @@
 import fs from 'node:fs'; import path from 'node:path';
 const roots = ['src', 'tools/ldraw', 'scripts']; const hits = [];
 const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const st = fs.statSync(p); if (st.isDirectory()) { if (!/parts\/ldraw|node_modules/.test(p)) walk(p); } else if (/\.(ts|mjs)$/.test(f)) check(p); } };
-const CODE = /(^|;\s*|\s)(const|let) \w+ = |\b(if|for) \(.*\)\s*(continue|return|break|\{|[a-z]\w*[.(])|(bp\.\w+|part|a\.up|vox|a\.put)\(.*\);|\)\s*;\s*$/;
+const CODE = /(^|;\s*|\s)(const|let) \w+ = |\b(if|for) \(.*\)\s*(continue|return|break|\{|[a-z]\w*[.(])|(bp\.\w+|part|a\.up|vox|a\.put)\(.*\);|\)\s*;\s*$|;\s*\}\s*$|[)}\]]\s+\/\/|\b(app|_p|_q|const)\.?\w*\s*=\s*[^=]/;
 function check(p) {
   fs.readFileSync(p, 'utf8').split('\n').forEach((line, i) => {
     const m = /^(.*?[;{}),])\s+\/\/\s(.*)$/.exec(line); if (!m || /['"`]/.test(m[2].slice(0, 1))) return;
