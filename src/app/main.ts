@@ -17,11 +17,12 @@ type State = 'idle' | 'building' | 'built' | 'dismantling' | 'settled' | 'rebuil
  *  The entrance has two candidates for Eric to compare: 'floor' — the bricks lie close round the island on an invisible glass floor and leap
  *  home; 'float' — they hang a little apart in the air, as if just taken apart, and draw together. Both start while the globe is still moving. */
 type Enter = 'floor' | 'float';
-/** Entrance timing — three candidates (Eric 10-02: the set should already be assembling as the globe zooms, slow then faster).
- *  ramp: one clock, warped by an ease-in — gathering starts with the click and accelerates to land with the zoom.
- *  wave: a bottom-up wave that starts at the click; each brick's own flight eases in (slow lift-off, quick seat).
- *  swirl: like ramp, and the bricks spiral in round the island's axis as they gather. */
-type Timing = 'ramp' | 'wave' | 'swirl';
+/** Entrance — three candidates, all swirling (Eric 10-02: liked Swirl, but bricks must not pop out of thin air; they should arrive from
+ *  somewhere, naturally, and assemble). All on the same eased clock that starts with the click, ground first.
+ *  rain:   each brick drops from above the top of the screen, spiralling down round the island's axis, and seats.
+ *  rise:   the bricks come up out of the globe — from the map under the place — and spiral up into the set.
+ *  stream: one ribbon of bricks pours in from the sky beyond the island and winds round it in a tightening vortex to its place. */
+type Timing = 'rain' | 'rise' | 'stream';
 /** Take apart — three star-belt candidates. ring: a flat galactic disc in differential rotation; nebula: a soft round cloud that swirls;
  *  arms: the disc wound into two spiral arms. */
 type Belt = 'ring' | 'nebula' | 'arms';
@@ -33,12 +34,12 @@ const app = {
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
   env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
-  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter, timing: 'ramp' as Timing, belt: 'ring' as Belt,
+  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter, timing: 'rain' as Timing, belt: 'ring' as Belt,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
 try { const e = localStorage.getItem('enter') as Enter | null; if (e === 'floor' || e === 'float') app.enter = e; } catch { /* storage blocked */ }
 if (qs.get('enter')) app.enter = qs.get('enter') as Enter;
-try { const t = localStorage.getItem('timing') as Timing | null; if (t === 'ramp' || t === 'wave' || t === 'swirl') app.timing = t; const b = localStorage.getItem('belt') as Belt | null; if (b === 'ring' || b === 'nebula' || b === 'arms') app.belt = b; } catch { /* */ }
+try { const t = localStorage.getItem('timing') as Timing | null; if (t === 'rain' || t === 'rise' || t === 'stream') app.timing = t; const b = localStorage.getItem('belt') as Belt | null; if (b === 'ring' || b === 'nebula' || b === 'arms') app.belt = b; } catch { /* */ }
 if (qs.get('timing')) app.timing = qs.get('timing') as Timing; if (qs.get('belt')) app.belt = qs.get('belt') as Belt;
 app.enter = 'float';   // Eric's pick (B, from the air)
 
@@ -162,6 +163,12 @@ const smooth = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 const rnd = (a: number) => (Math.random() - 0.5) * a;
 function heapPose(it: Item): [THREE.Vector3, THREE.Quaternion] {
   const h = it.home.p;
+  if (app.entering) {   // where each brick comes from on the way in (in the set's frame; the swirl is added along the path)
+    const r = Math.hypot(h.x, h.z) + 1e-3, spinQ = it.home.q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(3), rnd(3), rnd(3))));
+    if (app.timing === 'rain') return [new THREE.Vector3(h.x * 1.25 + rnd(6), h.y + 70 + Math.random() * 25, h.z * 1.25 + rnd(6)), spinQ];
+    if (app.timing === 'rise') { const crown = app.tableY - STAGE_DROP; return [new THREE.Vector3(h.x * 0.25 + rnd(4), crown - 3 - Math.random() * 3, h.z * 0.25 + rnd(4)), spinQ]; }
+    const a0 = -2.2 + rnd(0.5), rr = app.radius * 2.6 + rnd(10); return [new THREE.Vector3(Math.cos(a0) * rr, app.center.y + 46 + rnd(10), Math.sin(a0) * rr), spinQ];
+  }
   if (app.enter === 'float') {   // a little apart, not chaos: each brick pushed out from the island's axis and up a few studs, gently turned
     const r = Math.hypot(h.x, h.z) + 1e-3, out = 3 + Math.random() * 6 + r * 0.12; return [new THREE.Vector3(h.x + (h.x / r) * out + rnd(3), h.y + 2 + Math.random() * 7, h.z + (h.z / r) * out + rnd(3)), it.home.q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(1.6), rnd(1.6), rnd(1.6))))];
   }
@@ -169,6 +176,7 @@ function heapPose(it: Item): [THREE.Vector3, THREE.Quaternion] {
   return [new THREE.Vector3(Math.cos(a) * r, app.tableY + it.half[1] + Math.random() * 0.6, Math.sin(a) * r * 0.85), new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd(0.4), Math.random() * 6.3, rnd(0.4)))];
 }
 function prepareEntrance() {
+  app.entering = true;   // heapPose reads it: arrival points
   const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys); const fl = app.enter === 'float';
   app.anims = app.items.map((it) => { const [p, q] = heapPose(it); return { it, fromP: p, fromQ: q, delay: 0.2 + Math.pow((it.home.p.y - minY) / (maxY - minY + 1e-6), 0.9) * 2.2 + Math.random() * 0.25, dur: fl ? 1.5 : 1.3, arc: fl ? 0.6 : 6 + Math.random() * 4 }; });
   app.entranceEnd = Math.max(...app.anims.map((a) => a.delay + a.dur)); app.entering = true;
@@ -177,15 +185,16 @@ function prepareEntrance() {
 const ENTRANCE_SPAN = 3.4;   // real seconds from the click until the last brick seats (the zoom itself takes 2.8)
 function startEntrance() { app.animT = 0; app.realT = 0; app.animDone = () => setState('built'); }
 /** entrance clock: ramp and swirl warp time with an ease-in, so the gathering starts slow at the click and speeds up as the zoom lands */
-const warp = (t: number) => { const T = app.entranceEnd; if (app.timing === 'wave') return t * T / ENTRANCE_SPAN; const k = Math.min(1, t / ENTRANCE_SPAN); return T * (0.25 * k + 0.75 * k * k) + Math.max(0, t - ENTRANCE_SPAN) * 2; };
+const warp = (t: number) => { const T = app.entranceEnd; const k = Math.min(1, t / ENTRANCE_SPAN); return T * (0.25 * k + 0.75 * k * k) + Math.max(0, t - ENTRANCE_SPAN) * 2; };
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion();
 function drawAnims() {
   let all = true;
   for (const a of app.anims) {
     const t = THREE.MathUtils.clamp((app.animT - a.delay) / a.dur, 0, 1); if (t < 1) all = false;
-    if (app.animT < 0) { _p.set(0, -500, 0); app.bricks.setPose(a.it, _p, a.fromQ); continue; }
-    const e = app.entering && app.timing === 'wave' ? (t < 1 ? Math.pow(t, 2.2) * (3 - 2 * t) / (1 + 0.0) : 1) : smooth(t); _p.lerpVectors(a.fromP, a.it.home.p, Math.min(1, e)); _p.y += Math.sin(t * Math.PI) * a.arc;
-    if (app.entering && app.timing === 'swirl') { const ang = (1 - smooth(t)) * 1.1, c = Math.cos(ang), sn = Math.sin(ang), x = _p.x, z = _p.z; _p.x = x * c - z * sn; _p.z = x * sn + z * c; }   // spiral in round the axis
+    if (app.animT < 0 || (app.entering && app.animT <= a.delay)) { _p.set(0, -500, 0); app.bricks.setPose(a.it, _p, a.fromQ); continue; }   // not yet on its way: nowhere (each arrives from off-screen, the globe or the sky)
+    const e = app.entering && app.timing === 'rain' ? 1 - Math.pow(1 - t, 2.4) : smooth(t);   // rain: falls fast, slows as it seats
+    _p.lerpVectors(a.fromP, a.it.home.p, Math.min(1, e)); if (!app.entering) _p.y += Math.sin(t * Math.PI) * a.arc;
+    if (app.entering) { const ang = (1 - smooth(t)) * (app.timing === 'stream' ? 2.6 : app.timing === 'rise' ? 1.6 : 1.1), c = Math.cos(ang), sn = Math.sin(ang), x = _p.x, z = _p.z; _p.x = x * c - z * sn; _p.z = x * sn + z * c; }   // spiral in round the axis
     _q.slerpQuaternions(a.fromQ, a.it.home.q, smooth(t)); app.bricks.setPose(a.it, _p, _q);
   }
   app.bricks.commit(); return all;
