@@ -5,3 +5,4 @@ HANDOFF.md
 vendor/ldraw/
 vendor/ldraw-lib/
 .snapshots/
+vendor/earth/*.jpg

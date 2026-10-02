@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { geometryFor } from '../core/catalog';
 import { colorHex } from '../core/colors';
 import { isLand } from '../scenes/landmask';
+import { earthColor } from '../scenes/earthmap';
 import { latLonToDir, PLACES, type Place } from '../scenes/globe';
 
 export const GLOBE_RADIUS = 26;   // studs
@@ -12,19 +13,6 @@ export const TILT = 23.4 * Math.PI / 180;
 export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3 }
 
 const hash = (a: number, b: number) => { let h = Math.imul(a, 73856093) ^ Math.imul(b, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-const desert = (lat: number, lon: number) => (lat > 14 && lat < 31 && lon > -16 && lon < 36) || (lat > 15 && lat < 31 && lon > 36 && lon < 60) || (lat > -30 && lat < -19 && lon > 118 && lon < 142) || (lat > 37 && lat < 46 && lon > 75 && lon < 112) || (lat > 23 && lat < 33 && lon > -116 && lon < -104) || (lat > -28 && lat < -18 && lon > 14 && lon < 25);
-/** Land colour from broad regions, shaded with low-frequency noise (patches ~6° across) so it reads as terrain, not as a patchwork of cells:
- *  ice white, desert tan, rainforest and boreal dark green, the rest green. */
-const blob = (lat: number, lon: number) => { const a = hash(Math.floor(lat / 6), Math.floor(lon / 6)), b = hash(Math.floor(lat / 6 + 0.5) + 99, Math.floor(lon / 6 + 0.5) + 99); return (a + b) / 2; };
-function landColor(lat: number, lon: number, _n: number) {
-  if (lat < -60 || (lat > 60 && lon > -75 && lon < -10) || lat > 72) return 'White';                                  // Antarctica, Greenland, the high Arctic
-  const v = blob(lat, lon);
-  if (desert(lat, lon)) return v < 0.3 ? 'DarkTan' : 'Tan';
-  if (Math.abs(lat) < 12 || lat > 52) return v < 0.55 ? 'DarkGreen' : 'Green';                                         // rainforest belt, boreal
-  return v < 0.4 ? 'Green' : 'BrightGreen';
-}
-const nearLand = (lat: number, lon: number) => { for (const [a, b] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) if (isLand(lat + a, lon + b)) return true; return false; };   // shallow water: the coastal shelf only
-const seaColor = (lat: number, lon: number, h: number) => (lat < -66 || lat > 80 ? 'White' : nearLand(lat, lon) ? (h < 0.65 ? 'DarkAzure' : 'MediumAzure') : h < 0.04 ? 'DarkAzure' : 'DarkBlue');   // a calm deep ocean, a rare lighter fleck
 /** the great ranges, coarsely: 2 = high snow (Himalaya–Tibet core, high Andes), 1 = mountains */
 function mountain(lat: number, lon: number): 0 | 1 | 2 {
   if (lat > 27 && lat < 30 && lon > 79 && lon < 93) return 2;                               // the Himalaya's snow line
@@ -57,20 +45,25 @@ export class GlobeView {
       const landAt = (j: number) => { j = ((j % n) + n) % n; const hit = memo.get(j); if (hit !== undefined) return hit; const lon = (j + 0.5) * dLon - 180; let c = 0;
         for (const a of [-0.33, 0, 0.33]) for (const b of [-0.33, 0, 0.33]) c += isLand(lat + a * dLat, lon + b * dLon);
         const L = c >= 4 || (c >= 2 && !!isLand(lat, lon)); memo.set(j, L); return L; };   // 4 of 9, or 2 with the centre: thin islands (Japan, Java) survive, specks of coast do not
+      const SEA = new Set(['DarkBlue', 'DarkAzure', 'MediumAzure']);
+      /** the cell's colour from the satellite map (tools/earth/build-earthmap.py): the most common class over a 5×5 sample, land or sea */
+      const colourAt = (j: number, wantLand: boolean, lat0 = lat) => { const lon0 = (j + 0.5) * dLon - 180; const votes = new Map<string, number>();
+        for (const a of [-0.4, -0.2, 0, 0.2, 0.4]) for (const b of [-0.4, -0.2, 0, 0.2, 0.4]) { const c = earthColor(lat0 + a * dLat, lon0 + b * dLon); if (SEA.has(c) !== wantLand) votes.set(c, (votes.get(c) ?? 0) + 1); }
+        let best = wantLand ? 'Green' : 'DarkBlue', bn = 0; for (const [c, k] of votes) if (k > bn) { best = c; bn = k; } return best; };
       for (let j = 0; j < n; j++) {
-        const lon = (j + 0.5) * dLon - 180; const L = landAt(j); const h = hash(i * 977 + j, 3);
+        const lon = (j + 0.5) * dLon - 180; const L = landAt(j); const h = hash(i * 977 + j, 3); void h;
         const d = new THREE.Vector3(...latLonToDir(lat, lon)); const east = new THREE.Vector3(0, 1, 0).cross(d).normalize(); if (east.lengthSq() < 1e-6) east.set(1, 0, 0); const north = d.clone().cross(east);
         const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(north, d, east));   // z along the ring (east)
         const at = (lift: number, along = 0) => { const d2 = new THREE.Vector3(...latLonToDir(lat, lon + along * dLon)); return new THREE.Matrix4().compose(d2.multiplyScalar(R + lift), q, one); };
         if (L) {
           const m = mountain(lat, lon);
-          land.push(at(0.6)); landC.push(landColor(lat, lon, h));
-          if (m) { land.push(at(1.0)); landC.push(m === 2 ? 'White' : landColor(lat, lon, h)); }   // relief: ranges a plate higher in the land's own colour, only the highest snow-capped
+          const lc = colourAt(j, true); land.push(at(0.6)); landC.push(lc);
+          if (m) { land.push(at(1.0)); landC.push(m === 2 ? 'White' : lc); }   // relief: ranges a plate higher in the land's own colour, only the highest snow-capped
           continue;
         }
-        if (landAt(j - 1) || landAt(j + 1)) { coast.push(at(0.2)); coastC.push(h < 0.5 ? 'MediumAzure' : 'DarkAzure'); continue; }
-        if (j % 2 === 0 && j + 1 < n && !landAt(j + 1) && !landAt(j + 2)) { sea2.push(at(0.2, 0.5)); sea2C.push(seaColor(lat, lon, h)); j++; continue; }   // a 1×2 tile spans this cell and the next
-        sea.push(at(0.2)); seaC.push(seaColor(lat, lon, h));
+        if (landAt(j - 1) || landAt(j + 1)) { coast.push(at(0.2)); coastC.push(colourAt(j, false) === 'MediumAzure' ? 'MediumAzure' : 'DarkAzure'); continue; }   // the coast is always shelf water
+        if (j % 2 === 0 && j + 1 < n && !landAt(j + 1) && !landAt(j + 2)) { sea2.push(at(0.2, 0.5)); sea2C.push(colourAt(j, false)); j++; continue; }   // a 1×2 tile spans this cell and the next
+        sea.push(at(0.2)); seaC.push(colourAt(j, false));
       }
     }
     inst('plate_1x1', land, landC, this.group); inst('tile_1x1', sea, seaC, this.group); inst('tile_1x2', sea2, sea2C, this.group); inst('roundtile_1x1', coast, coastC, this.group);
