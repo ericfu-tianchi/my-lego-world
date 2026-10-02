@@ -2,7 +2,7 @@
 // Rapier (SIMD build: 3× faster than the scalar one on a 3,400-brick island, 2026-10-02) runs here so the render thread never waits on the
 // solver. One rigid body per brick. No CCD: it tripled the step cost and the bricks are never fast or thin enough to tunnel at 60 Hz.
 import RAPIER from '@dimforge/rapier3d-simd-compat';
-type Start = { type: 'start'; poses: Float32Array; halfs: Float32Array; fixed: Uint8Array; strength: number; tableY: number; center: [number, number]; seed: number };
+type Start = { type: 'start'; poses: Float32Array; halfs: Float32Array; fixed: Uint8Array; strength: number; tableY: number; center: [number, number]; seed: number; ball?: [number, number, number, number] };
 type Msg = Start | { type: 'stop' } | { type: 'pause'; value: boolean } | { type: 'poke'; index: number };
 let world: RAPIER.World | null = null, bodies: RAPIER.RigidBody[] = [], timer: ReturnType<typeof setTimeout> | undefined, paused = false, prev = 0, acc = 0, frame = 0, gen = 0, simT = 0;
 const ready = RAPIER.init();
@@ -10,6 +10,7 @@ function rand(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B
 function start(m: Start) {
   world?.free(); world = new RAPIER.World({ x: 0, y: -24, z: 0 }); world.timestep = 1 / 60; world.integrationParameters.numSolverIterations = 5; bodies = [];
   const g = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, m.tableY - 2, 0)); world.createCollider(RAPIER.ColliderDesc.cuboid(120, 2, 120).setFriction(0.7).setRestitution(0.1), g);
+  if (m.ball) { const [bx, by, bz, br] = m.ball; const b = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(bx, by, bz)); world.createCollider(RAPIER.ColliderDesc.ball(br).setFriction(0.8).setRestitution(0.1), b); }   // the globe the set stands on
   for (const [x, z] of [[120, 0], [-120, 0], [0, 120], [0, -120]]) { const w = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, m.tableY + 30, z)); world.createCollider(RAPIER.ColliderDesc.cuboid(x ? 1 : 120, 60, z ? 1 : 120), w); }
   const n = m.poses.length / 7; const rnd = rand(m.seed); const s = m.strength;
   for (let i = 0; i < n; i++) {
