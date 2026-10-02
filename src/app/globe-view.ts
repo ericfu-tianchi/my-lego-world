@@ -13,19 +13,23 @@ export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: T
 
 const hash = (a: number, b: number) => { let h = Math.imul(a, 73856093) ^ Math.imul(b, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const desert = (lat: number, lon: number) => (lat > 14 && lat < 31 && lon > -16 && lon < 36) || (lat > 15 && lat < 31 && lon > 36 && lon < 60) || (lat > -30 && lat < -19 && lon > 118 && lon < 142) || (lat > 37 && lat < 46 && lon > 75 && lon < 112) || (lat > 23 && lat < 33 && lon > -116 && lon < -104) || (lat > -28 && lat < -18 && lon > 14 && lon < 25);
-function landColor(lat: number, lon: number, n: number) {
-  if (lat < -60 || (lat > 60 && lon > -75 && lon < -10) || lat > 72) return n < 0.2 ? 'LightBluishGray' : 'White';   // Antarctica, Greenland, the high Arctic
-  if (desert(lat, lon)) return n < 0.35 ? 'DarkTan' : 'Tan';
-  if (Math.abs(lat) < 12) return n < 0.4 ? 'DarkGreen' : 'Green';                                                    // rainforest belt
-  if (lat > 50) return n < 0.4 ? 'DarkGreen' : 'OliveGreen';                                                           // boreal
-  return n < 0.25 ? 'Green' : 'BrightGreen';
+/** Land colour from broad regions, shaded with low-frequency noise (patches ~6° across) so it reads as terrain, not as a patchwork of cells:
+ *  ice white, desert tan, rainforest and boreal dark green, the rest green. */
+const blob = (lat: number, lon: number) => { const a = hash(Math.floor(lat / 6), Math.floor(lon / 6)), b = hash(Math.floor(lat / 6 + 0.5) + 99, Math.floor(lon / 6 + 0.5) + 99); return (a + b) / 2; };
+function landColor(lat: number, lon: number, _n: number) {
+  if (lat < -60 || (lat > 60 && lon > -75 && lon < -10) || lat > 72) return 'White';                                  // Antarctica, Greenland, the high Arctic
+  const v = blob(lat, lon);
+  if (desert(lat, lon)) return v < 0.3 ? 'DarkTan' : 'Tan';
+  if (Math.abs(lat) < 12 || lat > 52) return v < 0.55 ? 'DarkGreen' : 'Green';                                         // rainforest belt, boreal
+  return v < 0.4 ? 'Green' : 'BrightGreen';
 }
 const nearLand = (lat: number, lon: number) => { for (const [a, b] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) if (isLand(lat + a, lon + b)) return true; return false; };   // shallow water: the coastal shelf only
 const seaColor = (lat: number, lon: number, h: number) => (lat < -66 || lat > 80 ? 'White' : nearLand(lat, lon) ? (h < 0.65 ? 'DarkAzure' : 'MediumAzure') : h < 0.04 ? 'DarkAzure' : 'DarkBlue');   // a calm deep ocean, a rare lighter fleck
 /** the great ranges, coarsely: 2 = high snow (Himalaya–Tibet core, high Andes), 1 = mountains */
 function mountain(lat: number, lon: number): 0 | 1 | 2 {
-  if (lat > 27 && lat < 36 && lon > 76 && lon < 96) return 2;                               // Himalaya, Tibet
-  if (lat > -33 && lat < -14 && lon > -72 && lon < -66) return 2;                            // high Andes
+  if (lat > 27 && lat < 30 && lon > 79 && lon < 93) return 2;                               // the Himalaya's snow line
+  if (lat > 30 && lat < 37 && lon > 76 && lon < 100) return 1;                              // the Tibetan plateau
+  if (lat > -28 && lat < -15 && lon > -70 && lon < -67) return 2;                            // high Andes
   if ((lat > -50 && lat < 8 && lon > -78 && lon < -67) || (lat > 32 && lat < 60 && lon > -122 && lon < -105) || (lat > 44 && lat < 48 && lon > 6 && lon < 15) || (lat > -5 && lat < 14 && lon > 34 && lon < 42) || (lat > 36 && lat < 44 && lon > 68 && lon < 80)) return 1;   // Andes, Rockies, Alps, Ethiopian highlands, Pamir–Tian Shan
   return 0;
 }
@@ -44,7 +48,7 @@ export class GlobeView {
     // ---- the surface (Eric chose "bands", 2026-10-02): the sea in 1×2 tiles running along the latitude rings, coasts in round 1×1 tiles,
     // the land in 1×1 plates raised a plate above the sea — and for accuracy: each cell is land only if most of it is (nine sub-samples of
     // the mask instead of one point, so coastlines follow the real shape and specks vanish), the great ranges (Himalaya–Tibet, Andes,
-    // Rockies, Alps, East Africa) stand a second plate higher in grey and tan, and the ice sheets (Antarctica, Greenland) are white plates.
+    // Rockies, Alps, East Africa) stand a second plate higher in the land's own colour (only the highest white), ice sheets white.
     const land: THREE.Matrix4[] = [], landC: string[] = [], sea: THREE.Matrix4[] = [], seaC: string[] = [], sea2: THREE.Matrix4[] = [], sea2C: string[] = [], coast: THREE.Matrix4[] = [], coastC: string[] = [];
     const rings = Math.round(Math.PI * R);
     for (let i = 0; i < rings; i++) {
@@ -59,9 +63,9 @@ export class GlobeView {
         const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(north, d, east));   // z along the ring (east)
         const at = (lift: number, along = 0) => { const d2 = new THREE.Vector3(...latLonToDir(lat, lon + along * dLon)); return new THREE.Matrix4().compose(d2.multiplyScalar(R + lift), q, one); };
         if (L) {
-          const m = mountain(lat, lon), ice = lat < -62 || (lat > 60 && lon > -73 && lon < -12);
-          land.push(at(0.6)); landC.push(ice ? (h < 0.15 ? 'LightBluishGray' : 'White') : landColor(lat, lon, h));
-          if (m || (ice && h < 0.35)) { land.push(at(1.0)); landC.push(ice ? 'White' : m === 2 ? (h < 0.5 ? 'White' : 'LightBluishGray') : h < 0.5 ? 'DarkTan' : 'LightBluishGray'); }   // a second plate: ranges, snow peaks, ice domes
+          const m = mountain(lat, lon);
+          land.push(at(0.6)); landC.push(landColor(lat, lon, h));
+          if (m) { land.push(at(1.0)); landC.push(m === 2 ? 'White' : landColor(lat, lon, h)); }   // relief: ranges a plate higher in the land's own colour, only the highest snow-capped
           continue;
         }
         if (landAt(j - 1) || landAt(j + 1)) { coast.push(at(0.2)); coastC.push(h < 0.5 ? 'MediumAzure' : 'DarkAzure'); continue; }

@@ -17,19 +17,30 @@ type State = 'idle' | 'building' | 'built' | 'dismantling' | 'settled' | 'rebuil
  *  The entrance has two candidates for Eric to compare: 'floor' — the bricks lie close round the island on an invisible glass floor and leap
  *  home; 'float' — they hang a little apart in the air, as if just taken apart, and draw together. Both start while the globe is still moving. */
 type Enter = 'floor' | 'float';
+/** Entrance timing — three candidates (Eric 10-02: the set should already be assembling as the globe zooms, slow then faster).
+ *  ramp: one clock, warped by an ease-in — gathering starts with the click and accelerates to land with the zoom.
+ *  wave: a bottom-up wave that starts at the click; each brick's own flight eases in (slow lift-off, quick seat).
+ *  swirl: like ramp, and the bricks spiral in round the island's axis as they gather. */
+type Timing = 'ramp' | 'wave' | 'swirl';
+/** Take apart — three star-belt candidates. ring: a flat galactic disc in differential rotation; nebula: a soft round cloud that swirls;
+ *  arms: the disc wound into two spiral arms. */
+type Belt = 'ring' | 'nebula' | 'arms';
 interface Anim { it: Item; fromP: THREE.Vector3; fromQ: THREE.Quaternion; delay: number; dur: number; arc: number }
 type CamPose = { tx: number; ty: number; tz: number; az: number; el: number; dist: number };
 
 const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
-  state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, animDone: null as null | (() => void), radius: 30,
+  state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
   env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
-  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
+  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter, timing: 'ramp' as Timing, belt: 'ring' as Belt,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
 try { const e = localStorage.getItem('enter') as Enter | null; if (e === 'floor' || e === 'float') app.enter = e; } catch { /* storage blocked */ }
 if (qs.get('enter')) app.enter = qs.get('enter') as Enter;
+try { const t = localStorage.getItem('timing') as Timing | null; if (t === 'ramp' || t === 'wave' || t === 'swirl') app.timing = t; const b = localStorage.getItem('belt') as Belt | null; if (b === 'ring' || b === 'nebula' || b === 'arms') app.belt = b; } catch { /* */ }
+if (qs.get('timing')) app.timing = qs.get('timing') as Timing; if (qs.get('belt')) app.belt = qs.get('belt') as Belt;
+app.enter = 'float';   // Eric's pick (B, from the air)
 
 function init() {
   const canvas = $('c') as HTMLCanvasElement;
@@ -45,9 +56,10 @@ function init() {
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
   for (const pin of globe.pins) { const l = document.createElement('button'); l.className = 'pin-label'; l.innerHTML = `<b>${pin.place.name}</b><span>${pin.place.city}</span>`; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
-  // entrance chooser (temporary, until Eric picks one): replays the entrance
-  document.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => { b.onclick = () => { app.enter = b.dataset.enter as Enter; try { localStorage.setItem('enter', app.enter); } catch { /* */ } markEnter(); replay(); }; });
-  markEnter();
+  // choosers (temporary, until Eric picks): entrance timing replays on the globe; star belt applies to the next Take it apart
+  document.querySelectorAll<HTMLButtonElement>('[data-timing]').forEach((b) => { b.onclick = () => { app.timing = b.dataset.timing as Timing; try { localStorage.setItem('timing', app.timing); } catch { /* */ } markPick(); }; });
+  document.querySelectorAll<HTMLButtonElement>('[data-belt]').forEach((b) => { b.onclick = () => { app.belt = b.dataset.belt as Belt; try { localStorage.setItem('belt', app.belt); } catch { /* */ } markPick(); if (app.state === 'settled' || app.state === 'dismantling') { rebuild(); } }; });
+  markPick();
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; t: number } | null = null, pressAt: [number, number] | null = null;
   canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, t: performance.now() }; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
@@ -58,9 +70,9 @@ function init() {
   canvas.addEventListener('pointerup', (e) => { drag = null; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
   canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += (e.deltaX + e.deltaY) * 0.004; app.idle = 0; }, { capture: true, passive: false });
   orbit.onInteract = () => { orbit.autoRotate = 0; };
-  app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.4) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
+  app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
 }
-const markEnter = () => document.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => b.classList.toggle('on', b.dataset.enter === app.enter));
+const markPick = () => { document.querySelectorAll<HTMLButtonElement>('[data-timing]').forEach((b) => b.classList.toggle('on', b.dataset.timing === app.timing)); document.querySelectorAll<HTMLButtonElement>('[data-belt]').forEach((b) => b.classList.toggle('on', b.dataset.belt === app.belt)); };
 function replay() { if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.drift = null; app.bricks.resetHome(); prepareEntrance(); startEntrance(); }
 
 function loadScene(id: string) {
@@ -78,16 +90,17 @@ function loadScene(id: string) {
   $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${rep.ok ? 'connection check passed' : rep.floating + ' floating · ' + rep.overlaps + ' overlaps'}`;
   app.bricks.resetHome(); if (SHOT && qs.has('sil')) app.bricks.silhouette(true); setState('built');
 }
-function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); $('strength-wrap').hidden = s !== 'built'; $('enter-pick').hidden = app.view !== 'scene'; }
+function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); $('belt-pick').hidden = app.view !== 'scene'; $('timing-pick').hidden = app.view !== 'globe'; }
 
 // ---- globe: home, and the stage the set stands on -------------------------------------------------------
 // One globe in one world. At home it turns on its stand; on a click it turns until the place faces up, grows and sinks until only a sliver of
 // its crown shows at the bottom of the screen with the place on top — and the set builds there. Back reverses the same motion.
+
 const STAGE_SCALE = 3.2, STAGE_DROP = 30;
 const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;
 const HOME_CAM: CamPose = { tx: 0, ty: -7, tz: 0, az: 0, el: 0.16, dist: 158 };
 /** the set's opening view (Eric 10-02): close enough that the island fills the width, looking down at about 33° from the side */
-const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 3, tz: app.center.z, az: app.orbit.az, el: 0.58, dist: app.radius * 2.15 });
+const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 4, tz: app.center.z, az: app.orbit.az, el: 0.36, dist: app.radius * 2.15 });   // Eric's reference view (10-02): ~20° down, three-quarter
 const setCam = (c: CamPose) => { const o = app.orbit; o.target.set(c.tx, c.ty, c.tz); o.az = c.az; o.el = c.el; o.dist = c.dist; };
 const lerpCam = (a: CamPose, b: CamPose, e: number): CamPose => { let dAz = b.az - a.az; dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz)); return { tx: a.tx + (b.tx - a.tx) * e, ty: a.ty + (b.ty - a.ty) * e, tz: a.tz + (b.tz - a.tz) * e, az: a.az + dAz * e, el: a.el + (b.el - a.el) * e, dist: a.dist + (b.dist - a.dist) * e }; };
 const camNow = (): CamPose => ({ tx: app.orbit.target.x, ty: app.orbit.target.y, tz: app.orbit.target.z, az: app.orbit.az, el: app.orbit.el, dist: app.orbit.dist });
@@ -98,7 +111,7 @@ function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
   const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(app.globe.homeQuat(app.spin)); app.globe.fixtures.visible = true; 
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(HOME_CAM);   // the camera is fixed at home; the hand turns the ball
-  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('enter-pick').hidden = true; $('hint').textContent = 'Drag or scroll to turn the globe · Click a pin to visit';
+  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('belt-pick').hidden = true; $('hint').textContent = 'Drag or scroll to turn the globe · Click a pin to visit';
 }
 function updateLabels() {
   const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const p = new THREE.Vector3(), d = new THREE.Vector3();
@@ -128,7 +141,7 @@ async function enterPlace(place: Place) {
     // the set rides the globe: it grows with it and stays seated on the crown, so it gathers on the place the pin marked
     const ss = gs / STAGE_SCALE, crown = g.position.y + GLOBE_RADIUS * gs, finalCrown = stageY() + GLOBE_RADIUS * STAGE_SCALE;
     app.bricks.group.scale.setScalar(ss); app.bricks.group.position.set(0, crown - finalCrown * ss * e, 0);   // seated on the crown early, lifting to its final height as the zoom lands
-    if (!started && k > 0.18) { started = true; startEntrance(); }
+    if (!started) { started = true; startEntrance(); }   // the gathering begins with the click; its clock eases in
   });
   if (!started) startEntrance(); app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0);
   app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; $('hint').textContent = 'Drag to orbit · Scroll to zoom · Shift-drag to pan'; setState(app.state);
@@ -136,7 +149,7 @@ async function enterPlace(place: Place) {
 async function goGlobe() {
   if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return;
   app.view = 'moving'; app.physics.stop(); app.drift = null; app.anims = []; app.orbit.enabled = false; app.bricks.clear(); app.items = []; setState('idle'); app.table.visible = false;
-  $('card-place').hidden = true; $('actions').hidden = true; $('enter-pick').hidden = true;
+  $('card-place').hidden = true; $('actions').hidden = true; $('belt-pick').hidden = true;
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
   const toQ = app.globe.homeQuat(app.spin); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
   await tween(1.8, (k) => { const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); g.scale.setScalar(Math.exp(Math.log(STAGE_SCALE) * (1 - e))); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, HOME_CAM, e)); if (k > 0.85) app.globe.fixtures.visible = true; });
@@ -158,20 +171,26 @@ function heapPose(it: Item): [THREE.Vector3, THREE.Quaternion] {
 function prepareEntrance() {
   const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys); const fl = app.enter === 'float';
   app.anims = app.items.map((it) => { const [p, q] = heapPose(it); return { it, fromP: p, fromQ: q, delay: 0.2 + Math.pow((it.home.p.y - minY) / (maxY - minY + 1e-6), 0.9) * 2.2 + Math.random() * 0.25, dur: fl ? 1.5 : 1.3, arc: fl ? 0.6 : 6 + Math.random() * 4 }; });
+  app.entranceEnd = Math.max(...app.anims.map((a) => a.delay + a.dur)); app.entering = true;
   app.animT = -1e9; setState('building'); drawAnims();   // held before t = 0: hidden until the entrance starts
 }
-function startEntrance() { app.animT = 0; app.animDone = () => setState('built'); }
+const ENTRANCE_SPAN = 3.4;   // real seconds from the click until the last brick seats (the zoom itself takes 2.8)
+function startEntrance() { app.animT = 0; app.realT = 0; app.animDone = () => setState('built'); }
+/** entrance clock: ramp and swirl warp time with an ease-in, so the gathering starts slow at the click and speeds up as the zoom lands */
+const warp = (t: number) => { const T = app.entranceEnd; if (app.timing === 'wave') return t * T / ENTRANCE_SPAN; const k = Math.min(1, t / ENTRANCE_SPAN); return T * (0.25 * k + 0.75 * k * k) + Math.max(0, t - ENTRANCE_SPAN) * 2; };
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion();
 function drawAnims() {
   let all = true;
   for (const a of app.anims) {
     const t = THREE.MathUtils.clamp((app.animT - a.delay) / a.dur, 0, 1); if (t < 1) all = false;
     if (app.animT < 0) { _p.set(0, -500, 0); app.bricks.setPose(a.it, _p, a.fromQ); continue; }
-    const e = smooth(t); _p.lerpVectors(a.fromP, a.it.home.p, e); _p.y += Math.sin(t * Math.PI) * a.arc; _q.slerpQuaternions(a.fromQ, a.it.home.q, e); app.bricks.setPose(a.it, _p, _q);
+    const e = app.entering && app.timing === 'wave' ? (t < 1 ? Math.pow(t, 2.2) * (3 - 2 * t) / (1 + 0.0) : 1) : smooth(t); _p.lerpVectors(a.fromP, a.it.home.p, Math.min(1, e)); _p.y += Math.sin(t * Math.PI) * a.arc;
+    if (app.entering && app.timing === 'swirl') { const ang = (1 - smooth(t)) * 1.1, c = Math.cos(ang), sn = Math.sin(ang), x = _p.x, z = _p.z; _p.x = x * c - z * sn; _p.z = x * sn + z * c; }   // spiral in round the axis
+    _q.slerpQuaternions(a.fromQ, a.it.home.q, smooth(t)); app.bricks.setPose(a.it, _p, _q);
   }
   app.bricks.commit(); return all;
 }
-function stepAnims(dt: number) { if (!app.anims.length || app.animT < -1) return; app.animT += dt; if (drawAnims()) { app.anims = []; app.animDone?.(); } }
+function stepAnims(dt: number) { if (!app.anims.length || app.animT < -1) return; if (app.entering) { app.realT += dt; app.animT = warp(app.realT); } else app.animT += dt; if (drawAnims()) { app.anims = []; app.entering = false; app.animDone?.(); } }
 
 // ---- physics -----------------------------------------------------------------------------------------
 // Physics frames arrive at whatever rate the solver manages; the screen draws at 60+. Each drawn frame shows the bodies interpolated between the
@@ -189,15 +208,15 @@ function dismantle() {
   if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0; app.lastPoses = app.prevPoses = null; app.drift = null;
   const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3), fixed = new Uint8Array(n);
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
-  const strength = +($('strength') as HTMLInputElement).value;
-  app.table.visible = false;   // zero-g: a stronger burst than v1 (Eric 10-02: a touch more punch, a touch wider — not more)
-  app.physics.start(poses, halfs, fixed, strength, app.tableY - 400, [0, 0], 7, undefined, { gravity: 0, damping: [1.0, 0.7], burst: 0.75 });
+  app.table.visible = false;   // zero-g, a fixed force (Eric 10-02: no slider; some punch, not much). The belt decides the burst's shape.
+  const B = { ring: { vy: 0.18, spin: 0.7, burst: 0.7 }, nebula: { vy: 0.85, spin: 0.35, burst: 0.72 }, arms: { vy: 0.22, spin: 1.0, burst: 0.68 } }[app.belt];
+  app.physics.start(poses, halfs, fixed, 2.2, app.tableY - 400, [0, 0], 7, undefined, { gravity: 0, damping: [1.0, 0.7], ...B });
 }
 function rebuild() {
   if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); app.drift = null; setState('rebuilding');
   const maxY = Math.max(...app.items.map((i) => i.home.p.y));
   app.anims = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); return { it, fromP: p, fromQ: q, delay: (it.home.p.y - TABLE_Y) / (maxY - TABLE_Y) * 1.2 + Math.random() * 0.1, dur: 1.6, arc: 4 }; });
-  app.animT = 0; app.animDone = () => { setState('built'); app.orbit.autoRotate = app.autoRotate; app.table.visible = false; };
+  app.entering = false; app.animT = 0; app.animDone = () => { setState('built'); app.orbit.autoRotate = app.autoRotate; app.table.visible = false; };
 }
 // ---- zero-g drift (Eric 10-02: in a vacuum the pieces should keep floating round each other, never freeze) -----------------------------
 // Once the burst has spent itself the solver is stopped and each brick drifts procedurally about where it ended up: the whole cloud turns
@@ -211,14 +230,19 @@ function startDrift(poses: Float32Array) {
   app.drift = { t: 0, base: poses.slice(), w }; setState('settled');
 }
 const _dq = new THREE.Quaternion(), _da = new THREE.Vector3(), _yq = new THREE.Quaternion(), _Y = new THREE.Vector3(0, 1, 0);
+/** Star belts: the pieces orbit the island's axis faster near the centre (ω ∝ r^-1.5, a planetary disc), tumble slowly, and settle over a few
+ *  seconds into the belt's shape — ring flattens into a thin disc; nebula stays a soft round cloud; arms flattens and winds into two arms. */
 function drawDrift(dt: number) {
-  const d = app.drift!; d.t += dt; const t = d.t, ease = Math.min(1, t / 1.5);   // ease the drift in from the burst's last frame
+  const d = app.drift!; d.t += dt; const t = d.t, ease = Math.min(1, t / 1.5), form = smooth(Math.min(1, t / 6)); const belt = app.belt; const y0 = app.center.y;
   for (let i = 0; i < app.items.length; i++) {
-    const o = i * 7, k = i * 8; const bx = d.base[o], by = d.base[o + 1], bz = d.base[o + 2]; const r = Math.hypot(bx, bz) + 1;
-    const ang = ease * t * (0.05 + 0.6 / r) * (0.8 + d.w[k + 7] * 0.4);   // differential swirl
-    const c = Math.cos(ang), s = Math.sin(ang), ph = d.w[k + 4], f = d.w[k + 5], A = d.w[k + 6] * ease;
-    _pa.set(bx * c - bz * s + Math.sin(t * f + ph) * A * 0.6, by + Math.sin(t * f * 0.8 + ph * 1.7) * A, bx * s + bz * c + Math.cos(t * f * 0.9 + ph) * A * 0.6);
-    _qa.set(d.base[o + 3], d.base[o + 4], d.base[o + 5], d.base[o + 6]); _da.set(d.w[k], d.w[k + 1], d.w[k + 2]); _dq.setFromAxisAngle(_da, d.w[k + 3] * t * ease); _yq.setFromAxisAngle(_Y, ang);
+    const o = i * 7, k = i * 8; const bx = d.base[o], by = d.base[o + 1], bz = d.base[o + 2]; const r = Math.hypot(bx, bz) + 2;
+    const omega = (belt === 'nebula' ? 0.04 + 0.5 / r : 2.6 * Math.pow(r, -1.5)) * (0.85 + d.w[k + 7] * 0.3);
+    let ang = ease * t * omega; const rr = 1;
+    if (belt === 'arms') { const a0 = Math.atan2(bz, bx); const arm = Math.round((a0 - 2.4 * Math.log(r)) / Math.PI); ang += form * (arm * Math.PI + 2.4 * Math.log(r) - a0) * 0.32; }   // drawn toward the nearer of two log-spiral arms
+    const c = Math.cos(ang), s = Math.sin(ang), ph = d.w[k + 4], f = d.w[k + 5], A = d.w[k + 6] * ease * (belt === 'nebula' ? 1 : 0.5);
+    const flat = belt === 'nebula' ? 0 : form * 0.78; const yy = by + (y0 - by) * flat;   // ring and arms settle toward the island's mid-plane
+    _pa.set((bx * c - bz * s) * rr + Math.sin(t * f + ph) * A * 0.6, yy + Math.sin(t * f * 0.8 + ph * 1.7) * A, (bx * s + bz * c) * rr + Math.cos(t * f * 0.9 + ph) * A * 0.6);
+    _qa.set(d.base[o + 3], d.base[o + 4], d.base[o + 5], d.base[o + 6]); _da.set(d.w[k], d.w[k + 1], d.w[k + 2]); _dq.setFromAxisAngle(_da, d.w[k + 3] * t * ease * 0.6); _yq.setFromAxisAngle(_Y, ang);
     _qa.premultiply(_dq).premultiply(_yq); app.bricks.setPose(app.items[i], _pa, _qa);
   }
   app.bricks.commit();
@@ -244,7 +268,6 @@ async function start() {
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
   if (SHOT) {
-    if (qs.has('strength')) ($('strength') as HTMLInputElement).value = qs.get('strength')!;
     if (qs.has('dismantle')) { // run the sim for T seconds, then hold the frame
       const T = +qs.get('dismantle')!; dismantle();
       await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
