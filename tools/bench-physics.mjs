@@ -4,7 +4,7 @@ import { chromium } from '../tools/node_modules/playwright/index.mjs';
 const [,, scene = 'singapore', secs = '4'] = process.argv;
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-await page.goto(`http://127.0.0.1:8125/index.html?shot=1&scene=${scene}`, { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:${process.env.PORT ?? 8125}/index.html?shot=1&scene=${scene}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 const r = await page.evaluate(async (S) => {
   const app = window.__app; const steps = []; let frames = 0, sim = 0; const orig = app.physics.onFrame;
