@@ -6,7 +6,7 @@ import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
 import { SCENES } from '../scenes/index';
 import { type Place } from '../scenes/globe';
-import { GlobeView, GLOBE_RADIUS } from './globe-view';
+import { GlobeView, GLOBE_RADIUS, type GlobeStyle } from './globe-view';
 
 const TABLE_Y = -6;
 const qs = new URLSearchParams(location.search);
@@ -19,11 +19,14 @@ const ENTRANCES: Entrance[] = ['steps', 'vortex', 'rubble'];
 interface Anim { it: Item; fromP: THREE.Vector3; fromQ: THREE.Quaternion; delay: number; dur: number; arc: number; spin?: number; r0?: number; step?: number }
 type CamPose = { tx: number; ty: number; tz: number; az: number; el: number; dist: number };
 
+let globeStyle: GlobeStyle = 'mosaic';
+try { const g = localStorage.getItem('globe') as GlobeStyle | null; if (g === 'mosaic' || g === 'brick' || g === 'desk') globeStyle = g; } catch { /* storage blocked */ }
+if (qs.get('globe')) globeStyle = qs.get('globe') as GlobeStyle;
 const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, animDone: null as null | (() => void), kind: 'rebuild' as Entrance | 'rebuild', steps: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, labels: [] as HTMLElement[], hover: null as null | Place,
   tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), entrance: 'steps' as Entrance,
   renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
@@ -38,9 +41,11 @@ function init() {
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
-  const globe = new GlobeView(env); scene.add(globe.group);
+  const globe = new GlobeView(env, globeStyle); scene.add(globe.group, globe.fixtures);
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
-  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe });
+  Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
+  // globe chooser (temporary, until Eric picks one)
+  document.querySelectorAll<HTMLButtonElement>('[data-globe]').forEach((b) => { b.onclick = () => setGlobe(b.dataset.globe as GlobeStyle); }); markGlobe();
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
   for (const pin of globe.pins) { const l = document.createElement('button'); l.className = 'pin-label'; l.innerHTML = `<b>${pin.place.name}</b><span>${pin.place.city}</span>`; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
@@ -53,6 +58,11 @@ function init() {
   canvas.addEventListener('pointerup', (e) => { if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
+}
+const markGlobe = () => document.querySelectorAll<HTMLButtonElement>('[data-globe]').forEach((b) => b.classList.toggle('on', b.dataset.globe === globeStyle));
+function setGlobe(style: GlobeStyle) {
+  if (style === globeStyle || app.view !== 'globe') return; globeStyle = style; try { localStorage.setItem('globe', style); } catch { /* */ }
+  app.scene.remove(app.globe.group, app.globe.fixtures); app.globe = new GlobeView(app.env, style); app.scene.add(app.globe.group, app.globe.fixtures); markGlobe(); showGlobe();
 }
 const markEntrance = () => document.querySelectorAll<HTMLButtonElement>('[data-entrance]').forEach((b) => b.classList.toggle('on', b.dataset.entrance === app.entrance));
 
@@ -79,7 +89,7 @@ function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'buil
 const STAGE_SCALE = 3.2, STAGE_DROP = 20;
 const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;                 // the crown sits well below the set: on screen it peeks in at the bottom
 const stageBall = (): [number, number, number, number] | undefined => (app.globe.group.visible ? [0, stageY(), 0, GLOBE_RADIUS * STAGE_SCALE] : undefined);
-const HOME_CAM: CamPose = { tx: 0, ty: 0, tz: 0, az: 0, el: 0.18, dist: 128 };
+const homeCam = (): CamPose => (globeStyle === 'desk' ? { tx: 0, ty: -7, tz: 0, az: 0, el: 0.16, dist: 158 } : { tx: 0, ty: 0, tz: 0, az: 0, el: 0.18, dist: 128 });
 const sceneCam = (): CamPose => { const o = app.orbit; return { tx: app.center.x, ty: app.center.y - 9, tz: app.center.z, az: o.az, el: o.el, dist: o.dist * 1.3 }; };   // target a little low: the set sits in the upper middle, the crown below
 const setCam = (c: CamPose) => { const o = app.orbit; o.target.set(c.tx, c.ty, c.tz); o.az = c.az; o.el = c.el; o.dist = c.dist; };
 const lerpCam = (a: CamPose, b: CamPose, e: number): CamPose => { let dAz = b.az - a.az; dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz)); return { tx: a.tx + (b.tx - a.tx) * e, ty: a.ty + (b.ty - a.ty) * e, tz: a.tz + (b.tz - a.tz) * e, az: a.az + dAz * e, el: a.el + (b.el - a.el) * e, dist: a.dist + (b.dist - a.dist) * e }; };
@@ -88,8 +98,8 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
 function stageQuat(place: Place) { const pin = app.globe.pins.find((p) => p.place === place)!; const q = GlobeView.facing(pin.dir, new THREE.Vector3(0, 1, 0)); const north = new THREE.Vector3(0, 1, 0).applyQuaternion(q); north.y = 0; if (north.lengthSq() > 1e-6) { north.normalize(); const yaw = Math.atan2(north.x, north.z) - Math.PI; q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)); } return q; }
 function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(), GLOBE_RADIUS + 8);
-  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), app.spin);
-  const o = app.orbit; o.minDist = 70; o.maxDist = 240; o.minEl = -1.2; o.autoRotate = 0; setCam(HOME_CAM);
+  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(app.globe.homeQuat(app.spin)); app.globe.fixtures.visible = true; $('globe-pick').hidden = false;
+  const o = app.orbit; o.minDist = 70; o.maxDist = 240; o.minEl = -1.2; o.autoRotate = 0; setCam(homeCam());
   $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('entrance').hidden = true; $('hint').textContent = 'Drag to spin · Click a pin to visit';
 }
 function updateLabels() {
@@ -111,7 +121,7 @@ async function enterPlace(place: Place) {
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.orbit.enabled = false; app.hover = null;
   const from = { cam: { tx: app.orbit.target.x, ty: app.orbit.target.y, tz: app.orbit.target.z, az: app.orbit.az, el: app.orbit.el, dist: app.orbit.dist }, q: app.globe.group.quaternion.clone() };
   loadScene(place.scene); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = false));
-  $('card-globe').hidden = true;
+  $('card-globe').hidden = true; $('globe-pick').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   await tween(2.4, (k) => {
     const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, to.q, easeInOut(Math.min(1, k * 1.15)));   // the spin lands a beat before the zoom does
@@ -126,8 +136,8 @@ async function goGlobe() {
   app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.bricks.clear(); app.items = []; setState('idle');
   $('card-place').hidden = true; $('actions').hidden = true; $('entrance').hidden = true;
   const g = app.globe.group; const from = { cam: { tx: app.orbit.target.x, ty: app.orbit.target.y, tz: app.orbit.target.z, az: app.orbit.az, el: app.orbit.el, dist: app.orbit.dist }, q: g.quaternion.clone(), p: g.position.clone() };
-  const toQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), app.spin); app.lights.frame(new THREE.Vector3(), GLOBE_RADIUS + 8);
-  await tween(1.8, (k) => { const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); g.scale.setScalar(Math.exp(Math.log(STAGE_SCALE) * (1 - e))); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, HOME_CAM, e)); });
+  const toQ = app.globe.homeQuat(app.spin); app.lights.frame(new THREE.Vector3(), GLOBE_RADIUS + 8);
+  await tween(1.8, (k) => { const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); g.scale.setScalar(Math.exp(Math.log(STAGE_SCALE) * (1 - e))); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, homeCam(), e)); });
   showGlobe(); app.orbit.enabled = true;
 }
 
@@ -210,7 +220,7 @@ function rebuild() {
 function frame() {
   const dt = Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
-  if (app.view === 'globe') { app.spin += dt * 0.12; app.globe.group.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), app.spin); }
+  if (app.view === 'globe') { app.spin += dt * 0.12; app.globe.group.quaternion.copy(app.globe.homeQuat(app.spin)); }
   app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
@@ -220,7 +230,7 @@ async function start() {
   if (!direct) { app.spin = 2.45; showGlobe();   // Asia, where the built places are, turning into view
     app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands on its globe, as after a click
-  app.view = 'scene'; $('card-globe').hidden = true; loadScene(direct);
+  app.view = 'scene'; $('card-globe').hidden = true; $('globe-pick').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = false)); setCam(sceneCam()); } else app.globe.group.visible = false;
   setState('built');
