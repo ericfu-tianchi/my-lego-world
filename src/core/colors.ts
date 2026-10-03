@@ -1,5 +1,5 @@
 /** Official LEGO colours: LEGO name + id, BrickLink name, approximate sRGB. `Trans*` render translucent. */
-export interface LegoColor { key: string; lego: string; id: number; bl: string; hex: number; trans?: boolean; use: string }
+export interface LegoColor { key: string; lego: string; id: number; bl: string; hex: number; trans?: boolean; glass?: boolean; use: string }
 export const COLORS: LegoColor[] = [
   { key: 'White', lego: 'White', id: 1, bl: 'White', hex: 0xF4F4F4, use: '墙面、现代建筑、雪顶' },
   { key: 'Black', lego: 'Black', id: 26, bl: 'Black', hex: 0x1B2A34, use: '底板边框、鸟居顶、轮胎' },
@@ -44,15 +44,22 @@ export const COLORS: LegoColor[] = [
   { key: 'MediumLavender', lego: 'Medium Lavender', id: 324, bl: 'Medium Lavender', hex: 0xAC78BA, use: '花、点缀' },
   { key: 'DarkPurple', lego: 'Medium Lilac', id: 268, bl: 'Dark Purple', hex: 0x3F3691, use: '夜色点缀' },
   { key: 'PearlGold', lego: 'Warm Gold', id: 297, bl: 'Pearl Gold', hex: 0xAA7F2E, use: '塔顶相轮、钟面' },
+  { key: 'SandBlue', lego: 'Sand Blue', id: 135, bl: 'Sand Blue', hex: 0x6074A1, use: '浦东玻璃幕墙（上海中心、环球）' },
   { key: 'FlatSilver', lego: 'Silver Metallic', id: 315, bl: 'Flat Silver', hex: 0x898788, use: '天线、金属' },
   { key: 'TransClear', lego: 'Transparent', id: 40, bl: 'Trans-Clear', hex: 0xFCFCFC, trans: true, use: '玻璃、水花' },
   { key: 'TransLightBlue', lego: 'Transparent Light Blue', id: 42, bl: 'Trans-Light Blue', hex: 0xAEEFEC, trans: true, use: '水面、玻璃幕墙' },
   { key: 'TransDarkBlue', lego: 'Transparent Blue', id: 43, bl: 'Trans-Dark Blue', hex: 0x0C2F92, trans: true, use: '深水、玻璃（金沙幕墙：压暗到海军蓝，0x0020A0 在白底上过亮）' },
   { key: 'TransOrange', lego: 'Transparent Bright Orange', id: 182, bl: 'Trans-Orange', hex: 0xF08F1C, trans: true, use: '纸灯笼、灯光' },
   { key: 'TransGreen', lego: 'Transparent Green', id: 48, bl: 'Trans-Green', hex: 0x84B68D, trans: true, use: '玻璃点缀' },
+  // glass: drawn with real transmission (the scene behind shows through, tinted) instead of the flat 0.62 alpha — curtain walls (Shanghai, 2026-10-03)
+  { key: 'TransVeryLightBlue', lego: 'Transparent Very Light Blue', id: 39, bl: 'Trans-Very Lt Blue', hex: 0xC1DFF0, trans: true, glass: true, use: '微蓝玻璃幕墙（上海中心）' },
+  { key: 'TransMediumBlue', lego: 'Transparent Fluorescent Blue', id: 143, bl: 'Trans-Medium Blue', hex: 0x559AB7, trans: true, glass: true, use: '钢蓝玻璃幕墙（环球）' },
+  { key: 'TransClearGlass', lego: 'Transparent', id: 40, bl: 'Trans-Clear', hex: 0xFCFCFC, trans: true, glass: true, use: '透明玻璃幕墙（同 Trans-Clear，按玻璃渲染）' },
+  { key: 'TransLightBlueGlass', lego: 'Transparent Light Blue', id: 42, bl: 'Trans-Light Blue', hex: 0xAEEFEC, trans: true, glass: true, use: '浅蓝玻璃幕墙（同 Trans-Light Blue，按玻璃渲染）' },
   { key: 'TransBlack', lego: 'Transparent Brown', id: 111, bl: 'Trans-Black', hex: 0x635F52, trans: true, use: '墨色玻璃幕墙（滨海湾金沙）' },
 ];
 const BY_KEY = new Map(COLORS.map((c) => [c.key, c]));
 export function colorOf(key: string): LegoColor { const c = BY_KEY.get(key); if (!c) throw new Error('Unknown LEGO colour: ' + key); return c; }
 export const colorHex = (key: string) => colorOf(key).hex;
 export const isTrans = (key: string) => !!colorOf(key).trans;
+export const isGlass = (key: string) => !!colorOf(key).glass;

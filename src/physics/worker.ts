@@ -18,7 +18,7 @@ function start(m: Start) {
     const o = i * 7; const x = m.poses[o], y = m.poses[o + 1], z = m.poses[o + 2];
     // burst: outward from the diorama centre, stronger higher up, plus a lift — the "tap" that lets go of every brick at once
     const dx = x - m.center[0], dz = z - m.center[1]; const r = Math.hypot(dx, dz) + 0.5; const a = rnd() * Math.PI * 2;
-    const vel = s * (0.9 + Math.max(0, y - m.tableY) / 18); const jitter = s * 0.6;
+    const vel = s * (0.9 + Math.max(0, y - m.tableY) / 18); const jitter = s * 0.6 * (1 + 0.5 * Math.min(1, Math.max(0, y - m.tableY - 12) / 24));   // tall towers: a little more scatter up high, or a skyscraper's stacked bricks fly off as one column (Eric 2026-10-03)
     const desc = (m.fixed[i] ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic()).setTranslation(x, m.fixed[i] ? y : y + 0.03, z).setRotation({ x: m.poses[o + 3], y: m.poses[o + 4], z: m.poses[o + 5], w: m.poses[o + 6] })
       .setCanSleep(true).setLinearDamping(ld).setAngularDamping(ad).setCcdEnabled(false)
       .setLinvel((dx / r) * vel * 0.55 + Math.cos(a) * jitter + (m.spin ?? 0) * (-dz / r) * vel * 0.4, (1.5 + s * 0.9 + rnd() * s * 0.6) * (m.vy ?? 1), (dz / r) * vel * 0.55 + Math.sin(a) * jitter + (m.spin ?? 0) * (dx / r) * vel * 0.4)   // vy flattens the burst into a disc; spin adds a swirl

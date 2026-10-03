@@ -4,7 +4,9 @@ import { Blueprint } from '../core/builder';
 import { PARTS, footprint, PLATE } from '../core/catalog';
 import { RIG } from '../parts/ldraw/minifig-rig';
 
-export interface SceneMeta { id: string; title: string; caption: string; subtitle: string; size: [number, number]; center: [number, number, number]; base?: number; camera?: { az: number; el: number; dist: number }; viewDist?: number /* the set view's camera distance when the radius rule (2.15 × footprint radius) crops a tall or wide set */ }
+/** `glow`: the scene's night mode (Shanghai, 2026-10-03) — which bricks light up after dark and in what colour (null: stays dark). */
+export type GlowRule = (tag: string, color: string, key: string) => number | null;
+export interface SceneMeta { id: string; title: string; caption: string; subtitle: string; size: [number, number]; center: [number, number, number]; base?: number; camera?: { az: number; el: number; dist: number }; viewDist?: number /* the set view's camera distance when the radius rule (2.15 × footprint radius) crops a tall or wide set */; glow?: GlowRule }
 export interface SceneDef { seed: number; build: (bp: Blueprint) => SceneMeta }
 
 export const key2 = (x: number, z: number) => x + ',' + z;
@@ -126,6 +128,8 @@ const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   paintbrush: { pose: 'f', gp: [0, -0.6, 0], shaft: true },                  // held low on the handle, bristles up
   palette: { pose: 'f', gp: [-0.9, 0, 0] },                                   // the thumb edge in the clip, the palette flat in front
   saxophone: { pose: 'f', gp: [0, -0.92, 0], shaft: true },                   // the LDraw origin is the grip on the body tube
+  takeaway_cup: { pose: 'f', gp: [0, -0.7, 0], shaft: true },               // the tapered foot of the cup sits in the hand's clip, the dome lid up (Shanghai)
+  briefcase: { pose: 'd', gp: [0, 0.72, 0], shaft: true, rotL: 1, rotR: 1 },   // the clip round the handle bar (its centre 0.72 above the box centre, from the mould), the case turned front-to-back so the bar runs through the clip — side-on, the bar crossed the clip and the hand missed it (Eric 2026-10-03)
 };
 /** Minifig v2: real LDraw legs / torso-with-posed-arms / hands / head, printed face and torso, any hair, accessories gripped in the hand.
  *  Feet centred at (cx, cz), plate level y, faces +z at rot 0. Returns wrist centres (world) for stacking more onto a held bar. */
@@ -306,11 +310,12 @@ const SAKURA4: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb
 const S4_LEAF = ['White', 'White', 'White', 'BrightPink', 'BrightPink'], S4_BLOOM = ['BrightPink', 'DarkPink', 'BrightPink', 'White'];
 /** One blossom cluster on a tip stud: calyx → 6×5 leaf fanning `rot`-ward → (big) a 4×3 leaf crossed over it → 5-petal flower plate →
  *  7-petal flower pinned in. The crossed second leaf is what turns a flat disc into a blossom mass. */
-export type Foliage = 'sakura' | 'pine' | 'raintree' | 'linden';   // add a kind per country: leaf colours + whether tips carry flowers
+export type Foliage = 'sakura' | 'pine' | 'raintree' | 'linden' | 'plane';   // add a kind per country: leaf colours + whether tips carry flowers
 // linden (Prague): dense late-summer green, darker than the rain tree
 const PINE_LEAF = ['DarkGreen', 'DarkGreen', 'Green'], RAIN_LEAF = ['Green', 'Green', 'DarkGreen', 'BrightGreen'], LINDEN_LEAF = ['Green', 'DarkGreen', 'Green', 'DarkGreen', 'BrightGreen'];   // rain tree: fresh green umbrella (Singapore)
+const PLANE_LEAF = ['OliveGreen', 'OliveGreen', 'DarkTan', 'MediumNougat', 'BrightLightOrange'];   // Shanghai plane tree in autumn: ochre, not yellow (china.md §1.9.7)
 function cluster4(bp: Blueprint, tx: number, y: number, tz: number, rot: number, big: boolean, kind: Foliage = 'sakura') {
-  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : kind === 'linden' ? LINDEN_LEAF : S4_LEAF;
+  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : kind === 'linden' ? LINDEN_LEAF : kind === 'plane' ? PLANE_LEAF : S4_LEAF;
   bp.part('plant_3leaves', tx, y, tz, kind === 'sakura' ? 'ReddishBrown' : 'DarkBrown');
   bp.part(big ? 'leaves_6x5' : 'leaves_4x3', tx, y + 1, tz, bp.pick(LEAF), rot);
   let top = y + 2;
@@ -401,12 +406,13 @@ const LINDEN: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb5
 /** (x, z) is the axis point — a grid corner; the 2×2 trunk covers cells (x−1..x, z−1..z).
  *  `tree` is the generic entry (kind picks the foliage: 'sakura' | 'pine', extend `Foliage` for maple, plane, olive, palm…); `sakura5` is its Kyoto-era name. */
 export function tree(bp: Blueprint, x: number, y: number, z: number, size: 'S' | 'M' | 'L', reserve?: Reserve, turn = 0, skip?: Dir | Dir[], kind: Foliage = 'sakura') {
-  bp.tag = kind; const spec = (kind === 'raintree' ? RAINTREE : kind === 'linden' ? LINDEN : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
-  const TRUNK = kind === 'sakura' ? 'ReddishBrown' : 'DarkBrown';
+  bp.tag = kind; const spec = (kind === 'raintree' || kind === 'plane' ? RAINTREE : kind === 'linden' ? LINDEN : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
+  const TRUNK = kind === 'sakura' ? 'ReddishBrown' : kind === 'plane' ? 'DarkTan' : 'DarkBrown';   // plane bark: a pale mottled grey-tan
   const CELLS: [number, number][] = [[x - 1, z - 1], [x, z - 1], [x, z], [x - 1, z]];   // NW NE SE SW
   const DIRS_A: Dir[] = [0, 3, 2, 1], DIRS_B: Dir[] = [1, 0, 3, 2];                      // outward directions per cell, two pinwheels
   let ty = y;
-  const seg = (dark = false) => { bp.part('roundbrick_2x2', x - 1, ty, z - 1, dark ? 'DarkBrown' : TRUNK); ty += 3; };
+  const PLANE_BARK = ['DarkTan', 'LightBluishGray', 'Tan', 'DarkTan', 'White'];   // the plane tree's mottled camouflage bark, course by course
+  let nSeg = 0; const seg = (dark = false) => { bp.part('roundbrick_2x2', x - 1, ty, z - 1, kind === 'plane' ? PLANE_BARK[nSeg++ % PLANE_BARK.length] : dark ? 'DarkBrown' : TRUNK); ty += 3; };
   for (let k = 0; k < spec.trunk; k++) seg(k === 0);
   spec.tiers.forEach((limbs, t) => {
     const dirs = t % 2 ? DIRS_B : DIRS_A;

@@ -39,7 +39,8 @@ export class Blueprint {
   }
   /** An LDraw assembly exploded into its real bricks: the proxy (same grid semantics as `part`) plus every member, transformed by the proxy's
    *  position and rotation. The colour is the proxy's; members keep their own LDraw colours. */
-  assembly(key: string, x: number, y: number, z: number, color: string, rot = 0) {
+  /** `prints`: decorate members by 'id|colour' → print key (the print's base must be the member's ld_ key), e.g. the Customs House dials */
+  assembly(key: string, x: number, y: number, z: number, color: string, rot = 0, prints?: Record<string, string>) {
     const def = PARTS[key]; const list = def?.ldraw ? ASM[def.ldraw] : undefined; if (!list) throw new Error(`${key} is not an exploded assembly — bake its .ldr`);
     if (def.anchor !== 'origin') throw new Error(`${key}: assembly proxies use anchor 'origin'`);
     this.part(key, x, y, z, color, rot); const proxy = this.parts[this.parts.length - 1]; proxy.proxy = true; const r = proxy.rot;
@@ -52,7 +53,8 @@ export class Blueprint {
       const k = `ld_${mb.id}`; if (!PARTS[k]) throw new Error(`member part ${k} not in the catalogue`); const b = bodyBox(mb.id);
       const local = app(mb.m, [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2]).map((v, i) => v + mb.p[i]);   // body centre in the assembly frame
       const w = app(R, local); const p: [number, number, number] = [C[0] + w[0], C[1] + w[1], C[2] + w[2]];
-      this.parts.push({ key: k, x, y, z, rot: r, color: mb.color || color, tag: this.tag, member: group, xform: { p, m: mul(R, mb.m) } });
+      const print = prints?.[`${mb.id}|${mb.color || color}`]; if (print && PRINTS[print]?.base !== k) throw new Error(`print ${print} belongs on ${PRINTS[print]?.base}, not ${k}`);
+      this.parts.push({ key: k, x, y, z, rot: r, color: mb.color || color, tag: this.tag, member: group, xform: { p, m: mul(R, mb.m) }, print });
     }
     return this;
   }

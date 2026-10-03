@@ -3,6 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root { --ink: #1f2124; --muted: #6a6e72; --paper: #f1f2ef; --line: rgba(31,33,36,.13); --brick: #c91a09; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+  body.night { background: radial-gradient(120% 90% at 50% 38%, #1c2442 0%, #0d1226 60%, #060914 100%); } body.night .brand, body.night .card h2, body.night .card .sub, body.night .card .stats, body.night .hint { color: #e8ecf6; }
   html, body { height: 100%; } body { margin: 0; overflow: hidden; font-family: Rubik, -apple-system, system-ui, sans-serif; color: var(--ink); background: var(--paper) radial-gradient(120% 90% at 50% 38%, #f5f5f2 0%, #e6e7e3 58%, #d2d4cf 100%); -webkit-font-smoothing: antialiased; }
   #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   .hud { position: fixed; z-index: 2; pointer-events: none; } [hidden] { display: none !important; }
@@ -40,7 +41,7 @@
 <div id="labels"></div>
 <div class="hud card" id="card-globe"><h2>Where I've been</h2><p class="sub">Every pin is a place I've visited. Pick one and watch it build itself from real LEGO parts.</p><div class="stats">2 places built · 18 more pinned</div></div>
 <div class="hud card" id="card-place"><h2 id="place-title">—</h2><p class="sub" id="place-sub"></p><div class="stats" id="place-stats"></div></div>
-<div class="hud actions" id="actions"><button id="btn-globe">All places</button><button id="btn-rebuild" hidden>Rebuild</button><button id="btn-apart" class="primary">Take it apart</button></div>
+<div class="hud actions" id="actions"><button id="btn-globe">All places</button><button id="btn-rebuild" hidden>Rebuild</button><button id="btn-night" hidden>Night</button><button id="btn-apart" class="primary">Take it apart</button></div>
 <div id="fade"></div>
 <script type="module" src="/src/app/main.ts"></script>
 </body></html>

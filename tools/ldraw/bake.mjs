@@ -19,7 +19,7 @@ const args = process.argv.slice(2); const force = args.includes('--force'); cons
 const ASM_OUT = path.join(OUT, 'asm');
 // LDraw colour code → our colour key (src/core/colors.ts). An unmapped code is an error, never a silent default; 16 (inherit) becomes '' and
 // takes the proxy's colour when the assembly is exploded.
-const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'SandBlue', 78: 'LightNougat', 128: 'DarkNougat', 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange' };
+const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'SandBlue', 78: 'LightNougat', 128: 'DarkNougat', 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange', 39: 'TransVeryLightBlue', 41: 'TransMediumBlue', 320: 'DarkRed', 179: 'FlatSilver', 323: 'LightAqua' };
 /** Flatten an assembly's type-1 lines into members in our frame. LDraw → ours is F = diag(1, −1, −1)/20, so p' = F·p and m' = F·M·F⁻¹. */
 function members(name, src) {
   const out = [];
@@ -64,7 +64,7 @@ globalThis.fetch = async (url, init) => {
 const loader = new LDrawLoader(); loader.setPartsLibraryPath(LOCAL); loader.smoothNormals = true; loader.setConditionalLineMaterial(LDrawConditionalLineMaterial);
 await loader.preloadMaterials(LOCAL + 'LDConfig.ldr');
 const b64 = (arr) => Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength).toString('base64');
-const Q = 1024; // quantisation: units per stud
+const Q0 = 1024; // quantisation: units per stud (halved for a part taller than 32 studs, so Int16 cannot overflow; the decoder reads q per part)
 
 for (let qi = 0; qi < ids.length; qi++) {
   const rawId = ids[qi];
@@ -99,6 +99,7 @@ for (let qi = 0; qi < ids.length; qi++) {
     if (fixed) console.log(`${id}: re-wound ${fixed} of ${P.length / 9} triangles to match their normals`); }
   geo = mergeVertices(geo, 1e-4); geo.computeBoundingBox();
   const bb = geo.boundingBox; const pos = geo.attributes.position.array, nrm = geo.attributes.normal.array, idx = geo.index.array;
+  let Q = Q0; while (Math.max(...[bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z].map(Math.abs)) * Q > 32767) Q /= 2;
   const P = new Int16Array(pos.length), N = new Int8Array(nrm.length);
   for (let i = 0; i < pos.length; i++) P[i] = Math.round(pos[i] * Q); for (let i = 0; i < nrm.length; i++) N[i] = Math.round(nrm[i] * 127);
   const I = geo.attributes.position.count < 65536 ? new Uint16Array(idx) : new Uint32Array(idx);

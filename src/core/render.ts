@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PARTS, geometryFor, footprint, PLATE } from './catalog';
-import { colorHex, isTrans } from './colors';
+import { colorHex, isTrans, isGlass } from './colors';
 import { PRINTS, decalGeometry, printTexture } from './prints';
 import type { Placement } from './builder';
 import { bodyBox } from './ldraw';
@@ -15,20 +15,28 @@ export class BrickRenderer {
   // face lets you see the hand's wrist post through the arm (Eric's screenshot, 2026-09-16). Our own box bricks stay one-sided.
   matOpaqueDS = new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0, envMapIntensity: 0.9, side: THREE.DoubleSide });
   matTrans = new THREE.MeshPhysicalMaterial({ roughness: 0.08, metalness: 0, transparent: true, opacity: 0.62, envMapIntensity: 1.2, depthWrite: false });
+  // curtain-wall glass: real transmission (three renders the opaque scene first and the glass samples it, tinted by the colour), so a
+  // core or the sky shows through the facade; the flat 0.62 alpha above reads as frost on a whole tower (Shanghai Tower, 2026-10-03)
+  matGlass = new THREE.MeshPhysicalMaterial({ roughness: 0.15, metalness: 0, transmission: 0.85, thickness: 0.6, ior: 1.5, envMapIntensity: 1.4, specularIntensity: 1, side: THREE.DoubleSide });
   matSil = new THREE.MeshBasicMaterial({ color: 0x141414 });
   anisotropy = 4;
+  /** night mode: a rule naming the glow colour of a brick (by tag, colour key, part key); glowing groups get their own material */
+  glowRule: ((tag: string, color: string, key: string) => number | null) | null = null; private glowMats: { mat: THREE.MeshStandardMaterial; color: number }[] = [];
   private m = new THREE.Matrix4(); private one = new THREE.Vector3(1, 1, 1);
   constructor(scene: THREE.Scene) { scene.add(this.group); }
   build(parts: Placement[], origin = new THREE.Vector3()) {
     this.clear();
     const groups = new Map<string, Placement[]>();
     // an assembly proxy is for the validator; its members are the bricks you see
-    for (const p of parts) { if (p.proxy) continue; const gk = p.key + (isTrans(p.color) ? '#t' : '') + (p.print ? '#p' + p.print : ''); (groups.get(gk) ?? groups.set(gk, []).get(gk)!).push(p); }
+    this.glowMats = [];
+    for (const p of parts) { if (p.proxy) continue; const glow = this.glowRule?.(p.tag ?? '', p.color, p.key) ?? null; const gk = p.key + (isGlass(p.color) ? '#g' : isTrans(p.color) ? '#t' : '') + (glow !== null ? '#n' + glow : '') + (p.print ? '#p' + p.print : ''); (groups.get(gk) ?? groups.set(gk, []).get(gk)!).push(p); }
     const q = new THREE.Quaternion(), pos = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0), rm = new THREE.Matrix4();
     for (const [gk, list] of groups) {
-      const key = gk.split('#')[0]; const trans = gk.includes('#t'); const printKey = /#p(.+)$/.exec(gk)?.[1]; const def = PARTS[key];
+      const key = gk.split('#')[0]; const glass = gk.includes('#g'); const trans = glass || gk.includes('#t'); const printKey = /#p(.+)$/.exec(gk)?.[1]; const def = PARTS[key];
       const ds = !trans && !!def.ldraw;
-      const mesh = new THREE.InstancedMesh(geometryFor(key), trans ? this.matTrans : ds ? this.matOpaqueDS : this.matOpaque, list.length); mesh.userData.trans = trans; mesh.userData.ds = ds;
+      const glowHex = /#n(\d+)/.exec(gk); let mat: THREE.Material = glass ? this.matGlass : trans ? this.matTrans : ds ? this.matOpaqueDS : this.matOpaque;
+      if (glowHex) { const m = (mat as THREE.MeshStandardMaterial).clone(); this.glowMats.push({ mat: m, color: +glowHex[1] }); mat = m; }
+      const mesh = new THREE.InstancedMesh(geometryFor(key), mat, list.length); mesh.userData.base = mat; mesh.userData.trans = trans; mesh.userData.glass = glass; mesh.userData.ds = ds;
       mesh.castShadow = !trans; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       let decal: THREE.InstancedMesh | undefined;
       if (printKey) {
@@ -57,9 +65,12 @@ export class BrickRenderer {
   commit() { for (const m of this.meshes) m.instanceMatrix.needsUpdate = true; }
   resetHome() { for (const it of this.items) this.setPose(it, it.home.p, it.home.q); this.commit(); }
   /** Black-on-white silhouette for judging: one flat material, prints hidden. */
-  silhouette(on: boolean) { for (const m of this.meshes) { if (this.decals.has(m)) { m.visible = !on; continue; } m.material = on ? this.matSil : (m.userData.trans ? this.matTrans : m.userData.ds ? this.matOpaqueDS : this.matOpaque); m.castShadow = !on && !m.userData.trans; } }
+  silhouette(on: boolean) { for (const m of this.meshes) { if (this.decals.has(m)) { m.visible = !on; continue; } m.material = on ? this.matSil : (m.userData.base ?? this.matOpaque); m.castShadow = !on && !m.userData.trans; } }
   clear() { for (const m of this.meshes) { this.group.remove(m); if (this.decals.has(m)) (m.material as THREE.Material).dispose(); m.dispose(); } this.meshes = []; this.items = []; this.decals.clear(); }
-  setEnvironment(env: THREE.Texture) { this.matOpaque.envMap = env; this.matOpaqueDS.envMap = env; this.matTrans.envMap = env; }
+  /** night: glowing groups emit their colour; everything else is lit by the scene's night lights */
+  setNight(on: boolean) { for (const m of [this.matOpaque, this.matOpaqueDS, this.matTrans, this.matGlass, ...this.glowMats.map((g) => g.mat)]) m.envMapIntensity = on ? 0.12 : m === this.matTrans || m === this.matGlass ? 1.2 : 0.9;
+    for (const g of this.glowMats) { g.mat.emissive.setHex(on ? g.color : 0x000000); g.mat.emissiveIntensity = on ? 1.6 : 0; g.mat.needsUpdate = true; } }
+  setEnvironment(env: THREE.Texture) { this.matOpaque.envMap = env; this.matOpaqueDS.envMap = env; this.matTrans.envMap = env; this.matGlass.envMap = env; }
 }
 
 export function makeStudioEnv(renderer: THREE.WebGLRenderer) {
@@ -71,11 +82,13 @@ export function makeStudioEnv(renderer: THREE.WebGLRenderer) {
   const pmrem = new THREE.PMREMGenerator(renderer); const env = pmrem.fromScene(scene, 0.04).texture; pmrem.dispose(); return env;
 }
 export function makeLights(scene: THREE.Scene) {
-  scene.add(new THREE.HemisphereLight(0xe9f0fa, 0x8c7c6c, 0.55));
+  const hemi = new THREE.HemisphereLight(0xe9f0fa, 0x8c7c6c, 0.55); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xfff2e2, 2.4); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03; key.shadow.radius = 3; scene.add(key); scene.add(key.target);
   const fill = new THREE.DirectionalLight(0xd6e4ff, 0.45); scene.add(fill);
   const rim = new THREE.DirectionalLight(0xffe8c8, 0.35); scene.add(rim);
-  return { key, fill, rim, frame(center: THREE.Vector3, radius: number) {
+  /** night: a dim blue moonlight from the same side, a deep blue sky-fill; day restores the studio */
+  const night = (on: boolean) => { hemi.color.setHex(on ? 0x3a4a78 : 0xe9f0fa); hemi.groundColor.setHex(on ? 0x14100c : 0x8c7c6c); hemi.intensity = on ? 0.35 : 0.55; key.color.setHex(on ? 0x8fa6ff : 0xfff2e2); key.intensity = on ? 0.35 : 2.4; fill.intensity = on ? 0.12 : 0.45; rim.intensity = on ? 0.1 : 0.35; };
+  return { key, fill, rim, night, frame(center: THREE.Vector3, radius: number) {
     key.position.set(center.x - radius * 1.1, center.y + radius * 1.6, center.z + radius * 0.9); key.target.position.copy(center);
     const c = key.shadow.camera; c.left = -radius * 1.2; c.right = radius * 1.2; c.top = radius * 1.2; c.bottom = -radius * 1.2; c.near = 1; c.far = radius * 5; c.updateProjectionMatrix();
     fill.position.set(center.x + radius * 1.5, center.y + radius * 0.6, center.z - radius * 0.8); rim.position.set(center.x + radius * 0.2, center.y + radius * 0.8, center.z - radius * 1.6);
