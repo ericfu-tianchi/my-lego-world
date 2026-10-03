@@ -106,5 +106,5 @@ export function buildPrague(bp: Blueprint): SceneMeta {
   bp.tag = 'terrain';
   for (const [x, z] of square) if (bp.hasVox(x, L - 2, z)) bp.vox1(studCells.has(x + ',' + z) || bp.hasVox(x, L, z) ? 'plate' : 'tile', x, L - 1, z, (x + z) % 11 === 0 || (x - z + 110) % 11 === 0 ? 'DarkBluishGray' : 'LightBluishGray');   // the square's diagonal bands (prague.eu: light setts in a large diagonal grid of darker ones)
   bp.tag = ''; bp.pack();
-  return { id: 'prague', title: 'Prague', caption: 'Old Town', subtitle: 'Charles Bridge · Týn · Astronomical Clock · Old Town Square', size: [W, D], center: [W / 2, 21, D / 2], base: BASE, camera: { az: 0.3, el: 0.36, dist: 165 }, viewDist: 165 };   // centre raised: Týn's spires reach 44 above the table
+  return { id: 'prague', title: 'Prague', caption: 'Old Town', subtitle: 'Charles Bridge · Týn · Astronomical Clock · Old Town Square', size: [W, D], center: [W / 2, 21, D / 2], base: BASE, camera: { az: 0.3, el: 0.36, dist: 125 }, viewDist: 125 };   // centre raised: Týn's spires reach 44 above the table
 }
