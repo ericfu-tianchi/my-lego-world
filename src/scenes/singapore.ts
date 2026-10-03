@@ -107,7 +107,7 @@ export function hawkerStall(bp: Blueprint, ox: number, y: number, oz: number, ro
   part('plate_1x6', -3, y + 15, F, POST, 1);                                                                                                    // front beam on the posts
   { const a = cell(-3, -2), b = cell(2, F); const X = Math.min(a[0], b[0]), Z = Math.min(a[1], b[1]), Wd = Math.abs(b[0] - a[0]) + 1, Dd = Math.abs(b[1] - a[1]) + 1; if (rot % 2) spanPlatesX(bp, X, Z, Wd, Dd, y + 16, ROOF); else spanPlates(bp, X, Z, Wd, Dd, y + 16, ROOF); }   // strips span wall → beam
   part('brick_1x6', -3, y + 17, F, 'Yellow', 3, sign); part('tile_1x2', -3, y + 17, -2, ROOF, 1); part('tile_1x2', 1, y + 17, -2, ROOF, 1);  // signboard on the canopy's front edge, print toward the street
-  const [fx, fz] = cell(0, 1); const fig = minifig2(bp, fx + 0.5, y, fz + 0.5, rot, { ...hawker, hold: [{ key: 'frypan', color: 'Black', hand: 'R' }] });
+  const [fx, fz] = cell(0, 1); const fig = minifig2(bp, rot & 1 ? fx + 0.5 : fx, y, rot & 1 ? fz : fz + 0.5, rot, { ...hawker, hold: [{ key: 'frypan', color: 'Black', hand: 'R' }] });
   for (const [tx, tz, stools] of [[-2, F + 3, [[-3, F + 2], [-3, F + 4]]], [1, F + 3, [[2, F + 2], [2, F + 4]]]] as [number, number, [number, number][]][]) {
     part('round_1x1', tx, y, tz, STEEL); part('roundplate_1x1', tx, y + 3, tz, STEEL); { const [wx, wz] = cell(tx, tz); bp.part('plate_2x2', wx - 0.5, y + 4, wz - 0.5, 'White'); }
     stools.forEach(([sx, sz], i) => part('round_1x1', sx, y, sz, i % 2 ? 'BrightBlue' : 'BrightRed'));

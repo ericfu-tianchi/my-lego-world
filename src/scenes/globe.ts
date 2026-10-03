@@ -27,7 +27,7 @@ export const PLACES: Place[] = [
   { id: 'switzerland', name: 'Switzerland', city: 'Interlaken', lat: 46.69, lon: 7.86, priority: true },
   { id: 'belgium', name: 'Belgium', city: 'Brussels', lat: 50.85, lon: 4.35 },
   { id: 'austria', name: 'Austria', city: 'Vienna', lat: 48.21, lon: 16.37 },
-  { id: 'czechia', name: 'Czechia', city: 'Prague', lat: 50.08, lon: 14.43, priority: true },
+  { id: 'czechia', name: 'Czechia', city: 'Prague', lat: 50.08, lon: 14.43, scene: 'prague' },
 ];
 
 export function buildGlobe(bp: Blueprint, R = GLOBE_R) {

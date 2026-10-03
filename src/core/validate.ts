@@ -45,6 +45,17 @@ const rectOf = (it: Item): [number, number, number, number] => it.rect ?? [it.x0
 const spanOf = (it: Item): [number, number] => (it.def.extY ? [it.p.y + it.def.extY[0], it.p.y + it.def.extY[1]] : [it.y0, it.y1]);
 const bodiesIntersect = (a: Item, b: Item) => { if (!a.rect && !b.rect) return cellsShare(a, b); const A = rectOf(a), B = rectOf(b); return Math.min(A[1], B[1]) - Math.max(A[0], B[0]) > SKIN && Math.min(A[3], B[3]) - Math.max(A[2], B[2]) > SKIN; };
 const inFootprint = (it: Item, wx: number, wz: number) => { for (const [cx, cz] of it.cells) if (Math.abs(wx - cx) < 0.5 + EPS && Math.abs(wz - cz) < 0.5 + EPS) return true; return false; };
+/** a stud plugs into the part above only where it lands on one of that part's cell centres — the anti-stud / tube / foot hole is there, nowhere
+ *  else (2026-10-03, Eric: every minifig stood with its feet half a stud off the studs and the validator let it through). STRICT_STUDS=0 restores
+ *  the old tolerant test for comparison. */
+const STRICT = (globalThis as { process?: { env?: Record<string, string> } }).process?.env?.STRICT_STUDS !== '0';
+const onCellCentre = (it: Item, wx: number, wz: number) => {
+  for (const [cx, cz] of it.cells) if (Math.abs(wx - cx) < 0.05 && Math.abs(wz - cz) < 0.05) return true;
+  // the tube between four cells of a 2-wide part takes a single stud too (a 2×2 plate, round plate or jumper centred on one stud)
+  if (it.def.cat === 'minifig' || it.def.cat === 'accessory') return false;
+  const has = (x: number, z: number) => it.cells.some(([cx, cz]) => Math.abs(cx - x) < 0.05 && Math.abs(cz - z) < 0.05);
+  return has(wx - 0.5, wz - 0.5) && has(wx + 0.5, wz - 0.5) && has(wx - 0.5, wz + 0.5) && has(wx + 0.5, wz + 0.5);
+};
 /** lower L directly under upper U: does a real connection exist? */
 function connected(L: Item, U: Item): boolean {
   if (!cellsShare(L, U) && !L.def.studPoints) return false;
@@ -52,7 +63,7 @@ function connected(L: Item, U: Item): boolean {
   if (isBar(U)) return isHollow(L);                           // bar plugged into a hollow stud below
   if (isBar(L)) return isHollow(U);                           // hollow-stud part pushed onto a bar
   if (!U.def.accepts) return false;
-  for (const [sx, sz] of L.studs) if (inFootprint(U, sx, sz)) return true;
+  for (const [sx, sz] of L.studs) if (STRICT ? onCellCentre(U, sx, sz) : inFootprint(U, sx, sz)) return true;
   return false;
 }
 
@@ -122,6 +133,12 @@ export function validate(all: Placement[], base = 0): Report {
   // bars: also connect to hollow parts they pass through; a clip reaches one cell beyond its plate
   const clipReach = (a: Item, b: Item) => { for (const [ax, az] of a.cells) for (const [bx, bz] of b.cells) if (Math.abs(ax - bx) <= 1.25 + EPS && Math.abs(az - bz) <= 1.25 + EPS) return true; return false; };
   for (const bar of valid.filter(isBar)) for (const h of valid) if (isHollow(h) && h.y0 <= bar.y1 + (bar.def.loop ?? 0) + EPS && h.y1 >= bar.y0 - EPS && (cellsShare(bar, h) || (h.def.clip && clipReach(bar, h)))) { adj[bar.i].push(h.i); adj[h.i].push(bar.i); } // touching counts: a lantern loop pokes above its box into the clip
+  // a minifig stands on both feet (2026-10-03, Eric: the painter's left foot hung over the island's edge): every cell of the legs must have a
+  // part directly under it whose top is the legs' bottom
+  for (const L of valid) if (L.p.key === 'fig_legs') for (const [cx, cz] of L.cells) {
+    const under = (byTop.get(L.y0) ?? []).some((U) => U !== L && U.cells.some(([ux, uz]) => Math.abs(ux - cx) < 0.5 + EPS && Math.abs(uz - cz) < 0.5 + EPS));
+    if (!under && L.y0 !== 0) { issues.push({ kind: 'floating', index: L.i, msg: `fig_legs @(${L.p.x},${L.p.y},${L.p.z}): a foot over (${cx},${cz}) stands on nothing${L.p.tag ? ' [' + L.p.tag + ']' : ''}` }); }
+  }
   // reachability from the ground
   const seen = new Uint8Array(items.length); const stack: number[] = [];
   for (const it of valid) if (it.y0 === base || it.y0 === 0) { seen[it.i] = 1; stack.push(it.i); }   // the scene's ground level, and the table under a floating island

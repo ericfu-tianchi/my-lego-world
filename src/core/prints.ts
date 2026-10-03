@@ -149,3 +149,63 @@ def({ key: 'merlion_scales', zh: '鱼尾狮鱼身鳞片（任意砖的长侧面�
   ctx.strokeStyle = '#7F878C'; ctx.lineWidth = h * 0.05; const rows = 4, r = h / rows * 0.55, pitch = r * 2.1;
   for (let row = 0; row < rows; row++) { const cy = h * ((row + 0.35) / rows); for (let cx = (row % 2 ? pitch / 2 : 0) - pitch; cx < w + pitch; cx += pitch) { ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke(); } }
 } });
+// ---- Prague (2026-10-02) ---------------------------------------------------------------------------------------------------------------
+// House signs (domovní znamení) are painted emblems over the arcade, no lettering needed: the house is named after its sign. The White
+// Unicorn: a white rearing unicorn on a dark red cartouche with a gold frame — three flat colours, read at thumbnail by silhouette alone.
+def({ key: 'sign_unicorn', zh: '房屋标志「白独角兽」（1×2 砖长侧面，暗红底白独角兽金边）', colors: ['Dark Red', 'White', 'Gold'], firstUse: 'Prague', face: 'side', base: 'brick_1x2', px: 360, draw: (ctx, w, h) => {
+  ctx.fillStyle = DARKRED; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = GOLD; ctx.lineWidth = h * 0.06; ctx.strokeRect(h * 0.07, h * 0.07, w - h * 0.14, h - h * 0.14);
+  const s = h * 0.78, cx = w / 2, cy = h * 0.55; const P = (x: number, y: number): [number, number] => [cx + x * s, cy + y * s];
+  ctx.fillStyle = WHITE; ctx.beginPath();
+  // rearing unicorn facing right: hind legs, body, raised forelegs, neck, head, horn
+  const pts: [number, number][] = [[-0.42, 0.38], [-0.34, 0.08], [-0.2, -0.02], [0.08, -0.06], [0.18, -0.22], [0.3, -0.3], [0.36, -0.24], [0.27, -0.12], [0.3, -0.02], [0.4, 0.06], [0.35, 0.1], [0.24, 0.03], [0.17, 0.08], [0.1, 0.16], [-0.06, 0.16], [-0.18, 0.2], [-0.24, 0.38], [-0.3, 0.38], [-0.28, 0.2], [-0.36, 0.38]];
+  ctx.moveTo(...P(...pts[0])); for (const p of pts.slice(1)) ctx.lineTo(...P(...p)); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = GOLD; ctx.lineWidth = h * 0.05; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(...P(0.33, -0.28)); ctx.lineTo(...P(0.46, -0.44)); ctx.stroke();   // the horn, gilded like the real sign
+} });
+
+// ---- PRAGUE · the Astronomical Clock (2026-10-02). Painted dials, four flat colours each; no numerals at this size — the painted gold ticks
+// and hands read, Schwabacher figures would not (rule 1: cut what cannot be read at thumbnail size). Both dials ride on orloj_dial (30209).
+const ORLOJ_BLUE = '#5A93DB', ORLOJ_DUSK = '#B5652B', ORLOJ_NIGHT = '#1B2A34', ORLOJ_GOLD = '#C9A227', ORLOJ_BROWN = '#582A12';
+def({ key: 'orloj_astro', zh: '天文钟·天文盘（蓝色白昼、两侧棕橙晨昏、底部黑夜、偏心金色黄道环、太阳针与月亮）', colors: ['Medium Blue', 'Dark Orange', 'Black', 'Pearl Gold'], firstUse: 'Czechia', face: 'front', base: 'orloj_dial', px: 160, rect: { w: 3.84, h: 3.84, y: 0, z: 1.72 }, draw: (ctx, w, h) => {
+  // orloj-dial-closeup.jpg: a black ring of 24 gold ticks; inside, the blue day disc; the dawn (left) and dusk (right) zones are brown-orange
+  // crescents wrapped round the black night circle low in the dial; the gold zodiac ring hangs off-centre toward the top; the sun rides the
+  // gold hand, the moon (black with a gold rim) its own hand. Four flat colours, nothing finer than a tick.
+  const cx = w / 2, cy = h / 2, R = w * 0.49;
+  dot(ctx, cx, cy, R, ORLOJ_NIGHT);
+  for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; ctx.strokeStyle = ORLOJ_GOLD; ctx.lineWidth = w * 0.022; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * R * 0.85, cy + Math.sin(a) * R * 0.85); ctx.lineTo(cx + Math.cos(a) * R * 0.97, cy + Math.sin(a) * R * 0.97); ctx.stroke(); }
+  const r = R * 0.8; ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = ORLOJ_BLUE; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = ORLOJ_DUSK; ctx.beginPath(); ctx.arc(cx, cy + r * 0.5, r * 0.82, 0, Math.PI * 2); ctx.fill();     // dawn and dusk
+  ctx.fillStyle = ORLOJ_NIGHT; ctx.beginPath(); ctx.arc(cx, cy + r * 0.62, r * 0.58, 0, Math.PI * 2); ctx.fill();   // night
+  ctx.restore();
+  arc(ctx, cx, cy, r, 0, Math.PI * 2, w * 0.022, ORLOJ_GOLD);
+  const zx = cx + r * 0.08, zy = cy - r * 0.3, zr = r * 0.6;                                // the eccentric zodiac ring, toward the top
+  arc(ctx, zx, zy, zr, 0, Math.PI * 2, w * 0.095, ORLOJ_GOLD); arc(ctx, zx, zy, zr, 0, Math.PI * 2, w * 0.012, ORLOJ_NIGHT);
+  for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; ctx.strokeStyle = ORLOJ_NIGHT; ctx.lineWidth = w * 0.012; ctx.beginPath(); ctx.moveTo(zx + Math.cos(a) * (zr - w * 0.035), zy + Math.sin(a) * (zr - w * 0.035)); ctx.lineTo(zx + Math.cos(a) * (zr + w * 0.035), zy + Math.sin(a) * (zr + w * 0.035)); ctx.stroke(); }
+  ctx.strokeStyle = ORLOJ_GOLD; ctx.lineCap = 'round'; ctx.lineWidth = w * 0.03; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - r * 0.62, cy - r * 0.62); ctx.stroke();   // the sun hand
+  dot(ctx, cx - r * 0.47, cy - r * 0.47, w * 0.06, ORLOJ_GOLD);                                                                                                         // the sun
+  ctx.lineWidth = w * 0.02; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + r * 0.72, cy - r * 0.4); ctx.stroke();                                                  // the moon hand
+  dot(ctx, cx + r * 0.6, cy - r * 0.33, w * 0.05, ORLOJ_GOLD); dot(ctx, cx + r * 0.6, cy - r * 0.33, w * 0.035, ORLOJ_NIGHT);                                           // the moon
+  dot(ctx, cx, cy, w * 0.035, ORLOJ_GOLD);
+} });
+def({ key: 'orloj_calendar', zh: '天文钟·日历盘（金底，十二个棕色圆框，中心金色）', colors: ['Pearl Gold', 'Reddish Brown', 'Black'], firstUse: 'Czechia', face: 'front', base: 'orloj_dial', px: 160, rect: { w: 3.84, h: 3.84, y: 0, z: 1.72 }, draw: (ctx, w, h) => {
+  const cx = w / 2, cy = h / 2, R = w * 0.49;
+  dot(ctx, cx, cy, R, ORLOJ_GOLD); arc(ctx, cx, cy, R * 0.97, 0, Math.PI * 2, w * 0.02, ORLOJ_NIGHT);
+  for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 - Math.PI / 2; dot(ctx, cx + Math.cos(a) * R * 0.72, cy + Math.sin(a) * R * 0.72, R * 0.17, ORLOJ_BROWN); dot(ctx, cx + Math.cos(a) * R * 0.72, cy + Math.sin(a) * R * 0.72, R * 0.1, ORLOJ_GOLD); }   // the twelve months
+  arc(ctx, cx, cy, R * 0.47, 0, Math.PI * 2, w * 0.018, ORLOJ_NIGHT); dot(ctx, cx, cy, R * 0.3, ORLOJ_BROWN); dot(ctx, cx, cy, R * 0.16, ORLOJ_GOLD);   // the city arms at the centre, as a medallion
+} });
+def({ key: 'orloj_turret_clock', zh: '市政厅塔钟（黑底金针，1×2×2 砖正面）', colors: ['Black', 'Pearl Gold'], firstUse: 'Czechia', face: 'front', base: 'brick_1x2x2', px: 200, draw: (ctx, w, h) => {
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46;
+  dot(ctx, cx, cy, R, ORLOJ_NIGHT); arc(ctx, cx, cy, R * 0.94, 0, Math.PI * 2, R * 0.06, ORLOJ_GOLD);
+  for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; dot(ctx, cx + Math.cos(a) * R * 0.75, cy + Math.sin(a) * R * 0.75, R * 0.06, ORLOJ_GOLD); }
+  ctx.strokeStyle = ORLOJ_GOLD; ctx.lineCap = 'round'; ctx.lineWidth = R * 0.09; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - R * 0.62); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + R * 0.4, cy + R * 0.1); ctx.stroke();
+} });
+
+// ---- Prague life layer (2026-10-02): the busker on the bridge, the painter on Kampa, the visitor under the clock
+def({ key: 'torso_busker', zh: '街头小提琴手·白衬衫暗红马甲黑领结', colors: ['White', 'Black'], firstUse: 'Prague', ...TORSO, draw: (ctx, w, h) => { ctx.fillStyle = WHITE; ctx.beginPath(); ctx.moveTo(w * 0.36, 0); ctx.lineTo(w * 0.64, 0); ctx.lineTo(w * 0.56, h); ctx.lineTo(w * 0.44, h); ctx.closePath(); ctx.fill(); ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.42, h * 0.08); ctx.lineTo(w * 0.5, h * 0.13); ctx.lineTo(w * 0.42, h * 0.18); ctx.closePath(); ctx.moveTo(w * 0.58, h * 0.08); ctx.lineTo(w * 0.5, h * 0.13); ctx.lineTo(w * 0.58, h * 0.18); ctx.closePath(); ctx.fill(); for (const y of [0.4, 0.58, 0.76]) dot(ctx, w * 0.5, h * y, w * 0.02, INK); } });   // on a Dark Red torso: the waistcoat is the torso colour, the shirt shows down the middle
+def({ key: 'torso_painter', zh: '画家·白罩衫溅色暗红围巾', colors: ['Dark Red', 'Blue', 'Yellow'], firstUse: 'Prague', ...TORSO, draw: (ctx, w, h) => { ctx.fillStyle = DARKRED; ctx.beginPath(); ctx.moveTo(w * 0.3, 0); ctx.lineTo(w * 0.7, 0); ctx.lineTo(w * 0.58, h * 0.16); ctx.lineTo(w * 0.42, h * 0.16); ctx.closePath(); ctx.fill(); ctx.fillRect(w * 0.44, h * 0.14, w * 0.08, h * 0.3); for (const [x, y, c] of [[0.3, 0.6, '#0055BF'], [0.66, 0.5, '#F2CD37'], [0.72, 0.78, DARKRED], [0.36, 0.84, '#F2CD37'], [0.6, 0.68, '#0055BF']] as [number, number, string][]) dot(ctx, w * x, h * y, w * 0.035, c); } });   // a scarf knotted at the neck, paint dabs on the smock (White torso)
+def({ key: 'torso_tourist', zh: '游客·沙绿 T 恤双肩包背带', colors: ['Dark Brown', 'White'], firstUse: 'Prague', ...TORSO, draw: (ctx, w, h) => { ctx.strokeStyle = '#352100'; ctx.lineWidth = w * 0.07; ctx.beginPath(); ctx.moveTo(w * 0.24, 0); ctx.lineTo(w * 0.2, h * 0.92); ctx.moveTo(w * 0.76, 0); ctx.lineTo(w * 0.8, h * 0.92); ctx.stroke(); ctx.strokeStyle = WHITE; ctx.lineWidth = w * 0.03; ctx.beginPath(); ctx.arc(w * 0.5, 0, w * 0.13, 0, Math.PI); ctx.stroke(); } });   // backpack straps over a plain tee (Sand Green torso)
+def({ key: 'canvas_tyn', zh: '画布·泰恩双塔剪影（画家的画，1×2×2 砖正面）', colors: ['Bright Light Blue', 'Black', 'Dark Orange'], firstUse: 'Prague', face: 'front', base: 'brick_1x2x2', px: 320, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#9FC3E9'; ctx.fillRect(w * 0.06, h * 0.06, w * 0.88, h * 0.62);
+  ctx.fillStyle = INK; for (const cx of [0.4, 0.6]) { ctx.fillRect(w * (cx - 0.06), h * 0.42, w * 0.12, h * 0.3); ctx.beginPath(); ctx.moveTo(w * (cx - 0.07), h * 0.43); ctx.lineTo(w * cx, h * 0.12); ctx.lineTo(w * (cx + 0.07), h * 0.43); ctx.closePath(); ctx.fill(); for (const dx of [-0.07, 0.07]) { ctx.beginPath(); ctx.moveTo(w * (cx + dx - 0.02), h * 0.44); ctx.lineTo(w * (cx + dx), h * 0.3); ctx.lineTo(w * (cx + dx + 0.02), h * 0.44); ctx.closePath(); ctx.fill(); } }
+  ctx.fillStyle = '#A95500'; ctx.fillRect(w * 0.06, h * 0.68, w * 0.88, h * 0.26);
+} });   // the view the painter is copying: Týn's two dark spires over red roofs

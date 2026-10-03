@@ -4,7 +4,7 @@ import { Blueprint } from '../core/builder';
 import { PARTS, footprint, PLATE } from '../core/catalog';
 import { RIG } from '../parts/ldraw/minifig-rig';
 
-export interface SceneMeta { id: string; title: string; caption: string; subtitle: string; size: [number, number]; center: [number, number, number]; base?: number; camera?: { az: number; el: number; dist: number } }
+export interface SceneMeta { id: string; title: string; caption: string; subtitle: string; size: [number, number]; center: [number, number, number]; base?: number; camera?: { az: number; el: number; dist: number }; viewDist?: number /* the set view's camera distance when the radius rule (2.15 × footprint radius) crops a tall or wide set */ }
 export interface SceneDef { seed: number; build: (bp: Blueprint) => SceneMeta }
 
 export const key2 = (x: number, z: number) => x + ',' + z;
@@ -19,7 +19,7 @@ export class Reserve {
 }
 
 // ---- minifigure (rig) ---------------------------------------------------------------------------------------
-export interface FigOpts { legs: string; torso: string; hair?: string; hairKey?: string; hat?: 'kasa'; skin?: string; face?: string; torsoPrint?: string }
+export interface FigOpts { legs: string; torso: string; hair?: string; hairKey?: string; hat?: 'kasa'; skin?: string; face?: string; torsoPrint?: string; headTurn?: 1 | 3 /* the head turned a quarter on the neck stud (a real minifig head turns): 1 = to the figure's left, 3 = right */ }
 
 // ---- trees ------------------------------------------------------------------------------------------
 type Piece = [number, number, '2x2' | '1x1' | 'flower' | 'cone'];
@@ -123,22 +123,30 @@ const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   frypan: { pose: 'f', gp: [0, 0, -1.15], shaft: true },                    // the hand wraps the handle (−z canonical); pan level at waist height 2.7 studs in front — over a 5-plate stove
   icecream_cone: { pose: 'f', gp: [0, -0.57, 0], shaft: true },              // the cone's shaft in the clip, cone upright, scoops on its stud
   popsicle: { pose: 'f', gp: [0, -0.8, 0] },                                 // held by the stick
+  paintbrush: { pose: 'f', gp: [0, -0.6, 0], shaft: true },                  // held low on the handle, bristles up
+  palette: { pose: 'f', gp: [-0.9, 0, 0] },                                   // the thumb edge in the clip, the palette flat in front
+  saxophone: { pose: 'f', gp: [0, -0.92, 0], shaft: true },                   // the LDraw origin is the grip on the body tube
 };
 /** Minifig v2: real LDraw legs / torso-with-posed-arms / hands / head, printed face and torso, any hair, accessories gripped in the hand.
  *  Feet centred at (cx, cz), plate level y, faces +z at rot 0. Returns wrist centres (world) for stacking more onto a held bar. */
 export function minifig2(bp: Blueprint, cx: number, y: number, cz: number, rot: number, o: FigOpts2, reserve?: Reserve) {
+  // feet on studs (2026-10-03, Eric: no figure stood with its feet in the studs): the legs are 2 × 1, so along the shoulders the centre sits on a
+  // grid line (the two foot holes on two stud centres) and across it on a cell centre. Snap to that, never in between.
+  if ((rot & 1) === 0) { cx = Math.round(cx); cz = Math.floor(cz) + 0.5; } else { cx = Math.floor(cx) + 0.5; cz = Math.round(cz); }
   reserve?.add(Math.floor(cx - 1), Math.floor(cz - 1), 3, 3);
   const holds = o.hold ?? []; const poses: { L: Pose; R: Pose } = { L: o.poses?.L ?? 'd', R: o.poses?.R ?? 'd' }; const held: Record<string, number> = {};
   for (const h of holds) { const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; poses[side] = h.pose ?? dflt.pose ?? 'f'; if (h.key === 'tray') { poses.L = 'h'; poses.R = 'h'; } }
   const place = (key: string, yy: number, color: string, print?: string, ox = 0, oz = 0, r = rot) => { const [fw, fd] = footprint(PARTS[key], r); const [dx, dz] = rotv(ox, oz, rot); bp.part(key, cx + dx - fw / 2, yy, cz + dz - fd / 2, color, r, print); };
   const skin = o.skin ?? 'Yellow';
-  place('fig_legs', y, o.legs); place(`fig_torso_${poses.L}${poses.R}`, y + 6, o.torso, o.torsoPrint); place(`fig_hands_${poses.L}${poses.R}`, y + 6, skin); place('fig_head', y + 9, skin, o.face);
-  if (o.hat === 'kasa') place('fig_kasa', y + 12, 'Tan'); else if (o.hair) place(o.hairKey ?? 'fig_hair', y + 12, o.hair);
+  place('fig_legs', y, o.legs); place(`fig_torso_${poses.L}${poses.R}`, y + 6, o.torso, o.torsoPrint); place(`fig_hands_${poses.L}${poses.R}`, y + 6, skin); const hr = (rot + (o.headTurn ?? 0)) & 3; place('fig_head', y + 9, skin, o.face, 0, 0, hr);
+  if (o.hat === 'kasa') place('fig_kasa', y + 12, 'Tan', undefined, 0, 0, hr); else if (o.hair) place(o.hairKey ?? 'fig_hair', y + 12, o.hair, undefined, 0, 0, hr);
   const torsoY = (y + 9) * PLATE; // torso origin (the neck) in world height
   const gripOf = (side: 'L' | 'R') => RIG.grip[`${side.toLowerCase()}${poses[side]}` as keyof typeof RIG.grip] as readonly [number, number, number];
   for (const h of holds) {
     const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; const def = PARTS[h.key]; const H = def.h * PLATE; const G = gripOf(side);
     const grip = h.grip ?? dflt.grip ?? 'mid'; const dx = h.dx ?? dflt.dx ?? 0, dy = h.dy ?? dflt.dy ?? 0, dz = h.dz ?? dflt.dz ?? 0;
+    // an offset moves the part's grip point away from the hand's clip: past ~1/3 stud the hand closes on air (2026-10-03, Eric: the saxophone floated beside the hand)
+    if (Math.hypot(dx, dy, dz) > 0.35) throw new Error(`grip offset: ${h.key} is moved ${Math.hypot(dx, dy, dz).toFixed(2)} studs away from the hand's clip — change the pose, the rotation or gp, not the offset`);
     const rel = h.rot ?? (side === 'L' ? dflt.rotL : dflt.rotR) ?? dflt.rot ?? 0; const gp = dflt.gp ?? [0, 0, 0]; const [gx, gz] = rotv(gp[0], gp[2], rel); // part grip point → hand clip centre
     let centerY = torsoY + G[1] - gp[1] + dy;
     if (grip === 'ground') centerY = y * PLATE + H / 2; else if (grip === 'bottom') centerY = torsoY + G[1] + H / 2 - 0.25;
@@ -298,10 +306,11 @@ const SAKURA4: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb
 const S4_LEAF = ['White', 'White', 'White', 'BrightPink', 'BrightPink'], S4_BLOOM = ['BrightPink', 'DarkPink', 'BrightPink', 'White'];
 /** One blossom cluster on a tip stud: calyx → 6×5 leaf fanning `rot`-ward → (big) a 4×3 leaf crossed over it → 5-petal flower plate →
  *  7-petal flower pinned in. The crossed second leaf is what turns a flat disc into a blossom mass. */
-export type Foliage = 'sakura' | 'pine' | 'raintree';   // add a kind per country: leaf colours + whether tips carry flowers
-const PINE_LEAF = ['DarkGreen', 'DarkGreen', 'Green'], RAIN_LEAF = ['Green', 'Green', 'DarkGreen', 'BrightGreen'];   // rain tree: fresh green umbrella (Singapore)
+export type Foliage = 'sakura' | 'pine' | 'raintree' | 'linden';   // add a kind per country: leaf colours + whether tips carry flowers
+// linden (Prague): dense late-summer green, darker than the rain tree
+const PINE_LEAF = ['DarkGreen', 'DarkGreen', 'Green'], RAIN_LEAF = ['Green', 'Green', 'DarkGreen', 'BrightGreen'], LINDEN_LEAF = ['Green', 'DarkGreen', 'Green', 'DarkGreen', 'BrightGreen'];   // rain tree: fresh green umbrella (Singapore)
 function cluster4(bp: Blueprint, tx: number, y: number, tz: number, rot: number, big: boolean, kind: Foliage = 'sakura') {
-  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : S4_LEAF;
+  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : kind === 'linden' ? LINDEN_LEAF : S4_LEAF;
   bp.part('plant_3leaves', tx, y, tz, kind === 'sakura' ? 'ReddishBrown' : 'DarkBrown');
   bp.part(big ? 'leaves_6x5' : 'leaves_4x3', tx, y + 1, tz, bp.pick(LEAF), rot);
   let top = y + 2;
@@ -384,10 +393,15 @@ const RAINTREE: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Lim
   M: { trunk: 4, gap: 1, big: true, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 0 }]] },
   S: { trunk: 3, gap: 0, big: false, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }]] },
 };
+const LINDEN: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb5[][]; big: boolean }> = {   // the linden's broad oval crown: the widest tier in the middle, a rounded top (a narrowing stack read as a pine, 2026-10-02)
+  L: { trunk: 4, gap: 2, big: true, tiers: [[{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }], [{ len: 4, lift: 0 }, { len: 4, lift: 2 }, { len: 4, lift: 4 }, { len: 4, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }, { len: 3, lift: 0 }]] },
+  M: { trunk: 3, gap: 1, big: true, tiers: [[{ len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }]] },
+  S: { trunk: 3, gap: 1, big: true, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }], [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }]] },   // two tiers: a small linden still reads as an oval, not a flat disc
+};
 /** (x, z) is the axis point — a grid corner; the 2×2 trunk covers cells (x−1..x, z−1..z).
  *  `tree` is the generic entry (kind picks the foliage: 'sakura' | 'pine', extend `Foliage` for maple, plane, olive, palm…); `sakura5` is its Kyoto-era name. */
 export function tree(bp: Blueprint, x: number, y: number, z: number, size: 'S' | 'M' | 'L', reserve?: Reserve, turn = 0, skip?: Dir | Dir[], kind: Foliage = 'sakura') {
-  bp.tag = kind; const spec = (kind === 'raintree' ? RAINTREE : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
+  bp.tag = kind; const spec = (kind === 'raintree' ? RAINTREE : kind === 'linden' ? LINDEN : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
   const TRUNK = kind === 'sakura' ? 'ReddishBrown' : 'DarkBrown';
   const CELLS: [number, number][] = [[x - 1, z - 1], [x, z - 1], [x, z], [x - 1, z]];   // NW NE SE SW
   const DIRS_A: Dir[] = [0, 3, 2, 1], DIRS_B: Dir[] = [1, 0, 3, 2];                      // outward directions per cell, two pinwheels
@@ -405,6 +419,7 @@ export function tree(bp: Blueprint, x: number, y: number, z: number, size: 'S' |
       if (limb.lift === 4) { bp.part('round_1x1', tx, ty + 1, tz, TRUNK); bp.part('roundplate_1x1', tx, ty + 4, tz, TRUNK); }
       else for (let s = 0; s < limb.lift; s++) bp.part('roundplate_1x1', tx, ty + 1 + s, tz, TRUNK);
       cluster4(bp, tx, ty + 1 + limb.lift, tz, (d + 2) & 3, spec.big, kind);
+      if (kind === 'linden') for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; bp.part(k === 1 ? 'leaves_6x5' : 'leaves_4x3', mx, ty + 1, mz, bp.pick(LINDEN_LEAF), (d + (i % 2 ? 1 : 3)) & 3); }   // a linden is leafy along the whole limb, not only at the tips: the crown reads as one mass
       if (kind === 'sakura') for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; if (k === 1 && limb.len >= 3 && spec.big) { bp.part('leaves_4x3', mx, ty + 1, mz, bp.pick(S4_LEAF), (d + (i % 2 ? 1 : 3)) & 3); bp.part('petal_1x1', mx, ty + 2, mz, bp.pick(S4_BLOOM)); } else { bp.part('petal_1x1', mx, ty + 1, mz, bp.pick(S4_BLOOM)); if (k % 2) bp.part('flower_7', mx, ty + 2, mz, bp.pick(S4_BLOOM)); } }   // a side leaf on the first free stud of every long limb, loose blossoms after
     });
     ty += 1;                                                          // the trunk continues on the four inner plate ends

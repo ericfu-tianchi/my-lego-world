@@ -19,7 +19,7 @@ const args = process.argv.slice(2); const force = args.includes('--force'); cons
 const ASM_OUT = path.join(OUT, 'asm');
 // LDraw colour code → our colour key (src/core/colors.ts). An unmapped code is an error, never a silent default; 16 (inherit) becomes '' and
 // takes the proxy's colour when the assembly is exploded.
-const LDCOLOR = { 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange' };
+const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'SandBlue', 78: 'LightNougat', 128: 'DarkNougat', 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange' };
 /** Flatten an assembly's type-1 lines into members in our frame. LDraw → ours is F = diag(1, −1, −1)/20, so p' = F·p and m' = F·M·F⁻¹. */
 function members(name, src) {
   const out = [];
