@@ -67,6 +67,8 @@ export class BrickRenderer {
   /** Black-on-white silhouette for judging: one flat material, prints hidden. */
   silhouette(on: boolean) { for (const m of this.meshes) { if (this.decals.has(m)) { m.visible = !on; continue; } m.material = on ? this.matSil : (m.userData.base ?? this.matOpaque); m.castShadow = !on && !m.userData.trans; } }
   clear() { for (const m of this.meshes) { this.group.remove(m); if (this.decals.has(m)) (m.material as THREE.Material).dispose(); m.dispose(); } this.meshes = []; this.items = []; this.decals.clear(); }
+  /** the material a placement is drawn with (for prewarming programs and geometry uploads before a set enters) */
+  materialFor(p: Placement): THREE.Material { const def = PARTS[p.key]; return isGlass(p.color) ? this.matGlass : isTrans(p.color) ? this.matTrans : def?.ldraw ? this.matOpaqueDS : this.matOpaque; }
   /** night: glowing groups emit their colour; everything else is lit by the scene's night lights */
   setNight(on: boolean) { for (const m of [this.matOpaque, this.matOpaqueDS, this.matTrans, this.matGlass, ...this.glowMats.map((g) => g.mat)]) m.envMapIntensity = on ? 0.12 : m === this.matTrans || m === this.matGlass ? 1.2 : 0.9;
     for (const g of this.glowMats) { g.mat.emissive.setHex(on ? g.color : 0x000000); g.mat.emissiveIntensity = on ? 1.6 : 0; g.mat.needsUpdate = true; } }

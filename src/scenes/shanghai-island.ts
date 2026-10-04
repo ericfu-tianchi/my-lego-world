@@ -60,11 +60,12 @@ export function buildShanghai(bp: Blueprint): SceneMeta {
   // ---- what stands where (footprints after rotation)
   const LANE = { x: 1, z: 12 };                                                    // the shikumen lane 25 × 22: two south-facing terraces, the gatehouse at the east end
   const BX = 31, PEACE = 8, CUSTOMS = 20, HSBC = 37;                              // the Bund buildings, rot 3 (fronts east to the river)
-  const PEARL = { x: 67, z: 3 }, JINMAO = { x: 80, z: 22 }, SWFC = { x: 88, z: 26 }, ST = { x: 70, z: 38 }, RING = { x: 79, z: 6 };   // the real plan seen from the Bund: the Pearl north-west at the river, Jin Mao, the SWFC east of it (wide face to the Bund), the Shanghai Tower south of Jin Mao
+  const PEARL = { x: 66, z: 2 },   // 12 × 12 since the struts stand on hinges (axis unchanged)
+   JINMAO = { x: 80, z: 22 }, SWFC = { x: 88, z: 26 }, ST = { x: 70, z: 38 }, RING = { x: 79, z: 6 };   // the real plan seen from the Bund: the Pearl north-west at the river, Jin Mao, the SWFC east of it (wide face to the Bund), the Shanghai Tower south of Jin Mao
   const CRUISE = { x: 50, z: 30 }, BARGE = { x: 58, z: 2 };   // the small sightseeing boat mid-river on the bend, the big barge up the north reach
   keep(LANE.x, LANE.z, 25, 22);
   keep(BX, PEACE, 10, 10); keep(BX, CUSTOMS, 10, 15); keep(BX, HSBC, 10, 20);
-  keep(PEARL.x, PEARL.z, 10, 10); keep(JINMAO.x, JINMAO.z, 7, 7); keep(SWFC.x, SWFC.z, 8, 8); keep(ST.x, ST.z, 10, 10);
+  keep(PEARL.x, PEARL.z, 12, 12); keep(JINMAO.x, JINMAO.z, 7, 7); keep(SWFC.x, SWFC.z, 8, 8); keep(ST.x, ST.z, 10, 10);
   for (const [x, z] of [[-4.5, 0.5], [4.5, -0.5], [0.5, 4.5], [-0.5, -4.5]]) keep(RING.x + 5 + x - 0.5, RING.z + 5 + z - 0.5, 1, 1);
   wet(CRUISE.x, CRUISE.z, 4, 12);
   const WAKE: Pt[] = [[CRUISE.x + 1, CRUISE.z + 12], [CRUISE.x + 2, CRUISE.z + 13], [CRUISE.x, CRUISE.z + 14], [CRUISE.x + 3, CRUISE.z + 14], [CRUISE.x - 1, CRUISE.z + 1], [CRUISE.x + 4, CRUISE.z + 1],   // the boat's wake astern and a bow wave either side
@@ -73,7 +74,7 @@ export function buildShanghai(bp: Blueprint): SceneMeta {
   const promenade = (x: number, z: number) => x >= 41 || (z < PEACE && x >= 31);                         // the Bund promenade along the water
   const pudongWalk = (x: number, z: number) => riverD(x, z) < HALF + 3;
   const dist = (x: number, z: number, o: { x: number; z: number }, s: number) => Math.hypot(x + 0.5 - (o.x + s / 2), z + 0.5 - (o.z + s / 2));
-  const plaza = (x: number, z: number) => dist(x, z, PEARL, 10) < 7.5, ringPlaza = (x: number, z: number) => dist(x, z, RING, 10) < 6.5;
+  const plaza = (x: number, z: number) => dist(x, z, PEARL, 12) < 7.5, ringPlaza = (x: number, z: number) => dist(x, z, RING, 10) < 6.5;
   const towerPlaza = (x: number, z: number) => ([[JINMAO, 7], [SWFC, 8], [ST, 10]] as [{ x: number; z: number }, number][]).some(([p, n]) => x >= p.x - 1 && x < p.x + n + 1 && z >= p.z - 1 && z < p.z + n + 1);
   const PATHS: Pt[][] = [[[72, 15], [78, 19], [84, 21]], [[78, 30], [79, 36]], [[86, 48], [92, 40]], [[66, 30], [72, 34]]];   // Lujiazui lawn paths joining the plazas
   const path = (x: number, z: number) => PATHS.some((pl) => near(x + 0.5, z + 0.5, pl) < 1);
@@ -111,7 +112,7 @@ export function buildShanghai(bp: Blueprint): SceneMeta {
       else if (promenade(x, z)) top(z % 5 === 0 ? 'DarkBluishGray' : 'LightBluishGray');                     // pale slabs with dark cross bands
       else top(x % 4 === 0 || z % 4 === 0 ? 'DarkBluishGray' : 'LightBluishGray');                          // old granite paving in a regular grid of dark joints
     } else if (pool(x, z)) { bp.vox1('plate', x, G - 2, z, 'DarkAzure'); const edge = x === POOL.x || x === POOL.x + POOL.w - 1 || z === POOL.z || z === POOL.z + POOL.d - 1; bp.vox1(edge ? 'tile' : k ? 'plate' : 'tile', x, G - 1, z, edge ? 'White' : 'TransLightBlue'); }
-    else if (pudongWalk(x, z) || plaza(x, z) || ringPlaza(x, z) || towerPlaza(x, z) || path(x, z)) top(plaza(x, z) && dist(x, z, PEARL, 10) > 6.5 ? 'DarkBluishGray' : 'White');   // white granite plazas and paths
+    else if (pudongWalk(x, z) || plaza(x, z) || ringPlaza(x, z) || towerPlaza(x, z) || path(x, z)) top(plaza(x, z) && dist(x, z, PEARL, 12) > 6.5 ? 'DarkBluishGray' : 'White');   // white granite plazas and paths
     else bp.vox1('plate', x, G - 1, z, k ? 'White' : 'BrightGreen');                                       // the Lujiazui lawn, one even green
   }
   for (let x = -1; x <= W; x++) for (let z = -1; z <= D; z++) {
@@ -135,7 +136,7 @@ export function buildShanghai(bp: Blueprint): SceneMeta {
 
 
   // ---- Pudong
-  bp.tag = 'pearl'; ground.add('pearl', PEARL.x + 5, PEARL.z + 5, 5); bp.assembly('pearl', PEARL.x, G, PEARL.z, 'Tan'); R.add(PEARL.x, PEARL.z, 10, 10);
+  bp.tag = 'pearl'; ground.add('pearl', PEARL.x + 6, PEARL.z + 6, 5); bp.assembly('pearl', PEARL.x, G, PEARL.z, 'Tan'); R.add(PEARL.x, PEARL.z, 12, 12);
   bp.tag = 'jinmao'; bp.assembly('jinmao', JINMAO.x, G, JINMAO.z, 'LightBluishGray'); R.add(JINMAO.x, JINMAO.z, 7, 7);
   bp.tag = 'swfc'; bp.assembly('swfc', SWFC.x, G, SWFC.z, 'SandBlue', 1); R.add(SWFC.x, SWFC.z, 8, 8);
   bp.tag = 'shtower'; bp.assembly('shtower', ST.x, G, ST.z, 'TransVeryLightBlue'); R.add(ST.x, ST.z, 10, 10);

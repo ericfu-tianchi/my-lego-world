@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { Blueprint } from '../core/builder';
 import { BrickRenderer, makeStudioEnv, makeLights, type Item } from '../core/render';
+import { geometryFor } from '../core/catalog';
 import { Orbit } from '../core/controls';
 import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
+let checkId = 0;
 import { SCENES } from '../scenes/index';
 import { type Place } from '../scenes/globe';
 import { GlobeView, GLOBE_RADIUS } from './globe-view';
@@ -45,14 +47,14 @@ function init() {
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
-  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.title = P.scene ? '' : 'Coming soon'; l.onclick = () => enterPlace(pin.place); $('labels').appendChild(l); app.labels.push(l); }
+  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.title = P.scene ? '' : 'Coming soon'; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }
   { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
   canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: performance.now() }; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
   canvas.addEventListener('pointermove', (e) => {
     if (drag && app.view === 'globe') { const now = performance.now(); const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = (d / Math.max(1, now - drag.t)) * 1000; drag = { x: e.clientX, y: e.clientY, t: now }; app.idle = 0; }
-    const pin = pickPin(e); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
+    const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
   canvas.addEventListener('pointerup', (e) => { drag = null; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
   canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
@@ -61,20 +63,48 @@ function init() {
 }
 function replay() { if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.drift = null; app.bricks.resetHome(); prepareEntrance(); startEntrance(); }
 
+/** Scenes are built once and kept: the blueprint (90 ms on Shanghai) and, through prewarm, every part geometry already on the GPU, so a
+ *  click on the globe starts the transition at once (Eric 2026-10-04: big sets waited ~2 s and he clicked again, thinking it had failed). */
+const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number; rep?: { ok: boolean; floating: number; overlaps: number } }>();
+function buildCached(id: string) { let b = built.get(id); if (!b) { const def = SCENES[id]; const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); b = { bp, meta, ms: performance.now() - t0 }; built.set(id, b); } return b; }
+const warmed = new Set<string>();
+function prewarm(id: string) {
+  if (warmed.has(id) || !SCENES[id]) return; warmed.add(id); const { bp } = buildCached(id);
+  const kinds = new Map<string, THREE.Material>(); for (const p of bp.parts) { if (p.proxy) continue; const m = app.bricks.materialFor(p); kinds.set(p.key + '|' + m.uuid, m); }
+  const scene = new THREE.Scene(); const meshes: THREE.InstancedMesh[] = [];
+  for (const [k, m] of kinds) { const mesh = new THREE.InstancedMesh(geometryFor(k.split('|')[0]), m, 1); mesh.setColorAt(0, new THREE.Color(0xffffff)); mesh.frustumCulled = false; scene.add(mesh); meshes.push(mesh); }
+  const rt = new THREE.WebGLRenderTarget(4, 4); const r = app.renderer; const prev = r.getRenderTarget(); r.setRenderTarget(rt); r.render(scene, app.camera); r.setRenderTarget(prev); rt.dispose();
+  for (const m of meshes) m.dispose();   // the geometries and programs stay cached; only these one-off instances go
+}
+/** On the globe, the set under the pointer is built into the (hidden) brick renderer and drawn once off screen, so its instance buffers
+ *  are on the GPU before the click; only one set at a time — the renderer holds one */
+let bricksFor: string | null = null;
+function prepareBricks(id: string) {
+  if (bricksFor === id || app.view !== 'globe' || app.tween || !SCENES[id]) return;
+  const { bp, meta } = buildCached(id); app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(bp.parts, new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2)); bricksFor = id;
+  const g = app.bricks.group; const rt = new THREE.WebGLRenderTarget(4, 4); const r = app.renderer; const prev = r.getRenderTarget();
+  g.visible = true; r.setRenderTarget(rt); r.render(app.scene, app.camera); r.setRenderTarget(prev); g.visible = false; rt.dispose();
+}
 function loadScene(id: string) {
-  const def = SCENES[id]; if (!def) return; app.sceneId = id; const bp = new Blueprint(def.seed);
-  const t0 = performance.now(); const meta = def.build(bp); const t1 = performance.now();
+  const def = SCENES[id]; if (!def) return; app.sceneId = id;
+  const cached = buildCached(id); const { bp, meta, ms } = cached; const t0 = 0, t1 = ms;
   app.tableY = id === 'kyoto-refined' ? -.03 : TABLE_Y; app.table.position.y = app.tableY;
-  const rep = validate(bp.parts, meta.base ?? 0); console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(rep, 10));
+  // the connection check costs ~1.5 s on Shanghai's 8,000 parts — inside the click it held the globe still for two seconds (Eric 2026-10-04).
+  // Screenshots and tools read its summary from the console, so they keep it synchronous; the app runs it once the entrance is over.
+  const full = SHOT ? validate(bp.parts, meta.base ?? 0) : null; if (full) console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(full, 10));
+  const rep = full ?? cached.rep ?? null;
   const origin = new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2);
   const only = qs.get('only'); const shown = only ? bp.parts.filter((p) => only.split(',').includes(p.tag ?? '')) : bp.parts;   // ?only=torii,bridge → element renders against clean sky
-  app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin); const st = bp.stats();
+  if (only || bricksFor !== id) { app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin); bricksFor = only ? null : id; }   // a set prepared on hover is reused
+  const st = bp.stats();
   $('btn-night').hidden = !meta.glow; setNight(!!meta.glow && (app.night || qs.has('night')));
   app.center.set(0, meta.center[1], 0); const radius = Math.hypot(meta.size[0], meta.size[1]) / 2 + 4; app.radius = radius; app.viewDist = meta.viewDist ?? radius * 2.15; app.lights.frame(app.center, radius);
   const o = app.orbit; o.target.copy(app.center); o.az = meta.camera?.az ?? 0.62; o.el = meta.camera?.el ?? 0.4; o.dist = meta.camera?.dist ?? radius * 2.7; o.minDist = 8; o.maxDist = 220; o.minEl = 0.05; o.autoRotate = app.autoRotate;
   if (qs.has('az')) o.az = +qs.get('az')!; if (qs.has('el')) o.el = +qs.get('el')!; if (qs.has('dist')) o.dist = +qs.get('dist')!; if (qs.has('tx')) o.target.set(+qs.get('tx')!, +qs.get('ty')!, +qs.get('tz')!);
   $('place-title').textContent = meta.title; $('place-sub').textContent = `${meta.caption} · ${meta.subtitle}`;
-  $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${rep.ok ? 'connection check passed' : rep.floating + ' floating · ' + rep.overlaps + ' overlaps'}`;
+  const line = (r: { ok: boolean; floating: number; overlaps: number } | null) => `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${!r ? 'checking connections…' : r.ok ? 'connection check passed' : r.floating + ' floating · ' + r.overlaps + ' overlaps'}`;
+  $('place-stats').textContent = line(rep);
+  if (!rep) { const my = ++checkId; const run = () => { if (my !== checkId || app.sceneId !== id) return; if (app.tween || app.state !== 'built') { setTimeout(run, 400); return; } cached.rep = validate(bp.parts, meta.base ?? 0); $('place-stats').textContent = line(cached.rep); }; setTimeout(run, 3500); }   // once per set per visit to the page
   app.bricks.resetHome(); if (SHOT && qs.has('sil')) app.bricks.silhouette(true); setState('built');
 }
 /** night mode (Shanghai, 2026-10-03): moonlight, a dark sky, and the bricks the scene's glow rule names lit from within */
@@ -172,7 +202,7 @@ async function goGlobe() {
       _b.copy(x.q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(w * 2, w * 1.5, w))); app.bricks.setPose(x.it, _a, _b); }
     app.bricks.commit();
   });
-  app.bricks.clear(); app.items = []; app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0); showGlobe();
+  app.bricks.clear(); app.items = []; bricksFor = null; app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0); showGlobe();
 }
 
 // ---- the entrance: Rebuild (Eric's choice, 2026-10-02) ------------------------------------------------------
@@ -284,6 +314,7 @@ function frame() {
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
   init(); window.__app = app;
+  if (!SHOT) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue.shift(); if (!id) return; prewarm(id); setTimeout(next, 700); }; setTimeout(next, 1500); }   // warm every built set while the globe turns
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)

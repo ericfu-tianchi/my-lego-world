@@ -47,7 +47,12 @@ function stack(id, color, R) { at(id, color, C[0], cur - (R === FLIP && hasStud(
 const pin = () => a.put('3673', DBG, [0, -1, 0, 1, 0, 0, 0, 0, 1], [C[0], cur * PLATE, C[2]]);
 const columns = (n) => { for (const [dx, dz] of COLS) for (let k = 0; k < n; k++) at('3062b', TAN, C[0] + dx, cur + 3 * k, C[2] + dz); cur += 3 * n; };
 // ---- columns from the plaza, the collar the struts meet
-columns(4);
+// columns: the two that carry a strut's top hinge end in a round plate with a side handle (26047) under the collar; the third is plain
+const HINGE_COLS = [[-0.5, 0.5], [0.5, -0.5]];
+for (const [dx, dz] of COLS) { const hinge = HINGE_COLS.some(([hx, hz]) => hx === dx && hz === dz);
+  for (let k = 0; k < (hinge ? 3 : 4); k++) at('3062b', TAN, C[0] + dx, cur + 3 * k, C[2] + dz);
+  if (hinge) { at('6141', TAN, C[0] + dx, cur + 10, C[2] + dz); at('6141', TAN, C[0] + dx, cur + 11, C[2] + dz); } }   // the handle plate goes in at 9–10 (below)
+cur += 12;
 const STRUT_TOP = cur;
 stack('60474', LBG);
 // ---- lower sphere
@@ -86,14 +91,48 @@ const UPPER = cur;
 stack('3062b', LBG); stack('3062b', LBG); stack('20953', MAG);              // stem ≈ 0.25 of the sphere; the space module is a round 2×2 sphere brick
 stack('3062b', DBG); stack('6141', DBG); stack('30374', DBG);                                // dark grey mast narrowing to the antenna
 console.log(`lower sphere top ${LOWER} · upper sphere top ${UPPER} · tip ${cur} plates`);
-// ---- struts at 120°, one toward +x+z (the bead side): outer leg at 60° with a knee sphere
-const S60 = Math.sin(Math.PI / 3), C60 = 0.5;
-for (const deg of [45, 165, 285]) {
-  const t = (deg * Math.PI) / 180; const u = [Math.cos(t), 0, Math.sin(t)], tng = [-u[2], 0, u[0]]; const Y0 = 0.25;   // a tilted brick's low corner drops 0.25: start there so it meets the plaza
-  const ax = [-u[0] * C60, S60, -u[2] * C60]; const L = (STRUT_TOP * PLATE - Y0 - 0.25) / S60; const R0 = 1.6 + L * C60;   // the tilted top face rises 0.25 at its corners
-  const foot = [C[0] + u[0] * R0, Y0, C[2] + u[2] * R0]; const pt = (s) => [foot[0] + ax[0] * s, foot[1] + ax[1] * s, foot[2] + ax[2] * s];
-  along('3062b', TAN, pt(0), ax, tng); along('3062b', TAN, pt(1.2), ax, tng); along('20953', LBG, pt(2.4), ax, tng);   // the knee: a 2×2 sphere brick (stud on top: the leg above clutches it; the 1.4 sphere had none), centre ≈ 0.6 of the strut
-  let s1 = 2.4 + 2.0; if (s1 + 1.2 <= L + 0.05) { along('3062b', TAN, pt(s1), ax, tng); s1 += 1.2; } while (s1 + 0.4 <= L - 0.05) { along('6141', TAN, pt(s1), ax, tng); s1 += 0.4; }
-  // the inner legs (ground → knee) are cut: three lone tilted stubs on the plaza read as debris, not as the fork (Eric 2026-10-03)
+// ---- struts (v3, Eric 2026-10-04: the legs were laid on the plaza at an angle, plugged into nothing): each strut is a chain of real
+// bricks hung between two bar-in-clip hinges — the LEGO way to hold a part at an angle (21039 hangs its struts on clips the same way).
+//   top     a round plate with a side handle (26047) under the collar — on a hinge column's top, or hung from the collar's free cell —
+//           turned so its handle points out along the strut and its bar runs across it
+//   foot    the same handle plate on the plaza (on a jumper where the half-stud lattice fits better), its bar parallel to the top's
+//   strut   a clip plate (61252) whose ring closes on the foot bar, a tan round brick, the grey knee brick, two round plates, a clip plate whose
+//           ring closes on the top bar; each clip plate sits on the chain's end stud, so the chain is clutched end to end
+// The three struts are 120° apart (41°, 161°, 281°) at one lean (56.4°); their feet were found by a lattice search (scratch
+// strut3.mjs, 2026-10-04) so each foot bar lands within 0.05 stud of where the strut needs it (along the bar, within 0.13: the clip
+// slides on the handle).
+const HANDLE = [0, -0.1, 1.0];                                               // 26047's handle bar and 61252's clip ring: centre in the plate's frame (LDraw: 0, 2, −20)
+const basis3 = (ex, ey, ez) => [ex[0], ey[0], ez[0], ex[1], ey[1], ez[1], ex[2], ey[2], ez[2]];
+const cross3 = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+const norm = (v) => { const n = Math.hypot(...v); return v.map((x) => x / n); };
+const handleAt = (x, topY, z, dir) => { const R = yaw((Math.atan2(dir[0], dir[1]) * 180) / Math.PI); a.put('26047', TAN, R, [x, topY, z]); const h = appR(R, HANDLE); return [x + h[0], topY + h[1], z + h[2]]; };
+const STRUTS = [   // found by the lattice search (scratch s2b.mjs, 2026-10-04): 120° apart, one lean (51°), every bar within 0.05 stud
+  { top: [0.5, 0.5], hang: true, th: 49.5, foot: [3.5, 4], jumper: 'z', nf: 0, fo: 1, opp: true },
+  { top: [-0.5, 0.5], th: 167.5, foot: [-5, 1.5], jumper: 'x', nf: 0, fo: 1, opp: true, flip: true },   // flip: its top clip on the outer side (inside, it ran into the column)
+  { top: [0.5, -0.5], th: 289.5, foot: [2, -4.5], jumper: 'x', nf: 1, fo: 1, opp: false },
+];
+const TOPY = STRUT_TOP - 2;                                                  // the top handle plates sit two plates under the collar, clear of it
+for (const st of STRUTS) {
+  const t = (st.th * Math.PI) / 180; const d = [Math.cos(t), Math.sin(t)];
+  if (st.hang) { at('6141', TAN, C[0] + st.top[0], STRUT_TOP - 1, C[2] + st.top[1]); at('6141', TAN, C[0] + st.top[0], STRUT_TOP - 2, C[2] + st.top[1]); }   // hung from the collar's free cell
+  const Btop = handleAt(C[0] + st.top[0], TOPY * PLATE, C[2] + st.top[1], d);
+  let fy = 0; const fx = C[0] + st.foot[0], fz = C[2] + st.foot[1];
+  if (st.jumper === 'x') { at('3794b', LBG, fx, 0, fz); fy = 1; } else if (st.jumper === 'z') { at('3794b', LBG, fx, 0, fz, yaw(90)); fy = 1; } else if (st.jumper === '22') { at('87580', LBG, fx, 0, fz); fy = 1; }
+  for (let k = 0; k < st.nf; k++) at('6141', LBG, fx, fy + k, fz);
+  const Bfoot = handleAt(fx, (fy + st.nf + 1) * PLATE, fz, [-st.fo * d[0], -st.fo * d[1]]);
+  const V = [Btop[0] - Bfoot[0], Btop[1] - Bfoot[1], Btop[2] - Bfoot[2]]; const M = Math.hypot(...V); const v = V.map((x) => x / M); const tg = norm([-d[1], 0, d[0]]);
+  const inDown = (e) => (e[1] + e[0] * d[0] + e[2] * d[1] < 0) !== !!st.flip;                 // the bottom clip reaches in and down to its bar: the chain rides outside
+  let ax, eb, et, Lk;
+  if (!st.opp) { ax = v; Lk = M; let e = norm(cross3(tg, ax)); if (!inDown(e)) e = e.map((x) => -x); eb = e; et = e; }
+  else { Lk = Math.sqrt(M * M - 4); let w = norm(cross3(tg, v)); let e = [0, 1, 2].map((i) => (-2 * v[i] + Lk * w[i]) / M); if (!inDown(e)) { w = w.map((x) => -x); e = [0, 1, 2].map((i) => (-2 * v[i] + Lk * w[i]) / M); }
+    ax = [0, 1, 2].map((i) => (Lk * v[i] + 2 * w[i]) / M); eb = e; et = e.map((x) => -x); }   // clips on opposite sides: Lk·ax + et − eb = V
+  const chain = 3.2;                                                          // between the clip plates: a tan round brick, the grey knee brick, two tan round plates
+  const P0 = [0, 1, 2].map((i) => Bfoot[i] + 0.1 * ax[i] - eb[i]);
+  const pt = (s) => [0, 1, 2].map((i) => P0[i] + ax[i] * s);
+  a.put('61252', TAN, basis3(cross3(ax, eb), ax, eb), P0);
+  const sx = cross3(ax, eb); along('3062b', TAN, pt(0), ax, sx); along('3062b', LBG, pt(1.2), ax, sx); along('6141', TAN, pt(2.4), ax, sx); along('6141', TAN, pt(2.8), ax, sx);   // the knee a grey band (the 2×2 sphere swamped a strut this short)
+  a.put('61252', TAN, basis3(cross3(ax, et), ax, et), pt(chain + 0.4));
+  const ring = [0, 1, 2].map((i) => pt(chain + 0.3)[i] + et[i]); const miss = Math.hypot(...[0, 1, 2].map((i) => ring[i] - Btop[i]));
+  console.log(`strut ${st.th}°: chain needs ${(Lk - 0.4).toFixed(3)}, has ${chain}; top ring misses its bar by ${miss.toFixed(3)} stud`);
 }
 const out = a.write(); console.log('pearl:', out.file, a.parts.length, 'parts', JSON.stringify(out.bom));
