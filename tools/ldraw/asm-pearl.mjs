@@ -14,7 +14,7 @@
 //   upper   grey bowl → 6×6 grey deck ring → black window band → MAGENTA dome; stem; space module; dark grey mast
 //   struts  three at 120°, one toward +x+z; outer leg at 60° with a knee sphere at ≈ 0.56 (the inner legs were cut, 2026-10-03)
 import { Asm, bbox, PLATE } from './asm-ours.mjs';
-const TAN = 19, LBG = 71, MAG = 26, BLK = 0, DBG = 72;
+const TAN = 19, WHITE = 15, LBG = 71, MAG = 26, BLK = 0, DBG = 72;
 const C = [5, 0, 5];
 const a = new Asm('pearl', C);
 const yaw = (deg) => { const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t); return [c, 0, s, 0, 1, 0, -s, 0, c]; };
@@ -47,11 +47,13 @@ function stack(id, color, R) { at(id, color, C[0], cur - (R === FLIP && hasStud(
 const pin = () => a.put('3673', DBG, [0, -1, 0, 1, 0, 0, 0, 0, 1], [C[0], cur * PLATE, C[2]]);
 const columns = (n) => { for (const [dx, dz] of COLS) for (let k = 0; k < n; k++) at('3062b', TAN, C[0] + dx, cur + 3 * k, C[2] + dz); cur += 3 * n; };
 // ---- columns from the plaza, the collar the struts meet
-// columns: the two that carry a strut's top hinge end in a round plate with a side handle (26047) under the collar; the third is plain
+// columns: three round bricks and a round plate in Tan, then two plates of grey under the collar, so the sphere's grey underside reads
+// deeper and the struts' top hinges disappear into it. On the two columns that carry a strut's top hinge the lower grey plate is a round
+// plate with a side handle (26047, placed with the struts below)
 const HINGE_COLS = [[-0.5, 0.5], [0.5, -0.5]];
 for (const [dx, dz] of COLS) { const hinge = HINGE_COLS.some(([hx, hz]) => hx === dx && hz === dz);
-  for (let k = 0; k < (hinge ? 3 : 4); k++) at('3062b', TAN, C[0] + dx, cur + 3 * k, C[2] + dz);
-  if (hinge) { at('6141', TAN, C[0] + dx, cur + 10, C[2] + dz); at('6141', TAN, C[0] + dx, cur + 11, C[2] + dz); } }   // the handle plate goes in at 9–10 (below)
+  for (let k = 0; k < 3; k++) at('3062b', TAN, C[0] + dx, cur + 3 * k, C[2] + dz);
+  at('6141', TAN, C[0] + dx, cur + 9, C[2] + dz); if (!hinge) at('6141', LBG, C[0] + dx, cur + 10, C[2] + dz); at('6141', LBG, C[0] + dx, cur + 11, C[2] + dz); }
 cur += 12;
 const STRUT_TOP = cur;
 stack('60474', LBG);
@@ -91,48 +93,39 @@ const UPPER = cur;
 stack('3062b', LBG); stack('3062b', LBG); stack('20953', MAG);              // stem ≈ 0.25 of the sphere; the space module is a round 2×2 sphere brick
 stack('3062b', DBG); stack('6141', DBG); stack('30374', DBG);                                // dark grey mast narrowing to the antenna
 console.log(`lower sphere top ${LOWER} · upper sphere top ${UPPER} · tip ${cur} plates`);
-// ---- struts (v3, Eric 2026-10-04: the legs were laid on the plaza at an angle, plugged into nothing): each strut is a chain of real
-// bricks hung between two bar-in-clip hinges — the LEGO way to hold a part at an angle (21039 hangs its struts on clips the same way).
-//   top     a round plate with a side handle (26047) under the collar — on a hinge column's top, or hung from the collar's free cell —
-//           turned so its handle points out along the strut and its bar runs across it
-//   foot    the same handle plate on the plaza (on a jumper where the half-stud lattice fits better), its bar parallel to the top's
-//   strut   a clip plate (61252) whose ring closes on the foot bar, a tan round brick, the grey knee brick, two round plates, a clip plate whose
-//           ring closes on the top bar; each clip plate sits on the chain's end stud, so the chain is clutched end to end
-// The three struts are 120° apart (41°, 161°, 281°) at one lean (56.4°); their feet were found by a lattice search (scratch
-// strut3.mjs, 2026-10-04) so each foot bar lands within 0.05 stud of where the strut needs it (along the bar, within 0.13: the clip
-// slides on the handle).
-const HANDLE = [0, -0.1, 1.0];                                               // 26047's handle bar and 61252's clip ring: centre in the plate's frame (LDraw: 0, 2, −20)
+// ---- struts (v4, Eric 2026-10-04: v3's short clip-plate chains hung off the columns' sides read as arms, not legs). As on the real tower
+// each strut is one long straight leg from the plaza up under the lower sphere, and as in LEGO 21039 it is a stack of Tan 1×1 round bricks
+// with a bar-with-clip (48729b) in each end — the bottom one's bar in the lowest brick's underside, the top one's bar in the top brick's
+// open stud — each clip closing on the bar of a round plate with a side handle (26047), which turns freely on its one stud:
+//   top     the handle plate on a hinge column (or hung from the collar's free cell), at plates 10–11 just under the collar, handle out
+//           along the strut: the strut's plane passes through that column
+//   foot    the same handle plate on a jumper on the plaza, handle along the strut, its bar parallel to the top's
+// Both bars are perpendicular to the strut's plane, so the leg hangs between two hinges; each clip may slide up to 0.15 along its bar.
+// Feet from a lattice search (scratch foot6.mjs, 2026-10-04): three 3-brick legs, 4.4 long, 55° to the plaza, 4.1–4.2 out from the axis;
+// the side struts mirror each other about the diagonal, the front one is 4.5° off it (no lattice point on the diagonal fits).
+const HANDLE = [0, -0.1, 1.0];                                               // 26047's handle bar: centre in the plate's frame (LDraw: 0, 2, −20)
 const basis3 = (ex, ey, ez) => [ex[0], ey[0], ez[0], ex[1], ey[1], ez[1], ex[2], ey[2], ez[2]];
 const cross3 = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-const norm = (v) => { const n = Math.hypot(...v); return v.map((x) => x / n); };
-const handleAt = (x, topY, z, dir) => { const R = yaw((Math.atan2(dir[0], dir[1]) * 180) / Math.PI); a.put('26047', TAN, R, [x, topY, z]); const h = appR(R, HANDLE); return [x + h[0], topY + h[1], z + h[2]]; };
-const STRUTS = [   // found by the lattice search (scratch s2b.mjs, 2026-10-04): 120° apart, one lean (51°), every bar within 0.05 stud
-  { top: [0.5, 0.5], hang: true, th: 49.5, foot: [3.5, 4], jumper: 'z', nf: 0, fo: 1, opp: true },
-  { top: [-0.5, 0.5], th: 167.5, foot: [-5, 1.5], jumper: 'x', nf: 0, fo: 1, opp: true, flip: true },   // flip: its top clip on the outer side (inside, it ran into the column)
-  { top: [0.5, -0.5], th: 289.5, foot: [2, -4.5], jumper: 'x', nf: 1, fo: 1, opp: false },
+const handleAt = (x, topY, z, psi, color) => { const R = yaw(90 - psi); a.put('26047', color, R, [x, topY, z]); const h = appR(R, HANDLE); return [x + h[0], topY + h[1], z + h[2]]; };
+const STRUTS = [   // c: the top hinge's host cell; psi: the strut's heading (deg, from +x toward +z); S: the foot plate's stud; side 1: foot plate inward of its bar
+  { c: [0.5, 0.5], hang: true, psi: 49.5, S: [2, 2.5], jumper: 'x', side: 1 },
+  { c: [-0.5, 0.5], psi: 170.5, S: [-5, 1], jumper: '22', side: -1 },
+  { c: [0.5, -0.5], psi: 279.5, S: [1, -5], jumper: '22', side: -1 },
 ];
-const TOPY = STRUT_TOP - 2;                                                  // the top handle plates sit two plates under the collar, clear of it
+const TOPY = 11;                                                             // the top handle plates' top face (plates): bar 0.1 below, clip clear of the collar
 for (const st of STRUTS) {
-  const t = (st.th * Math.PI) / 180; const d = [Math.cos(t), Math.sin(t)];
-  if (st.hang) { at('6141', TAN, C[0] + st.top[0], STRUT_TOP - 1, C[2] + st.top[1]); at('6141', TAN, C[0] + st.top[0], STRUT_TOP - 2, C[2] + st.top[1]); }   // hung from the collar's free cell
-  const Btop = handleAt(C[0] + st.top[0], TOPY * PLATE, C[2] + st.top[1], d);
-  let fy = 0; const fx = C[0] + st.foot[0], fz = C[2] + st.foot[1];
-  if (st.jumper === 'x') { at('3794b', LBG, fx, 0, fz); fy = 1; } else if (st.jumper === 'z') { at('3794b', LBG, fx, 0, fz, yaw(90)); fy = 1; } else if (st.jumper === '22') { at('87580', LBG, fx, 0, fz); fy = 1; }
-  for (let k = 0; k < st.nf; k++) at('6141', LBG, fx, fy + k, fz);
-  const Bfoot = handleAt(fx, (fy + st.nf + 1) * PLATE, fz, [-st.fo * d[0], -st.fo * d[1]]);
-  const V = [Btop[0] - Bfoot[0], Btop[1] - Bfoot[1], Btop[2] - Bfoot[2]]; const M = Math.hypot(...V); const v = V.map((x) => x / M); const tg = norm([-d[1], 0, d[0]]);
-  const inDown = (e) => (e[1] + e[0] * d[0] + e[2] * d[1] < 0) !== !!st.flip;                 // the bottom clip reaches in and down to its bar: the chain rides outside
-  let ax, eb, et, Lk;
-  if (!st.opp) { ax = v; Lk = M; let e = norm(cross3(tg, ax)); if (!inDown(e)) e = e.map((x) => -x); eb = e; et = e; }
-  else { Lk = Math.sqrt(M * M - 4); let w = norm(cross3(tg, v)); let e = [0, 1, 2].map((i) => (-2 * v[i] + Lk * w[i]) / M); if (!inDown(e)) { w = w.map((x) => -x); e = [0, 1, 2].map((i) => (-2 * v[i] + Lk * w[i]) / M); }
-    ax = [0, 1, 2].map((i) => (Lk * v[i] + 2 * w[i]) / M); eb = e; et = e.map((x) => -x); }   // clips on opposite sides: Lk·ax + et − eb = V
-  const chain = 3.2;                                                          // between the clip plates: a tan round brick, the grey knee brick, two tan round plates
-  const P0 = [0, 1, 2].map((i) => Bfoot[i] + 0.1 * ax[i] - eb[i]);
-  const pt = (s) => [0, 1, 2].map((i) => P0[i] + ax[i] * s);
-  a.put('61252', TAN, basis3(cross3(ax, eb), ax, eb), P0);
-  const sx = cross3(ax, eb); along('3062b', TAN, pt(0), ax, sx); along('3062b', LBG, pt(1.2), ax, sx); along('6141', TAN, pt(2.4), ax, sx); along('6141', TAN, pt(2.8), ax, sx);   // the knee a grey band (the 2×2 sphere swamped a strut this short)
-  a.put('61252', TAN, basis3(cross3(ax, et), ax, et), pt(chain + 0.4));
-  const ring = [0, 1, 2].map((i) => pt(chain + 0.3)[i] + et[i]); const miss = Math.hypot(...[0, 1, 2].map((i) => ring[i] - Btop[i]));
-  console.log(`strut ${st.th}°: chain needs ${(Lk - 0.4).toFixed(3)}, has ${chain}; top ring misses its bar by ${miss.toFixed(3)} stud`);
+  const r = (st.psi * Math.PI) / 180, d = [Math.cos(r), 0, Math.sin(r)], per = [-Math.sin(r), 0, Math.cos(r)];
+  if (st.hang) at('6141', LBG, C[0] + st.c[0], STRUT_TOP - 1, C[2] + st.c[1]);   // hung from the collar's free cell
+  const T0 = handleAt(C[0] + st.c[0], TOPY * PLATE, C[2] + st.c[1], st.psi, LBG);
+  const fx = C[0] + st.S[0], fz = C[2] + st.S[1];
+  if (st.jumper === 'x') at('3794b', WHITE, fx, 0, fz); else if (st.jumper === 'z') at('3794b', WHITE, fx, 0, fz, yaw(90)); else at('87580', WHITE, fx, 0, fz);   // white as the granite plaza
+  const F0 = handleAt(fx, 2 * PLATE, fz, st.side > 0 ? st.psi : st.psi + 180, WHITE);
+  const off = [0, 2].reduce((s, i) => s + (F0[i] - T0[i]) * per[i], 0);    // the foot bar's centre sits off the top bar's plane by this much …
+  const T = T0.map((v, i) => v + (off / 2) * per[i]), F = F0.map((v, i) => v - (off / 2) * per[i]);   // … so each clip slides half of it along its bar
+  const V = T.map((v, i) => v - F[i]); const L = Math.hypot(...V); const u = V.map((v) => v / L); const at_ = (s) => F.map((v, i) => v + u[i] * s);
+  a.put('48729b', LBG, basis3(cross3(u.map((x) => -x), per), u.map((x) => -x), per), F);   // foot clip: ring on the foot bar, its bar up into the lowest brick
+  for (let k = 0; k < 3; k++) along('3062b', TAN, at_(0.3 + 1.2 * k), u, per);
+  a.put('48729b', LBG, basis3(cross3(u, per), u, per), at_(L));                 // top clip: its bar down through the top brick's open stud, ring on the top bar
+  console.log(`strut ${st.psi}°: length ${L.toFixed(3)} (3 bricks + clips = 4.4), lean ${(Math.asin(u[1]) * 180 / Math.PI).toFixed(1)}°, foot ${Math.hypot(F[0] - C[0], F[2] - C[2]).toFixed(2)} out, each clip ${(off / 2).toFixed(3)} along its bar (≤ 0.15)`);
 }
 const out = a.write(); console.log('pearl:', out.file, a.parts.length, 'parts', JSON.stringify(out.bom));

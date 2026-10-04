@@ -23,9 +23,14 @@ export class BrickRenderer {
   /** night mode: a rule naming the glow colour of a brick (by tag, colour key, part key); glowing groups get their own material */
   glowRule: ((tag: string, color: string, key: string) => number | null) | null = null; private glowMats: { mat: THREE.MeshStandardMaterial; color: number }[] = [];
   private m = new THREE.Matrix4(); private one = new THREE.Vector3(1, 1, 1);
+  /** sets built once and kept (keyed by scene id): a globe click swaps one in instead of building 8,000 instances inside the click */
+  private sets = new Map<string, { meshes: THREE.InstancedMesh[]; items: Item[]; decals: Set<THREE.InstancedMesh>; glowMats: { mat: THREE.MeshStandardMaterial; color: number }[] }>(); private current: string | null = null;
   constructor(scene: THREE.Scene) { scene.add(this.group); }
-  build(parts: Placement[], origin = new THREE.Vector3()) {
+  has(key: string) { return this.sets.has(key); }
+  build(parts: Placement[], origin = new THREE.Vector3(), key?: string) {
     this.clear();
+    const kept = key ? this.sets.get(key) : undefined;
+    if (kept) { this.meshes = kept.meshes; this.items = kept.items; this.decals = kept.decals; this.glowMats = kept.glowMats; for (const m of this.meshes) this.group.add(m); this.current = key!; return this.items; }
     const groups = new Map<string, Placement[]>();
     // an assembly proxy is for the validator; its members are the bricks you see
     this.glowMats = [];
@@ -58,6 +63,7 @@ export class BrickRenderer {
       this.group.add(mesh); this.meshes.push(mesh);
       if (decal) { decal.instanceMatrix.needsUpdate = true; this.group.add(decal); this.meshes.push(decal); this.decals.add(decal); }
     }
+    if (key) { this.sets.set(key, { meshes: this.meshes, items: this.items, decals: this.decals, glowMats: this.glowMats }); this.current = key; }
     return this.items;
   }
   setPose(it: Item, p: THREE.Vector3, q: THREE.Quaternion) { this.m.compose(p, q, this.one); it.mesh.setMatrixAt(it.index, this.m); if (it.decal) it.decal.mesh.setMatrixAt(it.decal.index, this.m); }
@@ -66,7 +72,8 @@ export class BrickRenderer {
   resetHome() { for (const it of this.items) this.setPose(it, it.home.p, it.home.q); this.commit(); }
   /** Black-on-white silhouette for judging: one flat material, prints hidden. */
   silhouette(on: boolean) { for (const m of this.meshes) { if (this.decals.has(m)) { m.visible = !on; continue; } m.material = on ? this.matSil : (m.userData.base ?? this.matOpaque); m.castShadow = !on && !m.userData.trans; } }
-  clear() { for (const m of this.meshes) { this.group.remove(m); if (this.decals.has(m)) (m.material as THREE.Material).dispose(); m.dispose(); } this.meshes = []; this.items = []; this.decals.clear(); }
+  clear() { const keep = this.current !== null; for (const m of this.meshes) { this.group.remove(m); if (keep) continue; if (this.decals.has(m)) (m.material as THREE.Material).dispose(); m.dispose(); }   // a kept set is only detached
+    this.meshes = []; this.items = []; this.decals = new Set(); this.glowMats = []; this.current = null; }
   /** the material a placement is drawn with (for prewarming programs and geometry uploads before a set enters) */
   materialFor(p: Placement): THREE.Material { const def = PARTS[p.key]; return isGlass(p.color) ? this.matGlass : isTrans(p.color) ? this.matTrans : def?.ldraw ? this.matOpaqueDS : this.matOpaque; }
   /** night: glowing groups emit their colour; everything else is lit by the scene's night lights */

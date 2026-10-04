@@ -26,7 +26,7 @@ console.log(bad ? `FAIL · ${bad} mismatches` : `PASS · ${KEYS.length} assembli
 // half pin in a pin hole, a three-axle bush's axles in axle holes, a round plate's side handle; a window frame and its glass; a clip
 // plate under a round brick (the clip rises beside the brick, z 0.8–1.5; the OBB covers the gap)
 // (the Pearl's beams, 2026-10-03)
-const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090', '60592|60601', '60601|60592', '61252|3062b', '3062b|61252']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706', '4274', '57585', '26047', '30374', '3673']);
+const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090', '60592|60601', '60601|60592', '61252|3062b', '3062b|61252']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706', '4274', '57585', '26047', '30374', '3673', '48729b']);
 type OBB = { c: number[]; a: number[][]; h: number[]; id: string };
 const obb = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB => { const id = PARTS[p.key].ldraw!; const b = bodyBox(id); const m = p.xform!.m; return { id, c: p.xform!.p, a: [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]), h: [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2] }; };
 const dot = (u: number[], v: number[]) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];

@@ -7,6 +7,8 @@ import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
 let checkId = 0;
 import { SCENES } from '../scenes/index';
+import checksJson from '../scenes/checks.json';
+const CHECKS: Record<string, { parts: number; ok: boolean; floating: number; overlaps: number } | undefined> = checksJson;
 import { type Place } from '../scenes/globe';
 import { GlobeView, GLOBE_RADIUS } from './globe-view';
 
@@ -67,23 +69,16 @@ function replay() { if (app.view !== 'scene' || app.tween || app.state === 'buil
  *  click on the globe starts the transition at once (Eric 2026-10-04: big sets waited ~2 s and he clicked again, thinking it had failed). */
 const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number; rep?: { ok: boolean; floating: number; overlaps: number } }>();
 function buildCached(id: string) { let b = built.get(id); if (!b) { const def = SCENES[id]; const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); b = { bp, meta, ms: performance.now() - t0 }; built.set(id, b); } return b; }
-const warmed = new Set<string>();
-function prewarm(id: string) {
-  if (warmed.has(id) || !SCENES[id]) return; warmed.add(id); const { bp } = buildCached(id);
-  const kinds = new Map<string, THREE.Material>(); for (const p of bp.parts) { if (p.proxy) continue; const m = app.bricks.materialFor(p); kinds.set(p.key + '|' + m.uuid, m); }
-  const scene = new THREE.Scene(); const meshes: THREE.InstancedMesh[] = [];
-  for (const [k, m] of kinds) { const mesh = new THREE.InstancedMesh(geometryFor(k.split('|')[0]), m, 1); mesh.setColorAt(0, new THREE.Color(0xffffff)); mesh.frustumCulled = false; scene.add(mesh); meshes.push(mesh); }
-  const rt = new THREE.WebGLRenderTarget(4, 4); const r = app.renderer; const prev = r.getRenderTarget(); r.setRenderTarget(rt); r.render(scene, app.camera); r.setRenderTarget(prev); rt.dispose();
-  for (const m of meshes) m.dispose();   // the geometries and programs stay cached; only these one-off instances go
-}
-/** On the globe, the set under the pointer is built into the (hidden) brick renderer and drawn once off screen, so its instance buffers
- *  are on the GPU before the click; only one set at a time — the renderer holds one */
-let bricksFor: string | null = null;
+/** Every set is built into the brick renderer once — while the globe turns, one set per idle slot, and at once for the set under the
+ *  pointer — and drawn once off screen, so its programs, geometry and instance buffers are on the GPU; a click then only swaps it in */
+let bricksFor: string | null = null; const uploaded = new Set<string>();
 function prepareBricks(id: string) {
   if (bricksFor === id || app.view !== 'globe' || app.tween || !SCENES[id]) return;
-  const { bp, meta } = buildCached(id); app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(bp.parts, new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2)); bricksFor = id;
-  const g = app.bricks.group; const rt = new THREE.WebGLRenderTarget(4, 4); const r = app.renderer; const prev = r.getRenderTarget();
-  g.visible = true; r.setRenderTarget(rt); r.render(app.scene, app.camera); r.setRenderTarget(prev); g.visible = false; rt.dispose();
+  const { bp, meta } = buildCached(id); app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(bp.parts, new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2), id); bricksFor = id;
+  if (uploaded.has(id)) return; uploaded.add(id);
+  // drawn to the screen through a one-pixel scissor: a render target would compile the linear, untone-mapped shader variants and the
+  // click would still compile the screen ones (0.8 s on Shanghai, measured 2026-10-04); the next frame paints over the pixel
+  const g = app.bricks.group; const r = app.renderer; g.visible = true; r.setScissorTest(true); r.setScissor(0, 0, 1, 1); r.render(app.scene, app.camera); r.setScissorTest(false); g.visible = false;
 }
 function loadScene(id: string) {
   const def = SCENES[id]; if (!def) return; app.sceneId = id;
@@ -92,10 +87,11 @@ function loadScene(id: string) {
   // the connection check costs ~1.5 s on Shanghai's 8,000 parts — inside the click it held the globe still for two seconds (Eric 2026-10-04).
   // Screenshots and tools read its summary from the console, so they keep it synchronous; the app runs it once the entrance is over.
   const full = SHOT ? validate(bp.parts, meta.base ?? 0) : null; if (full) console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(full, 10));
-  const rep = full ?? cached.rep ?? null;
+  const baked = CHECKS[id]?.parts === bp.parts.length ? CHECKS[id] : undefined;   // the gate's result (scripts/validate.ts)
+  const rep = full ?? cached.rep ?? baked ?? null;
   const origin = new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2);
   const only = qs.get('only'); const shown = only ? bp.parts.filter((p) => only.split(',').includes(p.tag ?? '')) : bp.parts;   // ?only=torii,bridge → element renders against clean sky
-  if (only || bricksFor !== id) { app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin); bricksFor = only ? null : id; }   // a set prepared on hover is reused
+  if (only || bricksFor !== id) { app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin, only ? undefined : id); bricksFor = only ? null : id; }   // a set prepared on hover is reused
   const st = bp.stats();
   $('btn-night').hidden = !meta.glow; setNight(!!meta.glow && (app.night || qs.has('night')));
   app.center.set(0, meta.center[1], 0); const radius = Math.hypot(meta.size[0], meta.size[1]) / 2 + 4; app.radius = radius; app.viewDist = meta.viewDist ?? radius * 2.15; app.lights.frame(app.center, radius);
@@ -314,7 +310,7 @@ function frame() {
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
   init(); window.__app = app;
-  if (!SHOT) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue.shift(); if (!id) return; prewarm(id); setTimeout(next, 700); }; setTimeout(next, 1500); }   // warm every built set while the globe turns
+  if (!SHOT) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue[0]; if (!id) return; if (app.view === 'globe' && !app.tween) { prepareBricks(id); queue.shift(); } setTimeout(next, 350); }; setTimeout(next, 300); }   // every set built and uploaded in the first seconds, while the globe still stands (it starts turning after 2.5 s idle)
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)

@@ -14,7 +14,7 @@ const { connectors } = await import('../tools/ldraw/asm-lib.mjs');
 import { HOSTS } from '../src/core/validate';
 import { PARTS } from '../src/core/catalog';
 
-const BY_DESIGN = new Set(['87994', '3957a', '30374', '11055', '61252', '60601', '57585', '73230', '3704', '4274', '26047', '86500', '8181', '3673', '4719c03', '2039', '11090', '4519', '3938']);   // 8181 Technic dome: held on its bowl's lip and by the pin above
+const BY_DESIGN = new Set(['87994', '3957a', '30374', '11055', '61252', '60601', '57585', '73230', '3704', '4274', '26047', '86500', '8181', '3673', '4719c03', '2039', '11090', '4519', '3938', '48729b']);   // 8181 Technic dome: held on its bowl's lip and by the pin above
 const want = process.argv.slice(2); let bad = 0;
 const studCache = new Map<string, { at: number[]; dir: number[] }[]>();
 const PINS: Record<string, { at: number[]; dir: number[] }[]> = { '3673': [{ at: [0, 0, 0], dir: [1, 0, 0] }, { at: [0, 0, 0], dir: [-1, 0, 0] }] };   // a Technic pin joins the two parts it sits half in: its middle at the joint, pointing into each
