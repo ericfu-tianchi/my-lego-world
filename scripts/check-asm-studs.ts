@@ -15,6 +15,8 @@ import { HOSTS } from '../src/core/validate';
 import { PARTS } from '../src/core/catalog';
 
 const BY_DESIGN = new Set(['87994', '3957a', '30374', '11055', '61252', '60601', '57585', '73230', '3704', '4274', '26047', '86500', '8181', '3673', '4719c03', '2039', '11090', '4519', '3938', '48729b']);   // 8181 Technic dome: held on its bowl's lip and by the pin above
+// parts whose baked box reaches below their bottom face: the ball of a ball-joint plate hangs 0.2 under the plate (the plate's underside is at −0.4)
+const BOTTOM: Record<string, number> = { '22890': -0.4 };
 const want = process.argv.slice(2); let bad = 0;
 const studCache = new Map<string, { at: number[]; dir: number[] }[]>();
 const PINS: Record<string, { at: number[]; dir: number[] }[]> = { '3673': [{ at: [0, 0, 0], dir: [1, 0, 0] }, { at: [0, 0, 0], dir: [-1, 0, 0] }] };   // a Technic pin joins the two parts it sits half in: its middle at the joint, pointing into each
@@ -28,7 +30,7 @@ for (const [name, list] of Object.entries(ASM)) {
   const n = list.length; const linked = new Array(n).fill(false);
   const studs = list.map((mb) => studsOf(mb.id).map((s) => ({ at: app(mb.m, s.at).map((v, i) => v + mb.p[i]), dir: app(mb.m, s.dir) })));
   for (let b = 0; b < n; b++) {
-    const B = list[b]; const bb = bakedBox(B.id);
+    const B = list[b]; const bb = bakedBox(B.id).slice(); if (BOTTOM[B.id] !== undefined) bb[1] = BOTTOM[B.id];
     for (let a = 0; a < n; a++) { if (a === b || (linked[a] && linked[b])) continue;   // every pair: a brick held from below must still mark the plate it clutches above
       for (const s of studs[a]) { const l = appT(B.m, s.at.map((v, i) => v - B.p[i])); const d = appT(B.m, s.dir);
         if (d[1] < 0.9) continue; if (Math.abs(l[1] - bb[1]) > 0.15) continue;   // the stud points up into B's underside, at B's bottom face

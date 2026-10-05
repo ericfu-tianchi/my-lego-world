@@ -220,3 +220,93 @@ def({ key: 'canvas_tyn', zh: '画布·泰恩双塔剪影（画家的画，1×2×
   ctx.fillStyle = INK; for (const cx of [0.4, 0.6]) { ctx.fillRect(w * (cx - 0.06), h * 0.42, w * 0.12, h * 0.3); ctx.beginPath(); ctx.moveTo(w * (cx - 0.07), h * 0.43); ctx.lineTo(w * cx, h * 0.12); ctx.lineTo(w * (cx + 0.07), h * 0.43); ctx.closePath(); ctx.fill(); for (const dx of [-0.07, 0.07]) { ctx.beginPath(); ctx.moveTo(w * (cx + dx - 0.02), h * 0.44); ctx.lineTo(w * (cx + dx), h * 0.3); ctx.lineTo(w * (cx + dx + 0.02), h * 0.44); ctx.closePath(); ctx.fill(); } }
   ctx.fillStyle = '#A95500'; ctx.fillRect(w * 0.06, h * 0.68, w * 0.88, h * 0.26);
 } });   // the view the painter is copying: Týn's two dark spires over red roofs
+
+// ---- Paris · Seine (2026-10-03): the four vintage posters of the bouquiniste lids (france.md §1.16). Flat poster-lithograph style, ≤ 4 colours,
+// no lettering. They live on the lid tiles of the `seine_lid` assembly (members turned to face the street; the scene sets `print` on them), so
+// the base names the plain tile. The 1 × 2 tiles stand portrait: their canvas is landscape (tile length along canvas x = world up), so those
+// posters are drawn in a frame turned a quarter (`portrait`).
+const portrait = (ctx: CanvasRenderingContext2D, w: number, h: number, draw: (W: number, H: number) => void) => { ctx.save(); ctx.translate(w, 0); ctx.rotate(Math.PI / 2); draw(h, w); ctx.restore(); };
+const CREAM = '#EADBB8';
+def({ key: 'seine_poster_eiffel', zh: '旧海报·夕阳下的埃菲尔铁塔（1×2 光面砖，竖放）', colors: ['Cream', 'Orange', 'Dark Red', 'Dark Brown'], firstUse: 'Paris', face: 'top', base: 'tile_1x2', px: 320, draw: (ctx, w, h) => portrait(ctx, w, h, (W, H) => {
+  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
+  const m = W * 0.08; ctx.fillStyle = '#E58A2B'; ctx.fillRect(m, m, W - 2 * m, H - 2 * m);                       // the sky
+  ctx.fillStyle = CREAM; ctx.beginPath(); ctx.arc(W / 2, H * 0.66, W * 0.3, 0, Math.PI * 2); ctx.fill();          // the low sun
+  ctx.fillStyle = '#A8321E'; ctx.fillRect(m, H * 0.7, W - 2 * m, H * 0.3 - m);                                    // the sunset band
+  ctx.fillStyle = '#2A1A12'; const cx = W / 2, top = H * 0.1, foot = H * 0.92, half = W * 0.3;
+  ctx.beginPath(); ctx.moveTo(cx, top); ctx.quadraticCurveTo(cx + half * 0.12, H * 0.6, cx + half, foot); ctx.lineTo(cx + half * 0.55, foot);
+  ctx.quadraticCurveTo(cx, H * 0.72, cx - half * 0.55, foot); ctx.lineTo(cx - half, foot); ctx.quadraticCurveTo(cx - half * 0.12, H * 0.6, cx, top); ctx.fill();   // the concave legs, the arch between them
+  ctx.fillRect(cx - half * 0.62, H * 0.74, half * 1.24, H * 0.025); ctx.fillRect(cx - half * 0.32, H * 0.55, half * 0.64, H * 0.02);   // first and second platforms
+}) });
+def({ key: 'seine_poster_cat', zh: '旧海报·黑猫（仿 Steinlen 1896《黑猫巡演》，公有领域；2×2 光面砖）', colors: ['Yellow', 'Dark Orange', 'Black', 'Cream'], firstUse: 'Paris', face: 'top', base: 'tile_2x2', px: 320, draw: (ctx, w, h) => {
+  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, w, h);
+  const m = w * 0.06; ctx.fillStyle = '#E8B53A'; ctx.fillRect(m, m, w - 2 * m, h - 2 * m);
+  ctx.fillStyle = '#C8452B'; ctx.beginPath(); ctx.arc(w * 0.58, h * 0.32, w * 0.22, 0, Math.PI * 2); ctx.fill();   // the halo behind the head
+  ctx.fillStyle = '#16120F';
+  ctx.beginPath(); ctx.ellipse(w * 0.45, h * 0.68, w * 0.2, h * 0.22, -0.15, 0, Math.PI * 2); ctx.fill();           // the body, sitting
+  ctx.beginPath(); ctx.arc(w * 0.58, h * 0.34, w * 0.12, 0, Math.PI * 2); ctx.fill();                              // the head, in profile to the right
+  ctx.beginPath(); ctx.moveTo(w * 0.5, h * 0.27); ctx.lineTo(w * 0.52, h * 0.13); ctx.lineTo(w * 0.59, h * 0.23); ctx.fill();   // ears
+  ctx.beginPath(); ctx.moveTo(w * 0.6, h * 0.23); ctx.lineTo(w * 0.67, h * 0.12); ctx.lineTo(w * 0.69, h * 0.26); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(w * 0.47, h * 0.42); ctx.lineTo(w * 0.62, h * 0.42); ctx.lineTo(w * 0.6, h * 0.6); ctx.lineTo(w * 0.42, h * 0.55); ctx.fill();   // the neck into the body
+  ctx.strokeStyle = '#16120F'; ctx.lineWidth = w * 0.05; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(w * 0.28, h * 0.8); ctx.quadraticCurveTo(w * 0.12, h * 0.7, w * 0.2, h * 0.5); ctx.stroke();   // the tail, curling up
+  ctx.fillStyle = '#E8B53A'; ctx.beginPath(); ctx.ellipse(w * 0.63, h * 0.32, w * 0.03, h * 0.018, 0, 0, Math.PI * 2); ctx.fill();   // the eye
+} });
+def({ key: 'seine_poster_sail', zh: '旧海报·塞纳河上的帆船（1×2 光面砖，竖放）', colors: ['Bright Light Blue', 'Dark Blue', 'White', 'Dark Red'], firstUse: 'Paris', face: 'top', base: 'tile_1x2', px: 320, draw: (ctx, w, h) => portrait(ctx, w, h, (W, H) => {
+  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
+  const m = W * 0.08; ctx.fillStyle = '#A9C7D8'; ctx.fillRect(m, m, W - 2 * m, H - 2 * m);                       // the sky
+  ctx.fillStyle = '#24405E'; ctx.fillRect(m, H * 0.66, W - 2 * m, H * 0.34 - m);                                  // the river
+  ctx.fillStyle = '#F4F0E6'; ctx.beginPath(); ctx.moveTo(W * 0.52, H * 0.16); ctx.lineTo(W * 0.52, H * 0.6); ctx.lineTo(W * 0.18, H * 0.6); ctx.closePath(); ctx.fill();   // mainsail
+  ctx.beginPath(); ctx.moveTo(W * 0.56, H * 0.24); ctx.lineTo(W * 0.56, H * 0.6); ctx.lineTo(W * 0.8, H * 0.6); ctx.closePath(); ctx.fill();   // jib
+  ctx.fillStyle = '#A8321E'; ctx.beginPath(); ctx.moveTo(W * 0.14, H * 0.62); ctx.lineTo(W * 0.86, H * 0.62); ctx.lineTo(W * 0.74, H * 0.69); ctx.lineTo(W * 0.24, H * 0.69); ctx.closePath(); ctx.fill();   // the hull
+  ctx.strokeStyle = '#F4F0E6'; ctx.lineWidth = H * 0.012; for (const y of [0.78, 0.86]) { ctx.beginPath(); ctx.moveTo(W * 0.2, H * y); ctx.lineTo(W * 0.45, H * y); ctx.moveTo(W * 0.55, H * (y + 0.03)); ctx.lineTo(W * 0.8, H * (y + 0.03)); ctx.stroke(); }   // ripples
+}) });
+def({ key: 'seine_poster_map', zh: '旧地图·巴黎（塞纳河弧线、城岛、老城墙环；2×2 光面砖）', colors: ['Tan', 'Sand Blue', 'Reddish Brown'], firstUse: 'Paris', face: 'top', base: 'tile_2x2', px: 320, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#E3CF9E'; ctx.fillRect(0, 0, w, h);
+  const B = '#7A4B2A'; ctx.strokeStyle = B; ctx.lineWidth = w * 0.02; ctx.strokeRect(w * 0.05, h * 0.05, w * 0.9, h * 0.9);   // the frame
+  ctx.lineWidth = w * 0.012; ctx.setLineDash([w * 0.03, w * 0.02]); ctx.beginPath(); ctx.ellipse(w * 0.5, h * 0.52, w * 0.36, h * 0.33, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);   // the old city wall
+  ctx.lineWidth = w * 0.01; for (let k = 0; k < 7; k++) { const x = w * (0.2 + k * 0.1); ctx.beginPath(); ctx.moveTo(x, h * 0.22); ctx.lineTo(x + w * 0.04, h * 0.82); ctx.stroke(); }   // streets
+  for (let k = 0; k < 6; k++) { const y = h * (0.25 + k * 0.1); ctx.beginPath(); ctx.moveTo(w * 0.16, y); ctx.lineTo(w * 0.84, y - h * 0.03); ctx.stroke(); }
+  ctx.strokeStyle = '#5F7F99'; ctx.lineWidth = w * 0.07; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(w * 0.08, h * 0.38); ctx.bezierCurveTo(w * 0.35, h * 0.72, w * 0.62, h * 0.3, w * 0.92, h * 0.6); ctx.stroke();   // the Seine
+  ctx.fillStyle = '#E3CF9E'; ctx.beginPath(); ctx.ellipse(w * 0.5, h * 0.52, w * 0.07, h * 0.022, -0.3, 0, Math.PI * 2); ctx.fill();   // Île de la Cité
+  ctx.fillStyle = B; ctx.beginPath(); ctx.moveTo(w * 0.84, h * 0.1); ctx.lineTo(w * 0.87, h * 0.2); ctx.lineTo(w * 0.81, h * 0.2); ctx.closePath(); ctx.fill();   // north arrow
+} });
+
+// ---- PARIS · the painter's canvas (2026-10-04): what the painter on the right bank is copying — Notre-Dame's west front, two flat-topped
+// towers over the portals, the rose a dark dot, a band of the Seine under it. Three flat colours plus the sky; on the front of a 1 × 2 × 2 brick.
+def({ key: 'canvas_nd', zh: '画布·圣母院西立面（画家的画，1×2×2 砖正面）', colors: ['Bright Light Blue', 'Tan', 'Dark Brown', 'Sand Blue'], firstUse: 'Paris', face: 'front', base: 'brick_1x2x2', px: 320, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#9FC3E9'; ctx.fillRect(w * 0.06, h * 0.06, w * 0.88, h * 0.88);
+  ctx.fillStyle = '#E4CD9E'; ctx.fillRect(w * 0.22, h * 0.2, w * 0.18, h * 0.55); ctx.fillRect(w * 0.6, h * 0.2, w * 0.18, h * 0.55); ctx.fillRect(w * 0.22, h * 0.4, w * 0.56, h * 0.35);
+  ctx.fillStyle = '#5A4532'; ctx.beginPath(); ctx.arc(w * 0.5, h * 0.5, w * 0.07, 0, Math.PI * 2); ctx.fill();
+  for (const cx of [0.31, 0.69]) ctx.fillRect(w * (cx - 0.035), h * 0.26, w * 0.07, h * 0.12);
+  for (const cx of [0.33, 0.5, 0.67]) { ctx.beginPath(); ctx.moveTo(w * (cx - 0.05), h * 0.75); ctx.lineTo(w * (cx - 0.05), h * 0.64); ctx.lineTo(w * cx, h * 0.59); ctx.lineTo(w * (cx + 0.05), h * 0.64); ctx.lineTo(w * (cx + 0.05), h * 0.75); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = '#6E8AA0'; ctx.fillRect(w * 0.06, h * 0.75, w * 0.88, h * 0.19);
+} });
+// ---- PARIS · the life layer's torsos (2026-10-04, judge r1: plain torsos say nothing): the café waiter's black waistcoat over a white shirt
+// with a black bow tie; the marinière — navy stripes on white — for the pétanque player. Flat colours, nothing on the arms.
+def({ key: 'torso_waiter', zh: '侍者·黑马甲白衬衫黑领结', colors: ['Black', 'White'], firstUse: 'Paris', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.12, 0); ctx.lineTo(w * 0.38, 0); ctx.lineTo(w * 0.5, h * 0.55); ctx.lineTo(w * 0.62, 0); ctx.lineTo(w * 0.88, 0); ctx.lineTo(w * 0.9, h); ctx.lineTo(w * 0.1, h); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(w * 0.42, h * 0.05); ctx.lineTo(w * 0.5, h * 0.1); ctx.lineTo(w * 0.42, h * 0.15); ctx.closePath(); ctx.moveTo(w * 0.58, h * 0.05); ctx.lineTo(w * 0.5, h * 0.1); ctx.lineTo(w * 0.58, h * 0.15); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#B5B5B5'; for (const y of [0.62, 0.78]) { ctx.beginPath(); ctx.arc(w * 0.5, h * y, w * 0.025, 0, Math.PI * 2); ctx.fill(); }
+} });
+def({ key: 'torso_mariniere', zh: '海魂衫·白底藏青横条', colors: ['Dark Blue'], firstUse: 'Paris', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#1E3A6E'; for (let k = 0; k < 7; k++) ctx.fillRect(0, h * (0.12 + k * 0.125), w, h * 0.055);
+} });
+// ---- PARIS · the café valance (2026-10-03; france.md §1.7). Paris shopfronts letter their awnings in gold Didone capitals on dark green
+// (Les Deux Magots): hairline serifs, heavy stems, wide tracking, a thin gold rule along both edges of the valance. One word, no invented
+// café name. Two flat colours. On the long face of a 1 × 4 brick (the valance course of the awning).
+const DIDONE = '"Bodoni 72","Bodoni 72 Oldstyle","Didot","Bodoni MT","Libre Bodoni","Playfair Display","Times New Roman",serif';
+def({ key: 'hc_cafe', zh: '咖啡馆雨篷檐板「CAFÉ」（1×4 砖长侧面，深绿底珍珠金 Didone 衬线大写，上下金线）', colors: ['Dark Green', 'Pearl Gold'], firstUse: 'France', face: 'side', base: 'brick_1x4', px: 360, draw: (ctx, w, h) => {
+  const GREEN = '#184632', PGOLD = '#C7A24B';
+  ctx.fillStyle = GREEN; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = PGOLD; ctx.fillRect(0, h * 0.08, w, h * 0.035); ctx.fillRect(0, h * 0.885, w, h * 0.035);
+  kanji(ctx, 'CAFÉ', w / 2, h * 0.53, h * 0.6, PGOLD, 0.32, 'normal', DIDONE);
+} });
+// ---- PARIS · the Morris column (2026-10-03): no design of its own — the bouquinistes' cat and map posters (above), pasted round the
+// column's 2 × 2 round drum bricks. Same artwork, same colours; only the mould they sit on differs.
+// Round 3 (Eric, 2026-10-04: "我看不太出来这是什么"): two small posters on a white drum read as stickers on a post. The real column is
+// pasted all round, so the print is now one wrap — the four bouquiniste posters side by side round 330° of a 2 × 2 round brick, dark green
+// showing between them — on every drum course, each turned a quarter further. No new artwork: the same four posters, the column's green.
+const MORRIS_SET = ['seine_poster_cat', 'seine_poster_eiffel', 'seine_poster_map', 'seine_poster_sail'];
+def({ key: 'hc_morris_wrap', zh: 'Morris 广告柱·四张书摊海报围一圈（黑猫、铁塔、地图、帆船；2×2 圆砖柱面，深绿间隔）', colors: ['Dark Green', 'Yellow', 'Dark Orange', 'Black'], firstUse: 'Paris', face: 'cyl', base: 'roundbrick_2x2', rect: { r: 0.99, h: 1.12, y: 0, theta: Math.PI * 1.83 }, px: 960, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#184632'; ctx.fillRect(0, 0, w, h); const n = MORRIS_SET.length, cw = w / n, g = cw * 0.05;
+  MORRIS_SET.forEach((k, i) => { ctx.save(); ctx.translate(i * cw + g, 0); ctx.beginPath(); ctx.rect(0, 0, cw - 2 * g, h); ctx.clip(); PRINTS[k].draw!(ctx, cw - 2 * g, h); ctx.restore(); });
+} });

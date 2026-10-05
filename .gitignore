@@ -6,3 +6,5 @@ vendor/ldraw/
 vendor/ldraw-lib/
 .snapshots/
 vendor/earth/*.jpg
+dist-*/
+docs/refs/paris-moc/eiffel-instructions/

@@ -9,6 +9,7 @@ import { PARTS, geometryFor, footprint, PLATE } from '../src/core/catalog';
 import { ASM } from '../src/parts/ldraw/asm/index';
 import { bodyBox } from '../src/core/ldraw';
 import { HOSTS } from '../src/core/validate';
+import { LDRAW } from '../src/parts/ldraw/index';
 const KEYS = Object.values(PARTS).filter((d) => d.anchor === 'origin' && d.ldraw && ASM[d.ldraw] && ASM[d.ldraw].every((m) => PARTS['ld_' + m.id])).map((d) => d.key); let bad = 0;
 for (const rot of [0, 1, 2, 3]) for (const key of KEYS) {
   const bp = new Blueprint(1); bp.assembly(key, 10, 5, 7, 'White', rot);
@@ -26,9 +27,33 @@ console.log(bad ? `FAIL · ${bad} mismatches` : `PASS · ${KEYS.length} assembli
 // half pin in a pin hole, a three-axle bush's axles in axle holes, a round plate's side handle; a window frame and its glass; a clip
 // plate under a round brick (the clip rises beside the brick, z 0.8–1.5; the OBB covers the gap)
 // (the Pearl's beams, 2026-10-03)
-const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090', '60592|60601', '60601|60592', '61252|3062b', '3062b|61252']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706', '4274', '57585', '26047', '30374', '3673', '48729b']);
+const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090', '60592|60601', '60601|60592', '61252|3062b', '3062b|61252', '22890|14418', '14418|22890', '60592|38320', '38320|60592', '61252|60478', '60478|61252', '61252|26604', '26604|61252', '24201|3024', '3024|24201']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706', '4274', '57585', '26047', '30374', '3673', '48729b', '60478']);
+// + Paris: ball joints (22890|14418), window frame and diamond pane (60592|38320), clip round a handle (61252|60478), clip round a lantern handle (61252|26604), a 1×1 plate on the inverted curved slope (24201|3024)
 type OBB = { c: number[]; a: number[][]; h: number[]; id: string };
 const obb = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB => { const id = PARTS[p.key].ldraw!; const b = bodyBox(id); const m = p.xform!.m; return { id, c: p.xform!.p, a: [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]), h: [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2] }; };
+// An arch is mostly air: its bounding box would swallow whatever stands beside its legs or under its crown (the Eiffel Tower's legs lie in
+// the arches' planes). Arches are tested as one box per stud-wide column of their real mesh (vertex y-range in that column).
+const ARCHES = new Set(['6184', '14707', '6108', '18838', '16577', '3308a', '3307', '15254', '12939', '6060', '6183', '2339', '30099', '13965', '6182', '92950', '3659', '3455', '64449']);   // 64449: the triangular girder, whose columns follow its sloping chords
+const columnsCache = new Map<string, number[][]>(); const STEP: Record<string, number> = { '64449': 0.25 };   // column width, studs
+function columns(id: string): number[][] {   // local boxes [x0, y0, z0, x1, y1, z1] along the arch's long axis (x or z, whichever is longer)
+  const hit = columnsCache.get(id); if (hit) return hit; const bk = LDRAW[id]; const P = new Int16Array(Uint8Array.from(Buffer.from(bk.pos, 'base64')).buffer); const b = bodyBox(id);
+  const ax = b[3] - b[0] >= b[5] - b[2] ? 0 : 2; const step = STEP[id] ?? 1, lo = b[ax], n = Math.round((b[ax + 3] - b[ax]) / step); const out: number[][] = [];
+  // points: the vertices, plus points every 0.1 stud along each triangle edge, so a long sloping chord shows up in every column it crosses
+  const V = (i: number) => [P[i * 3] / bk.q, P[i * 3 + 1] / bk.q, P[i * 3 + 2] / bk.q]; const pts: number[][] = []; const nv = P.length / 3;
+  const I = bk.idx ? (bk.i32 ? new Int32Array(Uint8Array.from(Buffer.from(bk.idx, 'base64')).buffer) : new Uint16Array(Uint8Array.from(Buffer.from(bk.idx, 'base64')).buffer)) : Array.from({ length: nv }, (_, i) => i);
+  for (let t = 0; t + 2 < I.length; t += 3) for (const [u, w] of [[I[t], I[t + 1]], [I[t + 1], I[t + 2]], [I[t + 2], I[t]]]) { const A = V(u), B = V(w); const k = Math.max(1, Math.ceil(Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]) / 0.1)); for (let j = 0; j <= k; j++) pts.push(A.map((a, i) => a + (B[i] - a) * j / k)); }
+  for (let k = 0; k < n; k++) { let y0 = Infinity, y1 = -Infinity; const c0 = lo + k * step, c1 = c0 + step; for (const q of pts) { const v = q[ax]; if (v < c0 - 1e-3 || v > c1 + 1e-3) continue; const y = q[1]; if (y > b[4]) continue; y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (y0 < y1) { const box = [b[0], y0, b[2], b[3], y1, b[5]]; box[ax] = c0 + 0.02 * step; box[ax + 3] = c1 - 0.02 * step; out.push(box); } }
+  columnsCache.set(id, out); return out;
+}
+// parts whose one box would cover air beside them: the 1 × 1 plate with a horizontal clip is its plate plus the clip ring a stud out, which
+// stands 0.07 proud of the plate's faces (so it may hang under a plate only where the ring clears that plate's edge)
+const SPLIT: Record<string, number[][]> = { '61252': [[-0.5, -0.4, -0.5, 0.5, 0, 0.5], [-0.5, -0.47, 0.5, 0.5, 0.27, 1.2]], '4733': [[-0.5, -1.2, -0.5, 0.5, 0, 0.5]] };   // 4733: its body; the side studs go into what is mounted on them
+/** the boxes a member is tested with: one OBB, or one per column for an arch */
+const shapes = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB[] => {
+  const id = PARTS[p.key].ldraw!; if (!ARCHES.has(id) && !SPLIT[id]) return [obb(p)]; const b = bodyBox(id); const m = p.xform!.m; const a = [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]); const bc = [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2];
+  return (SPLIT[id] ?? columns(id)).map((q) => { const lc = [(q[0] + q[3]) / 2 - bc[0], (q[1] + q[4]) / 2 - bc[1], (q[2] + q[5]) / 2 - bc[2]]; const c = [0, 1, 2].map((i) => p.xform!.p[i] + m[i * 3] * lc[0] + m[i * 3 + 1] * lc[1] + m[i * 3 + 2] * lc[2]); return { id, c, a, h: [(q[3] - q[0]) / 2, (q[4] - q[1]) / 2, (q[5] - q[2]) / 2] }; });
+};
 const dot = (u: number[], v: number[]) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 const cross = (u: number[], v: number[]) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
 /** largest separation along any SAT axis (negative = penetration depth along the least-penetrating axis) */
@@ -40,10 +65,10 @@ let inner = 0;
 // retired v5/v9 builds kept only for the before/after scene ?scene=sg-v3; their inner clashes are why they were rebuilt
 const RETIRED = new Set(['merlion_body', 'mbs_core']);
 for (const key of KEYS.filter((k) => !HOSTS[k] && !RETIRED.has(k))) {   // a hosted assembly (glass in its tower) is audited together with its host
-  const bp = new Blueprint(1); for (const k of [key, ...KEYS.filter((g) => HOSTS[g] === key)]) bp.assembly(k, 0, 0, 0, 'White', 0); bp.parts = bp.parts.filter((p) => !p.proxy); const mem = bp.parts.map(obb); const n = mem.length;
+  const bp = new Blueprint(1); for (const k of [key, ...KEYS.filter((g) => HOSTS[g] === key)]) bp.assembly(k, 0, 0, 0, 'White', 0); bp.parts = bp.parts.filter((p) => !p.proxy); const mem = bp.parts.map(obb); const sub = bp.parts.map(shapes); const n = mem.length;
   const adj: number[][] = mem.map(() => []); const clashes: string[] = [];
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    const g = gap(mem[i], mem[j]); if (g < TOUCH) { adj[i].push(j); adj[j].push(i); }
+    let g = Infinity; for (const A of sub[i]) for (const B of sub[j]) g = Math.min(g, gap(A, B)); if (g < TOUCH) { adj[i].push(j); adj[j].push(i); }
     if (g < -OVERLAP_TOL && !INTERLOCK.has(mem[i].id + '|' + mem[j].id) && !BARS.has(mem[i].id) && !BARS.has(mem[j].id)) clashes.push(`${mem[i].id}#${i} × ${mem[j].id}#${j} by ${(-g).toFixed(2)}`);
   }
   const low = (o: OBB) => o.c[1] - o.h.reduce((s, h, i) => s + h * Math.abs(o.a[i][1]), 0);
@@ -51,6 +76,6 @@ for (const key of KEYS.filter((k) => !HOSTS[k] && !RETIRED.has(k))) {   // a hos
   while (st.length) { const i = st.pop()!; for (const j of adj[i]) if (!seen[j]) { seen[j] = 1; st.push(j); } }
   const floating = mem.map((o, i) => (seen[i] ? '' : `${o.id}#${i}`)).filter(Boolean);
   const ok = !clashes.length && !floating.length; if (!ok) inner++;
-  console.log(`${ok ? 'ok  ' : 'FAIL'} ${key}: ${n} bricks · ${clashes.length} clashes · ${floating.length} not reached from the ground${clashes.length ? '\n    ' + clashes.slice(0, 8).join('\n    ') : ''}${floating.length ? '\n    floating: ' + floating.slice(0, 12).join(' ') : ''}`);
+  console.log(`${ok ? 'ok  ' : 'FAIL'} ${key}: ${n} bricks · ${clashes.length} clashes · ${floating.length} not reached from the ground${clashes.length ? '\n    ' + clashes.slice(0, process.env.ALL ? 9999 : 8).join('\n    ') : ''}${floating.length ? '\n    floating: ' + floating.slice(0, 12).join(' ') : ''}`);
 }
 console.log(inner ? `FAIL · ${inner} assemblies with inner faults` : 'PASS · inner bricks'); process.exit(bad || inner ? 1 : 0);

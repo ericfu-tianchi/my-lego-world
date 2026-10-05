@@ -5,6 +5,12 @@
   "floating": 0,
   "overlaps": 0
  },
+ "paris": {
+  "parts": 6329,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
  "prague": {
   "parts": 5387,
   "ok": true,

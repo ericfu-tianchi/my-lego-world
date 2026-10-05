@@ -1,5 +1,6 @@
 // Buildability gate. A blueprint passes only if every part is reachable from the ground (y = 0)
 // through real stud connections, nothing interpenetrates, and every part exists in the catalogue.
+import { COLORS } from './colors';
 import { PARTS, footprint, hasStud, PLATE, geometryFor, type PartDef } from './catalog';
 import type { Placement } from './builder';
 
@@ -70,7 +71,7 @@ function connected(L: Item, U: Item): boolean {
 export function validate(all: Placement[], base = 0): Report {
   const parts = all.filter((p) => !p.member);   // an exploded assembly is checked as its proxy box; its members are positioned by the LDraw model
   const items = toItems(parts); const issues: Issue[] = [];
-  for (const it of items) { if (!it.def) issues.push({ kind: 'unknown', index: it.i, msg: `unknown part ${it.p.key}` }); if (it.y0 < -6) issues.push({ kind: 'below-ground', index: it.i, msg: `${it.p.key} at y=${it.y0}` }); }
+  for (const it of items) { if (!it.def) issues.push({ kind: 'unknown', index: it.i, msg: `unknown part ${it.p.key}` }); if (it.p.color && !COLORS.some((c) => c.key === it.p.color)) issues.push({ kind: 'unknown', index: it.i, msg: `unknown colour ${it.p.color} on ${it.p.key} (the renderer throws on it; 2026-10-04 'Red' for BrightRed blanked the Paris island)` }); if (it.y0 < -6) issues.push({ kind: 'below-ground', index: it.i, msg: `${it.p.key} at y=${it.y0}` }); }
   const valid = items.filter((it) => it.def);
   // index by bottom / top plate level
   const byTop = new Map<number, Item[]>(), byBottom = new Map<number, Item[]>();

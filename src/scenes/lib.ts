@@ -108,7 +108,7 @@ export function spanPlatesX(bp: Blueprint, x0: number, z0: number, W: number, D:
 /** Rotate a canonical offset (dx toward +x, dz toward +z) by rot quarter turns about Y (matches the renderer). */
 export const rotv = (dx: number, dz: number, rot: number): [number, number] => { switch (rot & 3) { case 0: return [dx, dz]; case 1: return [dz, -dx]; case 2: return [-dx, -dz]; default: return [-dz, dx]; } };
 export type Pose = 'd' | 'f' | 'h' | 'u';
-export interface Hold { key: string; color: string; hand?: 'L' | 'R'; pose?: Pose; grip?: 'mid' | 'ground' | 'bottom'; rot?: number; print?: string; dx?: number; dy?: number; dz?: number }
+export interface Hold { key: string; color: string; hand?: 'L' | 'R'; pose?: Pose; grip?: 'mid' | 'ground' | 'bottom'; rot?: number; print?: string; dx?: number; dy?: number; dz?: number; gp?: [number, number, number] /* overrides the accessory's default grip point, e.g. lower on a bottle's neck */ }
 export interface FigOpts2 extends FigOpts { hold?: Hold[]; poses?: { L?: Pose; R?: Pose } }
 /** How each accessory sits in a hand: the arm pose that makes the grip real, and where the part's centre goes relative to the wrist. */
 /** How each accessory sits in a hand: arm pose, the point of the part (relative to its box centre, canonical orientation) that goes into the
@@ -120,7 +120,7 @@ const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   camera: { pose: 'h', gp: [-0.9, -0.08, -0.31] },                           // the hand closes on the side handle (a right-hand prop: the grip bar is on the camera's −x side), lens forward
   hand_fan: { pose: 'h', gp: [0, -0.85, 0] },                                // handle in the clip, blade standing in front of the chest
   cup: { pose: 'f', gp: [0, 0, -0.8], rotL: 3, rotR: 1 },                   // handle (−z canonical) turned toward the body, cup swings outward
-  goblet: { pose: 'f', gp: [0, -0.4, 0] }, rice_bowl: { pose: 'f', gp: [0, -0.35, 0], dz: 0.2 }, bottle: { pose: 'f', gp: [0, 1.2, 0], shaft: true },   // held by the neck teapot: { pose: 'f', gp: [0, 0, 0.8], rotL: 1, rotR: 3 },
+  goblet: { pose: 'f', gp: [0, -0.4, 0], shaft: true } /* the hand closes round the stem */, rice_bowl: { pose: 'f', gp: [0, -0.35, 0], dz: 0.2 }, bottle: { pose: 'f', gp: [0, 1.2, 0], shaft: true },   // held by the neck teapot: { pose: 'f', gp: [0, 0, 0.8], rotL: 1, rotR: 3 },
   tray: { pose: 'h', gp: [0, -0.34, -1.1] },                                // gripped by its near edge, its floor resting on the hands basket: { pose: 'f', gp: [0, 0.9, 0] },
   frypan: { pose: 'f', gp: [0, 0, -1.15], shaft: true },                    // the hand wraps the handle (−z canonical); pan level at waist height 2.7 studs in front — over a 5-plate stove
   icecream_cone: { pose: 'f', gp: [0, -0.57, 0], shaft: true },              // the cone's shaft in the clip, cone upright, scoops on its stud
@@ -130,6 +130,7 @@ const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   saxophone: { pose: 'f', gp: [0, -0.92, 0], shaft: true },                   // the LDraw origin is the grip on the body tube
   takeaway_cup: { pose: 'f', gp: [0, -0.7, 0], shaft: true },               // the tapered foot of the cup sits in the hand's clip, the dome lid up (Shanghai)
   briefcase: { pose: 'd', gp: [0, 0.72, 0], shaft: true, rotL: 1, rotR: 1 },   // the clip round the handle bar (its centre 0.72 above the box centre, from the mould), the case turned front-to-back so the bar runs through the clip — side-on, the bar crossed the clip and the hand missed it (Eric 2026-10-03)
+  baguette: { pose: 'f', gp: [0, 0, 0] },                                    // a loaf held at its middle, level in front of the body
 };
 /** Minifig v2: real LDraw legs / torso-with-posed-arms / hands / head, printed face and torso, any hair, accessories gripped in the hand.
  *  Feet centred at (cx, cz), plate level y, faces +z at rot 0. Returns wrist centres (world) for stacking more onto a held bar. */
@@ -151,7 +152,7 @@ export function minifig2(bp: Blueprint, cx: number, y: number, cz: number, rot: 
     const grip = h.grip ?? dflt.grip ?? 'mid'; const dx = h.dx ?? dflt.dx ?? 0, dy = h.dy ?? dflt.dy ?? 0, dz = h.dz ?? dflt.dz ?? 0;
     // an offset moves the part's grip point away from the hand's clip: past ~1/3 stud the hand closes on air (2026-10-03, Eric: the saxophone floated beside the hand)
     if (Math.hypot(dx, dy, dz) > 0.35) throw new Error(`grip offset: ${h.key} is moved ${Math.hypot(dx, dy, dz).toFixed(2)} studs away from the hand's clip — change the pose, the rotation or gp, not the offset`);
-    const rel = h.rot ?? (side === 'L' ? dflt.rotL : dflt.rotR) ?? dflt.rot ?? 0; const gp = dflt.gp ?? [0, 0, 0]; const [gx, gz] = rotv(gp[0], gp[2], rel); // part grip point → hand clip centre
+    const rel = h.rot ?? (side === 'L' ? dflt.rotL : dflt.rotR) ?? dflt.rot ?? 0; const gp = h.gp ?? dflt.gp ?? [0, 0, 0]; const [gx, gz] = rotv(gp[0], gp[2], rel); // part grip point → hand clip centre
     let centerY = torsoY + G[1] - gp[1] + dy;
     if (grip === 'ground') centerY = y * PLATE + H / 2; else if (grip === 'bottom') centerY = torsoY + G[1] + H / 2 - 0.25;
     const py = Math.round((centerY - H / 2) / PLATE * 2) / 2; held[h.key] = py;
@@ -310,13 +311,16 @@ const SAKURA4: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb
 const S4_LEAF = ['White', 'White', 'White', 'BrightPink', 'BrightPink'], S4_BLOOM = ['BrightPink', 'DarkPink', 'BrightPink', 'White'];
 /** One blossom cluster on a tip stud: calyx → 6×5 leaf fanning `rot`-ward → (big) a 4×3 leaf crossed over it → 5-petal flower plate →
  *  7-petal flower pinned in. The crossed second leaf is what turns a flat disc into a blossom mass. */
-export type Foliage = 'sakura' | 'pine' | 'raintree' | 'linden' | 'plane';   // add a kind per country: leaf colours + whether tips carry flowers
+export type Foliage = 'sakura' | 'pine' | 'raintree' | 'linden' | 'plane' | 'platane';   // plane: Shanghai's autumn plane; platane: the Paris plane in summer   // add a kind per country: leaf colours + whether tips carry flowers
 // linden (Prague): dense late-summer green, darker than the rain tree
+// platane (Paris, 2026-10-04): the London plane of the quays and the Champ de Mars — a lighter, yellower green than the linden, and a pale
+// mottled trunk (the bark peels in cream and olive patches: the one thing everyone knows the tree by)
+const PLATANE_LEAF = ['Green', 'BrightGreen', 'Green', 'OliveGreen', 'BrightGreen'], PLATANE_BARK = ['DarkTan', 'Tan', 'DarkTan', 'OliveGreen'];
 const PINE_LEAF = ['DarkGreen', 'DarkGreen', 'Green'], RAIN_LEAF = ['Green', 'Green', 'DarkGreen', 'BrightGreen'], LINDEN_LEAF = ['Green', 'DarkGreen', 'Green', 'DarkGreen', 'BrightGreen'];   // rain tree: fresh green umbrella (Singapore)
 const PLANE_LEAF = ['OliveGreen', 'OliveGreen', 'DarkTan', 'MediumNougat', 'BrightLightOrange'];   // Shanghai plane tree in autumn: ochre, not yellow (china.md §1.9.7)
 function cluster4(bp: Blueprint, tx: number, y: number, tz: number, rot: number, big: boolean, kind: Foliage = 'sakura') {
-  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : kind === 'linden' ? LINDEN_LEAF : kind === 'plane' ? PLANE_LEAF : S4_LEAF;
-  bp.part('plant_3leaves', tx, y, tz, kind === 'sakura' ? 'ReddishBrown' : 'DarkBrown');
+  const LEAF = kind === 'pine' ? PINE_LEAF : kind === 'raintree' ? RAIN_LEAF : kind === 'linden' ? LINDEN_LEAF : kind === 'plane' ? PLANE_LEAF : kind === 'platane' ? PLATANE_LEAF : S4_LEAF;
+  bp.part('plant_3leaves', tx, y, tz, kind === 'sakura' ? 'ReddishBrown' : kind === 'platane' ? 'DarkTan' : 'DarkBrown');
   bp.part(big ? 'leaves_6x5' : 'leaves_4x3', tx, y + 1, tz, bp.pick(LEAF), rot);
   let top = y + 2;
   if (big) { bp.part('leaves_4x3', tx, top, tz, bp.pick(LEAF), (rot + (bp.chance(0.5) ? 1 : 3)) & 3); top++; }
@@ -403,16 +407,22 @@ const LINDEN: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb5
   M: { trunk: 3, gap: 1, big: true, tiers: [[{ len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }]] },
   S: { trunk: 3, gap: 1, big: true, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }], [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }]] },   // two tiers: a small linden still reads as an oval, not a flat disc
 };
+// the platane: a tall clear trunk (the bark is the point), a broad crown widest at the top tier — the quays' planes are limbed up high
+const PLATANE: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb5[][]; big: boolean }> = {   // judge r1: taller, three tiers widest in the middle, a rounded top
+  L: { trunk: 8, gap: 2, big: true, tiers: [[{ len: 2, lift: 0 }, { len: 3, lift: 2 }, { len: 2, lift: 4 }, { len: 3, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }], [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }]] },
+  M: { trunk: 6, gap: 2, big: false, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }], [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }], [{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }]] },   // the Champ de Mars allée: tall and narrow, clipped into a column
+  S: { trunk: 4, gap: 0, big: true, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }]] },
+};
 /** (x, z) is the axis point — a grid corner; the 2×2 trunk covers cells (x−1..x, z−1..z).
  *  `tree` is the generic entry (kind picks the foliage: 'sakura' | 'pine', extend `Foliage` for maple, plane, olive, palm…); `sakura5` is its Kyoto-era name. */
 export function tree(bp: Blueprint, x: number, y: number, z: number, size: 'S' | 'M' | 'L', reserve?: Reserve, turn = 0, skip?: Dir | Dir[], kind: Foliage = 'sakura') {
-  bp.tag = kind; const spec = (kind === 'raintree' || kind === 'plane' ? RAINTREE : kind === 'linden' ? LINDEN : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
-  const TRUNK = kind === 'sakura' ? 'ReddishBrown' : kind === 'plane' ? 'DarkTan' : 'DarkBrown';   // plane bark: a pale mottled grey-tan
+  bp.tag = kind; const spec = (kind === 'raintree' || kind === 'plane' ? RAINTREE : kind === 'linden' ? LINDEN : kind === 'platane' ? PLATANE : SAKURA5)[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
+  const TRUNK = kind === 'sakura' ? 'ReddishBrown' : kind === 'plane' || kind === 'platane' ? 'DarkTan' : 'DarkBrown';   // plane bark: a pale mottled grey-tan
   const CELLS: [number, number][] = [[x - 1, z - 1], [x, z - 1], [x, z], [x - 1, z]];   // NW NE SE SW
   const DIRS_A: Dir[] = [0, 3, 2, 1], DIRS_B: Dir[] = [1, 0, 3, 2];                      // outward directions per cell, two pinwheels
   let ty = y;
   const PLANE_BARK = ['DarkTan', 'LightBluishGray', 'Tan', 'DarkTan', 'White'];   // the plane tree's mottled camouflage bark, course by course
-  let nSeg = 0; const seg = (dark = false) => { bp.part('roundbrick_2x2', x - 1, ty, z - 1, kind === 'plane' ? PLANE_BARK[nSeg++ % PLANE_BARK.length] : dark ? 'DarkBrown' : TRUNK); ty += 3; };
+  let nSeg = 0; const seg = (dark = false) => { bp.part('roundbrick_2x2', x - 1, ty, z - 1, kind === 'plane' ? PLANE_BARK[nSeg++ % PLANE_BARK.length] : kind === 'platane' ? PLATANE_BARK[(nSeg++ + turn) % PLATANE_BARK.length] : dark ? 'DarkBrown' : TRUNK); ty += 3; };
   for (let k = 0; k < spec.trunk; k++) seg(k === 0);
   spec.tiers.forEach((limbs, t) => {
     const dirs = t % 2 ? DIRS_B : DIRS_A;
@@ -425,7 +435,7 @@ export function tree(bp: Blueprint, x: number, y: number, z: number, size: 'S' |
       if (limb.lift === 4) { bp.part('round_1x1', tx, ty + 1, tz, TRUNK); bp.part('roundplate_1x1', tx, ty + 4, tz, TRUNK); }
       else for (let s = 0; s < limb.lift; s++) bp.part('roundplate_1x1', tx, ty + 1 + s, tz, TRUNK);
       cluster4(bp, tx, ty + 1 + limb.lift, tz, (d + 2) & 3, spec.big, kind);
-      if (kind === 'linden') for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; bp.part(k === 1 ? 'leaves_6x5' : 'leaves_4x3', mx, ty + 1, mz, bp.pick(LINDEN_LEAF), (d + (i % 2 ? 1 : 3)) & 3); }   // a linden is leafy along the whole limb, not only at the tips: the crown reads as one mass
+      if (kind === 'linden' || kind === 'platane') for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; bp.part(k === 1 ? 'leaves_6x5' : 'leaves_4x3', mx, ty + 1, mz, bp.pick(kind === 'platane' ? PLATANE_LEAF : LINDEN_LEAF), (d + (i % 2 ? 1 : 3)) & 3); }   // a linden is leafy along the whole limb, not only at the tips: the crown reads as one mass
       if (kind === 'sakura') for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; if (k === 1 && limb.len >= 3 && spec.big) { bp.part('leaves_4x3', mx, ty + 1, mz, bp.pick(S4_LEAF), (d + (i % 2 ? 1 : 3)) & 3); bp.part('petal_1x1', mx, ty + 2, mz, bp.pick(S4_BLOOM)); } else { bp.part('petal_1x1', mx, ty + 1, mz, bp.pick(S4_BLOOM)); if (k % 2) bp.part('flower_7', mx, ty + 2, mz, bp.pick(S4_BLOOM)); } }   // a side leaf on the first free stud of every long limb, loose blossoms after
     });
     ty += 1;                                                          // the trunk continues on the four inner plate ends
