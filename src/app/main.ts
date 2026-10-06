@@ -261,15 +261,14 @@ function dismantle() {
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   app.table.visible = false;   // zero-g, a fixed force (Eric 10-02: no slider; some punch, not much). 
   const B = { vy: 0.85, spin: 0.35, burst: 0.72 };   // Nebula (Eric's pick): a soft round cloud
-  const mode = qs.get('apart');   // ?apart=formula | physics forces one take-apart (side-by-side checks); default: by brick count
-  if (mode === 'formula' || (mode !== 'physics' && n > BURST_BRICKS)) { startBurst(poses, fixed, 2.2 * B.burst, app.tableY - 400, B.vy, B.spin, 7); return; }
+  if (qs.get('apart') !== 'physics') { startBurst(poses, fixed, 2.2 * B.burst, app.tableY - 400, B.vy, B.spin, 7); return; }
   app.physics.start(poses, halfs, fixed, 2.2, app.tableY - 400, [0, 0], 7, undefined, { gravity: 0, damping: [1.0, 0.7], ...B });
 }
-// ---- closed-form burst for the largest sets (LA, 2026-10-06: 11,000 rigid bodies stepped at ≈ 30 ms and the take-apart stuttered) ------
+// ---- closed-form burst, every set (LA, 2026-10-06: 11,000 rigid bodies stepped at ≈ 30 ms and stuttered; side by side on Shanghai Eric saw no
+// difference, so all sets use it; ?apart=physics still runs the Rapier burst) ------
 // The Nebula burst is zero-g with linear / angular damping 1.0 / 0.7, so each brick's flight has a closed form: x(t) = x0 + v·(1 − e^(−t))
 // and a spin of |ω|·(1 − e^(−0.7t))/0.7 about its own axis. The starting velocities are the worker's, drawn from the same seeded sequence;
 // only brick-on-brick contacts are dropped, which in a radial burst the eye does not miss. After 2 s it hands over to the same drift.
-const BURST_BRICKS = 9000;
 function seq(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function startBurst(poses: Float32Array, fixed: Uint8Array, s: number, tableY: number, vyK: number, spin: number, seed: number) {
   const n = poses.length / 7, r01 = seq(seed), v = new Float32Array(n * 3), w = new Float32Array(n * 3);
