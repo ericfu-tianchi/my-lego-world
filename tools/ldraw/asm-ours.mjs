@@ -9,7 +9,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 export const PLATE = 0.4;
 const bboxCache = new Map();
 /** footprint body [x0, x1, z0, z1] for parts whose bbox includes a protrusion bigger than a side stud (snapping would misplace them) */
-export const BODY = { '48336': [-1, 1, -0.5, 0.5], '2540': [-1, 1, -0.5, 0.5], '32607': [-0.5, 0.5, -0.5, 0.5] };
+export const BODY = { '48336': [-1, 1, -0.5, 0.5], '2540': [-1, 1, -0.5, 0.5], '60470a': [-1, 1, -0.5, 0.5], '32607': [-0.5, 0.5, -0.5, 0.5] };
 /** baked bbox of a part in our frame relative to its LDraw origin: [x0, y0, z0, x1, y1, z1] (bake it first) */
 export function bbox(id) {
   if (bboxCache.has(id)) return bboxCache.get(id);

@@ -1,0 +1,4 @@
+// LDraw part th_pole "th_pole — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"th_pole","name":"th_pole — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-5,0,-1.5,5.75,15.8,1.5],"pos":"ABczPwAGABcAAAAGABczPwD6ABcAAAD6AOwzPwD6AOwAAAD6AOwzPwAGAOwAAAAGAOwzPwD6AOwzPwAGABczPwD6ABczPwAGAOwAAAAGAOwAAAD6ABcAAAAGABcAAAD6AOwzPwAGAOwAAAAGABczPwAGABcAAAAGABczPwD6ABcAAAD6AOwzPwD6AOwAAAD6","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAABAAIAAQADAAIABAAFAAYABQAHAAYACAAJAAoACQALAAoADAANAA4ADQAPAA4AEAARABIAEQATABIAFAAVABYAFQAXABYA"};
+export default p;

@@ -14,7 +14,7 @@ const { connectors } = await import('../tools/ldraw/asm-lib.mjs');
 import { HOSTS } from '../src/core/validate';
 import { PARTS } from '../src/core/catalog';
 
-const BY_DESIGN = new Set(['87994', '3957a', '30374', '11055', '61252', '60601', '57585', '73230', '3704', '4274', '26047', '86500', '8181', '3673', '4719c03', '2039', '11090', '4519', '3938', '48729b', '42511', '93273']);   // 8181 Technic dome: held on its bowl's lip and by the pin above; 42511 skateboard deck: held by its clips on the wheel axles
+const BY_DESIGN = new Set(['th_hose_a', 'th_hose_b', 'th_hose_c', 'th_hose_d', '2488', '1997', '18395', '87747', '87994', '3957a', '30374', '11055', '61252', '60601', '57585', '73230', '3704', '4274', '26047', '86500', '8181', '3673', '4719c03', '2039', '11090', '4519', '3938', '48729b', '42511', '93273']);   // 8181 Technic dome: held on its bowl's lip and by the pin above; 42511 skateboard deck: held by its clips on the wheel axles
 // Technic (LA Pacific Wheel, 2026-10-04): an axle or pin joins every beam / plate whose hole it passes through — its axis along that part's hole
 // axis (local y), the part's hole centre on the axis, and the two overlapping by more than a bush. Hangers and bushes sit on axles by design.
 const AXLES: Record<string, number> = { '3704': 1, '3708': 6, '44294': 3.5, '60485': 4.5, '4519': 1.5, '2780': 1, '3707': 4, '3737': 5, '3706': 3, '32073': 2.5 };   // half-length along local x

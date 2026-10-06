@@ -1,0 +1,4 @@
+// LDraw part th_elephant "th_elephant — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"th_elephant","name":"th_elephant — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-3,0,-6,3,11.8,6.5],"pos":"AAwzLwAaAAwAAAAaAAwzLwDoAAwAAADoAPQzLwDoAPQAAADoAPQzLwAaAPQAAAAaAPQzLwDoAPQzLwAaAAwzLwDoAAwzLwAaAPQAAAAaAPQAAADoAAwAAAAaAAwAAADoAPQzLwAaAPQAAAAaAAwzLwAaAAwAAAAaAAwzLwDoAAwAAADoAPQzLwDoAPQAAADo","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAABAAIAAQADAAIABAAFAAYABQAHAAYACAAJAAoACQALAAoADAANAA4ADQAPAA4AEAARABIAEQATABIAFAAVABYAFQAXABYA"};
+export default p;
