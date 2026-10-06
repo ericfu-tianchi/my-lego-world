@@ -64,7 +64,8 @@ const RIDGE = knots([[16, 24], [26, 36], [32, 42], [36, 45], [40, 43], [45, 37],
 
 export function buildLa(bp: Blueprint): SceneMeta {
   const R = new Reserve(); const sites = new Sites(2); const k2 = (x: number, z: number) => x + ',' + z;
-  const inIsland = (x: number, z: number) => x >= 0 && z >= 0 && x < W && z < D && inside(OUTLINE, x + 0.5, z + 0.5);
+  const inMask = new Uint8Array(W * D); for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) inMask[x * D + z] = +inside(OUTLINE, x + 0.5, z + 0.5);   // the 336-point outline tested once per cell, not per call (1.3 s of the globe's prewarm, 2026-10-07)
+  const inIsland = (x: number, z: number) => x >= 0 && z >= 0 && x < W && z < D && inMask[x * D + z] === 1;
   const isSea = (x: number, z: number) => inIsland(x, z) && x < shore(z + 0.5);
   const edgeDist = (x: number, z: number) => { for (let r = 1; r <= 3; r++) for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) if (Math.max(Math.abs(dx), Math.abs(dz)) === r && !inIsland(x + dx, z + dz)) return r; return 9; };
   const floorOf = (x: number, z: number) => (edgeDist(x, z) <= 3 ? 0 : BASE);

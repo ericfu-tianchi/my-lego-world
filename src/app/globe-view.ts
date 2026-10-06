@@ -102,7 +102,7 @@ export class GlobeView {
       const head = place.scene ? red : place.priority ? yellow : grey;
       const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['round_1x1', white, 0.6], ['roundplate_1x1', head, 1.4]];
       for (const [k, m, y] of parts) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
-      const hit = new THREE.Mesh(new THREE.SphereGeometry(place.scene ? 2.6 : 1.4, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); this.group.add(g);
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(place.scene ? 2.6 : 1.4, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); g.scale.setScalar(0.8); this.group.add(g);   // a size smaller (Eric 2026-10-07)
       this.pins.push({ place, group: g, hit, dir });
     }
   }
