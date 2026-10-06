@@ -9,7 +9,7 @@ export interface Report { ok: boolean; parts: number; floating: number; overlaps
 
 interface Item { i: number; p: Placement; def: PartDef; x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; cells: [number, number][]; studs: [number, number][]; rect?: [number, number, number, number] }
 
-export const HOSTS: Record<string, string> = { shutter_open_1x2x3: 'window_1x2x3', shutter_open_r_1x2x3: 'window_1x2x3', glass_1x2x2: 'window_1x2x2', glass_1x4x3: 'window_1x4x3', door_1x4x6: 'doorframe_1x4x6', pane_lattice_1x2x3: 'window_1x2x3', door_lattice: 'doorframe_1x4x6', shutter_1x2x3: 'window_1x2x3', cart_wheel_l: 'wheelplate_2x2', cart_wheel_r: 'wheelplate_2x2', merlion_jet: 'merlion_body', mbs_glass: 'mbs_core', stree_bowl: 'stree_cone' };
+export const HOSTS: Record<string, string> = { shutter_open_1x2x3: 'window_1x2x3', shutter_open_r_1x2x3: 'window_1x2x3', glass_1x2x2: 'window_1x2x2', glass_1x4x3: 'window_1x4x3', door_1x4x6: 'doorframe_1x4x6', pane_lattice_1x2x3: 'window_1x2x3', door_lattice: 'doorframe_1x4x6', shutter_1x2x3: 'window_1x2x3', cart_wheel_l: 'wheelplate_2x2', cart_wheel_r: 'wheelplate_2x2', merlion_jet: 'merlion_body', mbs_glass: 'mbs_core', stree_bowl: 'stree_cone', cow_saddle: 'cow', cow_fill: 'cow', cow_fill2: 'cow' };
 const BARS = new Set(['bar_3l', 'bar_4l']);
 const isBar = (it: Item) => BARS.has(it.p.key) || !!it.def.bar;
 const isHollow = (it: Item) => HOLLOW.has(it.p.key) || !!it.def.hollow;

@@ -21,7 +21,7 @@ export const PLACES: Place[] = [
   { id: 'norway', name: 'Norway', city: 'Oslo', lat: 59.91, lon: 10.75 },
   { id: 'iceland', name: 'Iceland', city: 'Reykjavík', lat: 64.15, lon: -21.94 },
   { id: 'france', name: 'France', city: 'Paris', lat: 48.86, lon: 2.35, scene: 'paris' },
-  { id: 'germany', name: 'Germany', city: 'Berlin', lat: 52.52, lon: 13.4, priority: true },
+  { id: 'germany', name: 'Germany', city: 'Neuschwanstein', lat: 47.56, lon: 10.75, scene: 'neuschwanstein' },
   { id: 'italy', name: 'Italy', city: 'Rome', lat: 41.9, lon: 12.5, priority: true },
   { id: 'vatican', name: 'Vatican City', city: 'Vatican City', lat: 41.9, lon: 12.45 },
   { id: 'switzerland', name: 'Switzerland', city: 'Interlaken', lat: 46.69, lon: 7.86, priority: true },

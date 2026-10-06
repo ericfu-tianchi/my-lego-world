@@ -11,6 +11,12 @@
   "floating": 0,
   "overlaps": 0
  },
+ "neuschwanstein": {
+  "parts": 9107,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
  "paris": {
   "parts": 6329,
   "ok": true,
