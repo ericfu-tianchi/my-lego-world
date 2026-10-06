@@ -16,7 +16,7 @@ One page. Read it before starting a country; update it when a country teaches so
 
 ## 2. Numbers that hold for every country
 **Series first — by DNA, not by identical numbers (Eric, 2026-10-01):** the islands are shown together — same scale, same plinth treatment, same figure scale, same hero-to-island ratio, same restraint, same render pack. Footprint area 2,000–3,500 studs² (Kyoto 2,464), water optional. **The series is the overall look, never a shared shape (Eric, 2026-10-03):** no default rectangle or superellipse, no default lawn. Draw the outline from the city's own geography — a river's real bend, a coastline, a hill, a desert edge — and choose the ground per district from what is really there (paving, lawn, sand, snow, water). The outline is a design decision written in the country page, sketched before any landmark is placed.
-- Earth two brick layers deep from `base`, rim wall hanging lower, a two-brick stone plinth one cell outside the footprint capped with tiles. Aim for ≤ 3,000 parts in the build itself; the plinth and cap add ~200 (Kyoto v10 closes at 3,237).
+- Earth two brick layers deep from `base`, rim wall hanging lower, a two-brick stone plinth one cell outside the footprint capped with tiles. Aim for ≤ 8,000 parts in all, hard cap 10,000 (Eric, 2026-10-06; LA's 11,177 is the one exception); the plinth and cap add ~200 (Kyoto v10 closes at 3,237).
 - Diagnostics, not gates: specialty moulds ≥ ~8 % of pieces (a floor: fewer means under-detailed; no ceiling). Prints ≤ 12 designs, ≤ 40 pieces.
 - Height tiers, readable from any angle: hero landmark > tallest tree > house > figures. Landmark height ≈ 0.5–0.6 × island width.
 - **Heights are set for the whole set at once, before building (Eric, 2026-10-03, Shanghai: the Bund came out as tall as Jin Mao).** Write a height table of every element in plates, ordered as in reality, with clear steps between classes (e.g. skyscrapers 80–115, historic blocks 35–50, houses 25–32, trees 15–20, figures 6); each element is built to its row. Real ratios inside one class, compressed ratios between classes.
@@ -63,7 +63,7 @@ One page. Read it before starting a country; update it when a country teaches so
 - Legacy (`sakura`, `sakura3`, `sakuraA`, `sakura4`, `sakura5` alias, `pine3`, `canopyLayers`, `banner`) stay only for the Tokyo sample and the test scenes; do not use them for a new country.
 
 ## 5. Before the judge sees it — self-check list
-- [ ] validator PASS for every scene, parts ≤ 3,000, specialty ≥ 8 %
+- [ ] validator PASS for every scene, parts ≤ 8,000 (cap 10,000), specialty ≥ 8 %
 - [ ] hero render + 4 quadrants looked at: three height tiers read, ≥ 1/3 open, nothing touches a roof
 - [ ] each figure: two close-ups; hands closed on things, no post visible, pose a real minifig can hold
 - [ ] each tree: canopy reads as a mass from the hero distance; no coat-rack silhouettes
