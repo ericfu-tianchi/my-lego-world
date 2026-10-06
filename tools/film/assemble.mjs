@@ -20,7 +20,7 @@ for (let i = 1; i < meta.shots.length; i++) {
   else { f += `;[${cur}][v${i}]concat=n=2:v=1:a=0[${o}]`; len += s.dur; }
   cur = o;
 }
-f += `;[${cur}]vignette=angle=0.22,fade=t=out:st=${(len - 0.5).toFixed(2)}:d=0.5:color=0xe9eae6,format=yuv420p[out]`;
+f += `;[${cur}]vignette=angle=0.22,fade=t=out:st=${(len - 0.3).toFixed(2)}:d=0.3:color=0xe9eae6,format=yuv420p[out]`;
 args.push('-filter_complex', f, '-map', '[out]', '-r', '30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out);
 execFileSync('ffmpeg', args, { stdio: ['ignore', 'ignore', 'inherit'] });
 console.log(`${out}: ${len.toFixed(2)} s`);
