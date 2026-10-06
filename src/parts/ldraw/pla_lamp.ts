@@ -1,0 +1,4 @@
+// LDraw part la_lamp "la_lamp — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"la_lamp","name":"la_lamp — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-1,0,-3,1,10.6,1],"pos":"AARmKgAEAARmKgD0AAQAAAAEAAQAAAD0APxmKgD0APxmKgAEAPwAAAD0APwAAAAEAPxmKgD0AARmKgD0APxmKgAEAARmKgAEAPwAAAAEAAQAAAAEAPwAAAD0AAQAAAD0APxmKgAEAARmKgAEAPwAAAAEAAQAAAAEAARmKgD0APxmKgD0AAQAAAD0APwAAAD0","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

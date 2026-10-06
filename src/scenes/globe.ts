@@ -15,7 +15,7 @@ export const PLACES: Place[] = [
   { id: 'thailand', name: 'Thailand', city: 'Bangkok', lat: 13.76, lon: 100.5, priority: true },
   { id: 'indonesia', name: 'Indonesia', city: 'Jakarta', lat: -6.2, lon: 106.85 },
   { id: 'malaysia', name: 'Malaysia', city: 'Kuala Lumpur', lat: 3.14, lon: 101.69 },
-  { id: 'usa', name: 'United States', city: 'Los Angeles', lat: 34.05, lon: -118.24, priority: true },
+  { id: 'usa', name: 'United States', city: 'Los Angeles', lat: 34.05, lon: -118.24, scene: 'la' },
   { id: 'denmark', name: 'Denmark', city: 'Copenhagen', lat: 55.68, lon: 12.57 },
   { id: 'sweden', name: 'Sweden', city: 'Stockholm', lat: 59.33, lon: 18.07 },
   { id: 'norway', name: 'Norway', city: 'Oslo', lat: 59.91, lon: 10.75 },

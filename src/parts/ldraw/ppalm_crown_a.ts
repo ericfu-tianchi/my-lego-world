@@ -1,0 +1,4 @@
+// LDraw part palm_crown_a "Palm crown A: classic palm leaves 2518 / 6148, four tiers of two on 45°-turned round plates" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"palm_crown_a","name":"Palm crown A: classic palm leaves 2518 / 6148, four tiers of two on 45°-turned round plates","tris":12,"q":1024,"i32":false,"bbox":[-8.8,-1.3649,-6.99,8.8,5.4,6.99],"pos":"MyOaFfYbMyOaFQrkMyOK+vYbMyOK+grkzdyaFQrkzdyaFfYbzdyK+grkzdyK+vYbzdyaFQrkMyOaFQrkzdyaFfYbMyOaFfYbzdyK+vYbMyOK+vYbzdyK+grkMyOK+grkzdyaFfYbMyOaFfYbzdyK+vYbMyOK+vYbMyOaFQrkzdyaFQrkMyOK+grkzdyK+grk","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

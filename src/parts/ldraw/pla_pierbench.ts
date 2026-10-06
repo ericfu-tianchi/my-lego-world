@@ -1,0 +1,4 @@
+// LDraw part la_pierbench "la_pierbench — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"la_pierbench","name":"la_pierbench — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-2,0,-1.6,2,2.2,1],"pos":"AAjNCAAEAAjNCJr5AAgAAAAEAAgAAJr5APjNCJr5APjNCAAEAPgAAJr5APgAAAAEAPjNCJr5AAjNCJr5APjNCAAEAAjNCAAEAPgAAAAEAAgAAAAEAPgAAJr5AAgAAJr5APjNCAAEAAjNCAAEAPgAAAAEAAgAAAAEAAjNCJr5APjNCJr5AAgAAJr5APgAAJr5","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

@@ -107,13 +107,13 @@ export function spanPlatesX(bp: Blueprint, x0: number, z0: number, W: number, D:
 // ---- v2 grammar (2026-09-11): story layer with prints and held accessories, LDraw plant vocabulary ---------------------
 /** Rotate a canonical offset (dx toward +x, dz toward +z) by rot quarter turns about Y (matches the renderer). */
 export const rotv = (dx: number, dz: number, rot: number): [number, number] => { switch (rot & 3) { case 0: return [dx, dz]; case 1: return [dz, -dx]; case 2: return [-dx, -dz]; default: return [-dz, dx]; } };
-export type Pose = 'd' | 'f' | 'h' | 'u';
-export interface Hold { key: string; color: string; hand?: 'L' | 'R'; pose?: Pose; grip?: 'mid' | 'ground' | 'bottom'; rot?: number; print?: string; dx?: number; dy?: number; dz?: number; gp?: [number, number, number] /* overrides the accessory's default grip point, e.g. lower on a bottle's neck */ }
-export interface FigOpts2 extends FigOpts { hold?: Hold[]; poses?: { L?: Pose; R?: Pose } }
+export type Pose = 'd' | 'f' | 'h' | 'u' | 'b' | 'k';   // b: arm swung back until the forearm hangs plumb; k: upper arm straight back (minifig-asm.mjs)
+export interface Hold { key: string; color: string; hand?: 'L' | 'R'; pose?: Pose; wrist?: boolean /* the hand turned a quarter in the wrist: the clip runs left-right */; grip?: 'mid' | 'ground' | 'bottom'; rot?: number; print?: string; dx?: number; dy?: number; dz?: number; gp?: [number, number, number] /* overrides the accessory's default grip point, e.g. lower on a bottle's neck */ }
+export interface FigOpts2 extends FigOpts { hold?: Hold[]; poses?: { L?: Pose; R?: Pose }; skates?: string /* roller skates (11253) of this colour under both feet; the figure stands one plate higher */ }
 /** How each accessory sits in a hand: the arm pose that makes the grip real, and where the part's centre goes relative to the wrist. */
 /** How each accessory sits in a hand: arm pose, the point of the part (relative to its box centre, canonical orientation) that goes into the
  *  hand's clip, and the part's rotation relative to the body per side so the part swings outward, never into the torso. */
-type HoldDefault = Partial<Hold> & { gp?: [number, number, number]; rotL?: number; rotR?: number; shaft?: boolean /* the hand wraps a bar-sized neck or handle at gp, so only the height is checked */ };
+type HoldDefault = Partial<Hold> & { gp?: [number, number, number]; rotL?: number; rotR?: number; shaft?: boolean /* the hand wraps a bar-sized neck or handle at gp, so only the height is checked */; axis?: 'x' | 'y' | 'z' /* the direction of what the clip closes round (bar, rail), canonical: minifig2 throws unless the clip's bore lies along it */ };
 const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   pushbroom: { pose: 'f', grip: 'ground' }, bar_4l: { pose: 'f', grip: 'bottom' }, bar_3l: { pose: 'f', grip: 'bottom' },
   lantern: { pose: 'f', gp: [0, 1.3, 0] },                                  // the carrying loop above the body — that is what the hand closes on (gp is centre-relative)
@@ -131,6 +131,11 @@ const HOLD_DEFAULTS: Record<string, HoldDefault> = {
   takeaway_cup: { pose: 'f', gp: [0, -0.7, 0], shaft: true },               // the tapered foot of the cup sits in the hand's clip, the dome lid up (Shanghai)
   briefcase: { pose: 'd', gp: [0, 0.72, 0], shaft: true, rotL: 1, rotR: 1 },   // the clip round the handle bar (its centre 0.72 above the box centre, from the mould), the case turned front-to-back so the bar runs through the clip — side-on, the bar crossed the clip and the hand missed it (Eric 2026-10-03)
   baguette: { pose: 'f', gp: [0, 0, 0] },                                    // a loaf held at its middle, level in front of the body
+  // LA (2026-10-04): props turned for the clip. A clip closes round a rail or a bar only along its bore: front-to-back for a forearm hanging
+  // plumb (b) or raised plumb (u), vertical for f, left-right for any pose once the wrist is turned. `axis` makes minifig2 check it.
+  surfboard_up: { pose: 'f', gp: [0.85, -0.45, -0.1], axis: 'y' },          // stood on its tail beside the right hand, the clip round its inner rail, deck to the front: rel 0 for the right hand
+  dumbbell: { pose: 'f', gp: [0, 0, 0], shaft: true, axis: 'y' },            // hammer curl: the bar upright in a forward hand
+  dumbbell_x: { pose: 'f', wrist: true, gp: [0, 0, 0], shaft: true, axis: 'x' },   // the bar left-right in a turned wrist: both weights show either side of the fist (LA r2: upright, one weight hid the other)
 };
 /** Minifig v2: real LDraw legs / torso-with-posed-arms / hands / head, printed face and torso, any hair, accessories gripped in the hand.
  *  Feet centred at (cx, cz), plate level y, faces +z at rot 0. Returns wrist centres (world) for stacking more onto a held bar. */
@@ -139,20 +144,28 @@ export function minifig2(bp: Blueprint, cx: number, y: number, cz: number, rot: 
   // grid line (the two foot holes on two stud centres) and across it on a cell centre. Snap to that, never in between.
   if ((rot & 1) === 0) { cx = Math.round(cx); cz = Math.floor(cz) + 0.5; } else { cx = Math.floor(cx) + 0.5; cz = Math.round(cz); }
   reserve?.add(Math.floor(cx - 1), Math.floor(cz - 1), 3, 3);
-  const holds = o.hold ?? []; const poses: { L: Pose; R: Pose } = { L: o.poses?.L ?? 'd', R: o.poses?.R ?? 'd' }; const held: Record<string, number> = {};
-  for (const h of holds) { const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; poses[side] = h.pose ?? dflt.pose ?? 'f'; if (h.key === 'tray') { poses.L = 'h'; poses.R = 'h'; } }
+  const holds = o.hold ?? []; const poses: { L: Pose; R: Pose } = { L: o.poses?.L ?? 'd', R: o.poses?.R ?? 'd' }; const held: Record<string, number> = {}; const wrist = { L: false, R: false };
+  for (const h of holds) { const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; poses[side] = h.pose ?? dflt.pose ?? 'f'; wrist[side] = h.wrist ?? dflt.wrist ?? false; if (h.key === 'tray') { poses.L = 'h'; poses.R = 'h'; } }
   const place = (key: string, yy: number, color: string, print?: string, ox = 0, oz = 0, r = rot) => { const [fw, fd] = footprint(PARTS[key], r); const [dx, dz] = rotv(ox, oz, rot); bp.part(key, cx + dx - fw / 2, yy, cz + dz - fd / 2, color, r, print); };
   const skin = o.skin ?? 'Yellow';
-  place('fig_legs', y, o.legs); place(`fig_torso_${poses.L}${poses.R}`, y + 6, o.torso, o.torsoPrint); place(`fig_hands_${poses.L}${poses.R}`, y + 6, skin); const hr = (rot + (o.headTurn ?? 0)) & 3; place('fig_head', y + 9, skin, o.face, 0, 0, hr);
+  if (o.skates) { for (const s of [-0.5, 0.5]) place('roller_skate', y, o.skates, undefined, s, 0); y += 1; }   // a skate under each foot hole; each one straddles a stud of the ground
+  const pair = `${poses.L}${poses.R}`, handsKey = `fig_hands_${pair}${wrist.L || wrist.R ? `_${wrist.L ? 't' : '0'}${wrist.R ? 't' : '0'}` : ''}`;
+  for (const k of [`fig_torso_${pair}`, handsKey]) if (!PARTS[k]) throw new Error(`minifig rig ${k} not baked — add it to EXTRA_TORSO / EXTRA_HANDS in tools/ldraw/minifig-asm.mjs and re-run`);
+  place('fig_legs', y, o.legs); place(`fig_torso_${pair}`, y + 6, o.torso, o.torsoPrint); place(handsKey, y + 6, skin); const hr = (rot + (o.headTurn ?? 0)) & 3; place('fig_head', y + 9, skin, o.face, 0, 0, hr);
   if (o.hat === 'kasa') place('fig_kasa', y + 12, 'Tan', undefined, 0, 0, hr); else if (o.hair) place(o.hairKey ?? 'fig_hair', y + 12, o.hair, undefined, 0, 0, hr);
   const torsoY = (y + 9) * PLATE; // torso origin (the neck) in world height
-  const gripOf = (side: 'L' | 'R') => RIG.grip[`${side.toLowerCase()}${poses[side]}` as keyof typeof RIG.grip] as readonly [number, number, number];
+  const rigKey = (side: 'L' | 'R') => `${side.toLowerCase()}${poses[side]}${wrist[side] ? 't' : ''}` as keyof typeof RIG.grip;
+  const gripOf = (side: 'L' | 'R') => RIG.grip[rigKey(side)] as readonly [number, number, number];
   for (const h of holds) {
     const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; const def = PARTS[h.key]; const H = def.h * PLATE; const G = gripOf(side);
     const grip = h.grip ?? dflt.grip ?? 'mid'; const dx = h.dx ?? dflt.dx ?? 0, dy = h.dy ?? dflt.dy ?? 0, dz = h.dz ?? dflt.dz ?? 0;
     // an offset moves the part's grip point away from the hand's clip: past ~1/3 stud the hand closes on air (2026-10-03, Eric: the saxophone floated beside the hand)
     if (Math.hypot(dx, dy, dz) > 0.35) throw new Error(`grip offset: ${h.key} is moved ${Math.hypot(dx, dy, dz).toFixed(2)} studs away from the hand's clip — change the pose, the rotation or gp, not the offset`);
     const rel = h.rot ?? (side === 'L' ? dflt.rotL : dflt.rotR) ?? dflt.rot ?? 0; const gp = h.gp ?? dflt.gp ?? [0, 0, 0]; const [gx, gz] = rotv(gp[0], gp[2], rel); // part grip point → hand clip centre
+    if (dflt.axis) {   // the clip closes round the rail / bar only if its bore runs along it (2026-10-04: the wrist turn made this a choice)
+      const a = dflt.axis === 'y' ? [0, 1, 0] : (() => { const [ax, az] = rotv(dflt.axis === 'x' ? 1 : 0, dflt.axis === 'z' ? 1 : 0, rel); return [ax, 0, az]; })(); const b = RIG.axis[rigKey(side)];
+      if (Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) < 0.9) throw new Error(`grip axis: ${h.key} needs its ${dflt.axis} axis in the clip, but the ${side} hand in pose ${poses[side]}${wrist[side] ? ' (wrist turned)' : ''} closes along [${b.join(', ')}] — change the pose, the wrist or rot`);
+    }
     let centerY = torsoY + G[1] - gp[1] + dy;
     if (grip === 'ground') centerY = y * PLATE + H / 2; else if (grip === 'bottom') centerY = torsoY + G[1] + H / 2 - 0.25;
     const py = Math.round((centerY - H / 2) / PLATE * 2) / 2; held[h.key] = py;
@@ -168,7 +181,7 @@ export function minifig2(bp: Blueprint, cx: number, y: number, cz: number, rot: 
   }
   const grips: Record<'L' | 'R', [number, number, number]> = { L: [0, 0, 0], R: [0, 0, 0] };
   for (const side of ['L', 'R'] as const) { const G = gripOf(side); const [dx, dz] = rotv(G[0], G[2], rot); grips[side] = [cx + dx, torsoY + G[1], cz + dz]; }
-  return { y, grips, poses, held, cx, cz, rot };
+  return { y, grips, poses, wrist, held, cx, cz, rot };
 }
 /** Umbrella held up: 4L bar gripped low in a forward hand, canopy pushed onto its top, clear of the hair. */
 export function holdUmbrella(bp: Blueprint, cx: number, y: number, cz: number, rot: number, o: FigOpts2, hand: 'L' | 'R', color: string, reserve?: Reserve) {
@@ -464,5 +477,37 @@ export function palm(bp: Blueprint, x: number, y: number, z: number, segments = 
   for (const r of [turn & 3, (turn + 2) & 3]) { const [lx, lz] = at(r); bp.part('palm_leaf_l', lx, ty, lz, bp.pick(['Green', 'Green', 'DarkGreen']), r); }
   for (const r of [(turn + 1) & 3, (turn + 3) & 3]) { const [lx, lz] = at(r); bp.part('palm_leaf_s', lx, ty + 1, lz, bp.pick(['Green', 'BrightGreen']), r); }
   bp.part('plant_3leaves', x - 1, ty + 2, z - 1, 'BrightGreen'); bp.part('roundplate_1x1', x, ty + 2, z - 1, 'ReddishBrown'); bp.part('roundplate_1x1', x - 1, ty + 2, z, 'ReddishBrown');   // young frond, two coconuts
+  reserve?.add(x - 2, z - 2, 4, 4); bp.tag = '';
+}
+
+// ---- fan palm (Washingtonia robusta), LA 2026-10-04 — docs/refs/la-real/SCHEME.md §A, docs/refs/la-real/BUILD.md --------------------------
+// Copied from LEGOLAND Miniland's palms (a thin trunk and a radial starburst of short fronds) and the real tree (a round shaggy ball whose
+// lower fronds droop over a brown skirt). One vertical axis at the grid corner (x, z), every width change through a 2×2 part centred on it
+// (rule 7): 2×2 jumper → `bricks` 1×1 round bricks (a Dark Brown foot, the rest Dark Tan) → a Dark Brown 2×2 round plate (its tube on the
+// trunk's stud): the frond bases of a pruned trunk → four Olive Green three-leaf plates (the yellowing fronds) → four bamboo-leaf
+// bricks, each fanning outward over its corner and drooping (the ball's lower half) → a round 2×2 plate with one centre stud → 1×1 round plate (hollow stud) → the
+// burst: a six-stem flower stem with a three-leaf plate on every stem, fronds radiating at 20° and 60° (the upper half, `palm_burst`).
+// 28 bricks (the head assembly is 7), top ≈ y + 40 at 9 bricks; head ≈ 6 studs wide at the droop, ≈ 4 studs tall.
+// turn: bit 0 turns the drooping pinwheel a quarter, the burst takes turn quarter turns — a row's heads are not clones.
+// crown (r2, 2026-10-05, for Eric to compare; omitted = the r1 head above): an exploded crown assembly on the trunk's top stud, the trunk
+// shortened so every version tops out near 42 plates — 'a' classic palm leaves, 'b' swordleaf fans alternating with small palm leaves, 'c' swordleaf fans on tiers,
+// 'd' Full Plate Builds' life rings + swordleaves (catalog.ts `palm_crown_*`, tools/ldraw/asm-la-life.mjs). turn: a quarter turn per step.
+// Default (Eric, 2026-10-05): 'v2', the classic segmented-trunk palm copied from his reference; 'r1' = the original head above.
+export type PalmCrown = 'r1' | 'a' | 'b' | 'c' | 'd' | 'v1' | 'v2' | 'v3';   // v1–v3 (r3): whole palms copied from Eric's references, trunk included (catalog.ts `palm2_*`)
+const CROWN_TRUNK: Record<'a' | 'b' | 'c' | 'd', number> = { a: 9, b: 7, c: 8, d: 8 };
+export function fanPalm(bp: Blueprint, x: number, y: number, z: number, opts: { bricks?: number; turn?: number; crown?: PalmCrown } = {}, reserve?: Reserve) {
+  const c0 = opts.crown ?? 'v2', crown = c0 === 'r1' ? undefined : c0, turn = opts.turn ?? 0; bp.tag = 'palm';
+  if (crown === 'v1' || crown === 'v2' || crown === 'v3') { bp.assembly('palm2_' + crown, x - 1, y, z - 1, 'DarkBrown', turn & 3); reserve?.add(x - 2, z - 2, 4, 4); bp.tag = ''; return; }
+  const bricks = opts.bricks ?? (crown ? CROWN_TRUNK[crown] : 9);
+  bp.part('jumper_2x2', x - 1, y, z - 1, 'DarkTan'); let ty = y + 1;
+  for (let k = 0; k < bricks; k++) { bp.part('round_1x1', x - 0.5, ty, z - 0.5, k === 0 ? 'DarkBrown' : 'DarkTan'); ty += 3; }
+  if (crown) { bp.assembly('palm_crown_' + crown, x - 0.5, ty, z - 0.5, 'Green', turn & 3); reserve?.add(x - 2, z - 2, 4, 4); bp.tag = ''; return; }
+  bp.part('roundplate_2x2', x - 1, ty, z - 1, 'DarkBrown'); ty += 1;   // a pruned trunk: only a thin dark band of frond bases under the head (a grille-brick skirt read as a pot)
+  // corner cells round the axis: [cx, cz, rot turning a three-leaf plate's leaves (canonical +x, −z) outward, rot fanning a bamboo brick (canonical +x) outward]
+  const cells: [number, number, number, number][] = [[x - 1, z - 1, 1, 2], [x, z - 1, 0, 1], [x, z, 3, 0], [x - 1, z, 2, 3]];   // NW NE SE SW
+  for (const [cx, cz, r] of cells) bp.part('plant_3leaves', cx, ty, cz, 'OliveGreen', r);
+  for (const [cx, cz, , f] of cells) bp.part('plant_bamboo_1x1', cx, ty + 1, cz, 'Green', (f + (turn & 1)) & 3);
+  bp.part('roundjumper_2x2', x - 1, ty + 4, z - 1, 'Green'); bp.part('roundplate_1x1', x - 0.5, ty + 5, z - 0.5, 'Green');
+  bp.assembly('palm_burst', x - 0.5, ty + 6, z - 0.5, 'Green', turn & 3);
   reserve?.add(x - 2, z - 2, 4, 4); bp.tag = '';
 }

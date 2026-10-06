@@ -29,7 +29,7 @@ const app = {
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30, viewDist: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
   env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
-  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
+  drift: null as null | { t: number; base: Float32Array; w: Float32Array }, burst: null as null | { t: number; p0: Float32Array; v: Float32Array; w: Float32Array; fixed: Uint8Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   night: false, renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
 try { const e = localStorage.getItem('enter') as Enter | null; if (e === 'floor' || e === 'float') app.enter = e; } catch { /* storage blocked */ }
@@ -63,7 +63,7 @@ function init() {
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
 }
-function replay() { if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.drift = null; app.bricks.resetHome(); prepareEntrance(); startEntrance(); }
+function replay() { if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return; app.physics.stop(); app.drift = null; app.burst = null; app.bricks.resetHome(); prepareEntrance(); startEntrance(); }
 
 /** Scenes are built once and kept: the blueprint (90 ms on Shanghai) and, through prewarm, every part geometry already on the GPU, so a
  *  click on the globe starts the transition at once (Eric 2026-10-04: big sets waited ~2 s and he clicked again, thinking it had failed). */
@@ -184,7 +184,7 @@ async function goGlobe() {
   app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.table.visible = false;
   $('card-place').hidden = true; $('actions').hidden = true;
   const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys);
-  app.drift = null; const exits = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); const h = it.home.p;
+  app.drift = null; app.burst = null; const exits = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); const h = it.home.p;
     return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25 }; });
   setState('idle');
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
@@ -256,15 +256,47 @@ function drawPhysics() {
   app.bricks.commit();
 }
 function dismantle() {
-  if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0; app.lastPoses = app.prevPoses = null; app.drift = null;
+  if (app.state !== 'built') return; setState('dismantling'); app.orbit.autoRotate = 0; app.lastPoses = app.prevPoses = null; app.drift = null; app.burst = null;
   const n = app.items.length; const poses = new Float32Array(n * 7), halfs = new Float32Array(n * 3), fixed = new Uint8Array(n);
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   app.table.visible = false;   // zero-g, a fixed force (Eric 10-02: no slider; some punch, not much). 
   const B = { vy: 0.85, spin: 0.35, burst: 0.72 };   // Nebula (Eric's pick): a soft round cloud
+  if (n > BURST_BRICKS) { startBurst(poses, fixed, 2.2 * B.burst, app.tableY - 400, B.vy, B.spin, 7); return; }
   app.physics.start(poses, halfs, fixed, 2.2, app.tableY - 400, [0, 0], 7, undefined, { gravity: 0, damping: [1.0, 0.7], ...B });
 }
+// ---- closed-form burst for the largest sets (LA, 2026-10-06: 11,000 rigid bodies stepped at ≈ 30 ms and the take-apart stuttered) ------
+// The Nebula burst is zero-g with linear / angular damping 1.0 / 0.7, so each brick's flight has a closed form: x(t) = x0 + v·(1 − e^(−t))
+// and a spin of |ω|·(1 − e^(−0.7t))/0.7 about its own axis. The starting velocities are the worker's, drawn from the same seeded sequence;
+// only brick-on-brick contacts are dropped, which in a radial burst the eye does not miss. After 2 s it hands over to the same drift.
+const BURST_BRICKS = 9000;
+function seq(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function startBurst(poses: Float32Array, fixed: Uint8Array, s: number, tableY: number, vyK: number, spin: number, seed: number) {
+  const n = poses.length / 7, r01 = seq(seed), v = new Float32Array(n * 3), w = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const o = i * 7, x = poses[o], y = poses[o + 1], z = poses[o + 2]; const r = Math.hypot(x, z) + 0.5; const a = r01() * Math.PI * 2;
+    const vel = s * (0.9 + Math.max(0, y - tableY) / 18), jitter = s * 0.6 * (1 + 0.5 * Math.min(1, Math.max(0, y - tableY - 12) / 24));
+    v[i * 3] = (x / r) * vel * 0.55 + Math.cos(a) * jitter + spin * (-z / r) * vel * 0.4; v[i * 3 + 1] = (1.5 + s * 0.9 + r01() * s * 0.6) * vyK; v[i * 3 + 2] = (z / r) * vel * 0.55 + Math.sin(a) * jitter + spin * (x / r) * vel * 0.4;
+    for (let k = 0; k < 3; k++) w[i * 3 + k] = (r01() - 0.5) * 3 * s;
+  }
+  app.burst = { t: 0, p0: poses, v, w, fixed };
+}
+function burstPoses(b: NonNullable<typeof app.burst>, t: number, out?: Float32Array) {
+  const fl = 1 - Math.exp(-t), fa = (1 - Math.exp(-0.7 * t)) / 0.7, n = b.p0.length / 7;
+  for (let i = 0; i < n; i++) {
+    const o = i * 7, k = i * 3; _qa.set(b.p0[o + 3], b.p0[o + 4], b.p0[o + 5], b.p0[o + 6]);
+    if (b.fixed[i]) _pa.set(b.p0[o], b.p0[o + 1], b.p0[o + 2]);
+    else { _pa.set(b.p0[o] + b.v[k] * fl, b.p0[o + 1] + b.v[k + 1] * fl, b.p0[o + 2] + b.v[k + 2] * fl); _da.set(b.w[k], b.w[k + 1], b.w[k + 2]); const m = _da.length(); if (m > 1e-6) { _dq.setFromAxisAngle(_da.multiplyScalar(1 / m), m * fa); _qa.premultiply(_dq); } }
+    if (out) out.set([_pa.x, _pa.y, _pa.z, _qa.x, _qa.y, _qa.z, _qa.w], o); else app.bricks.setPose(app.items[i], _pa, _qa);
+  }
+  if (!out) app.bricks.commit();
+}
+function drawBurst(dt: number) {
+  const b = app.burst!; b.t = Math.min(2, b.t + dt);
+  if (b.t >= 2) { const out = new Float32Array(b.p0.length); burstPoses(b, 2, out); app.burst = null; startDrift(out); drawDrift(0); return; }
+  burstPoses(b, b.t);
+}
 function rebuild() {
-  if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); app.drift = null; setState('rebuilding');
+  if (!(app.state === 'settled' || app.state === 'dismantling')) return; app.physics.stop(); app.drift = null; app.burst = null; setState('rebuilding');
   const maxY = Math.max(...app.items.map((i) => i.home.p.y));
   app.anims = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); return { it, fromP: p, fromQ: q, delay: (it.home.p.y - TABLE_Y) / (maxY - TABLE_Y) * 1.2 + Math.random() * 0.1, dur: 1.6, arc: 4 }; });
   app.entering = false; app.animT = 0; app.animDone = () => { setState('built'); app.orbit.autoRotate = app.autoRotate; app.table.visible = false; };
@@ -305,7 +337,7 @@ function frame() {
     app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
     app.globe.group.quaternion.copy(homeQ());
   }
-  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
+  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
@@ -321,7 +353,8 @@ async function start() {
   if (SHOT) {
     if (qs.has('dismantle')) { // run the sim for T seconds, then hold the frame
       const T = +qs.get('dismantle')!; dismantle();
-      await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
+      if (app.burst) { const b = app.burst; b.t = Math.min(T, 2); const out = new Float32Array(b.p0.length); burstPoses(b, b.t, out); app.burst = null; for (let i = 0; i < app.items.length; i++) { const o = i * 7; _pa.set(out[o], out[o + 1], out[o + 2]); _qa.set(out[o + 3], out[o + 4], out[o + 5], out[o + 6]); app.bricks.setPose(app.items[i], _pa, _qa); } app.bricks.commit(); setState('settled'); }   // the closed-form burst: pose it at T and hold
+      else await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
     }
   } else { prepareEntrance(); startEntrance(); }
   app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));

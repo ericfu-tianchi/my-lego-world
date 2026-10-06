@@ -16,10 +16,15 @@ const OUT = path.join(ROOT, 'src/parts/ldraw'); const CACHE = path.join(ROOT, 'v
 const LIB = process.env.LDRAW_DIR ? path.resolve(process.env.LDRAW_DIR) : null;
 const REMOTE = 'https://library.ldraw.org/library/official/'; const LOCAL = 'http://ldraw.local/';
 const args = process.argv.slice(2); const force = args.includes('--force'); const ids = args.filter((a) => !a.startsWith('--'));
+// --hull: an assembly's proxy geometry is written as its bounding box (12 triangles); members are what renders (LA pier, 2026-10-04: la_park's
+// monolith was 16 MB). Without it the proxy keeps the full merged mesh, as before.
+const hull = args.includes('--hull');
 const ASM_OUT = path.join(OUT, 'asm');
 // LDraw colour code → our colour key (src/core/colors.ts). An unmapped code is an error, never a silent default; 16 (inherit) becomes '' and
 // takes the proxy's colour when the assembly is exploded.
-const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'SandBlue', 78: 'LightNougat', 128: 'DarkNougat', 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange', 39: 'TransVeryLightBlue', 41: 'TransMediumBlue', 320: 'DarkRed', 179: 'FlatSilver', 323: 'LightAqua' };
+const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'SandBlue', 78: 'LightNougat', 128: 'DarkNougat', 0: 'Black', 2: 'Green', 4: 'BrightRed', 10: 'BrightGreen', 14: 'Yellow', 15: 'White', 19: 'Tan', 26: 'Magenta', 27: 'Lime', 28: 'DarkTan', 33: 'TransDarkBlue', 40: 'TransBlack', 43: 'TransLightBlue', 47: 'TransClear', 70: 'ReddishBrown', 71: 'LightBluishGray', 72: 'DarkBluishGray', 85: 'DarkPurple', 288: 'DarkGreen', 322: 'MediumAzure', 378: 'SandGreen', 191: 'BrightLightOrange', 39: 'TransVeryLightBlue', 41: 'TransMediumBlue', 320: 'DarkRed', 179: 'FlatSilver', 323: 'LightAqua', 1: 'BrightBlue', 272: 'DarkBlue', 84: 'MediumNougat' };   // last three: LA pier (2026-10-04)
+Object.assign(LDCOLOR, { 212: 'BrightLightBlue' });   // LA · Venice (2026-10-04): the lifeguard tower
+Object.assign(LDCOLOR, { 330: 'OliveGreen' });   // LA palms r2 (2026-10-05): the yellowing fronds
 /** Flatten an assembly's type-1 lines into members in our frame. LDraw → ours is F = diag(1, −1, −1)/20, so p' = F·p and m' = F·M·F⁻¹. */
 function members(name, src) {
   const out = [];
@@ -98,6 +103,7 @@ for (let qi = 0; qi < ids.length; qi++) {
     }
     if (fixed) console.log(`${id}: re-wound ${fixed} of ${P.length / 9} triangles to match their normals`); }
   geo = mergeVertices(geo, 1e-4); geo.computeBoundingBox();
+  if (isAsm && hull) { const b0 = geo.boundingBox; const box = new THREE.BoxGeometry(b0.max.x - b0.min.x, b0.max.y - b0.min.y, b0.max.z - b0.min.z); box.translate((b0.min.x + b0.max.x) / 2, (b0.min.y + b0.max.y) / 2, (b0.min.z + b0.max.z) / 2); box.deleteAttribute('uv'); geo = box; geo.computeBoundingBox(); }
   const bb = geo.boundingBox; const pos = geo.attributes.position.array, nrm = geo.attributes.normal.array, idx = geo.index.array;
   let Q = Q0; while (Math.max(...[bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z].map(Math.abs)) * Q > 32767) Q /= 2;
   const P = new Int16Array(pos.length), N = new Int8Array(nrm.length);

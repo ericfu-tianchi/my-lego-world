@@ -1,0 +1,4 @@
+// LDraw part palm2_v3 "Palm V3 (after ref-1 #3): reddish-brown cone trunk, green crown over hanging lime" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"palm2_v3","name":"Palm V3 (after ref-1 #3): reddish-brown cone trunk, green crown over hanging lime","tris":12,"q":1024,"i32":false,"bbox":[-6.8535,0,-6.8535,6.8535,19.3706,6.8535],"pos":"aht8TWobaht8TZbkahsAAGobahsAAJbkluR8TZbkluR8TWobluQAAJbkluQAAGobluR8TZbkaht8TZbkluR8TWobaht8TWobluQAAGobahsAAGobluQAAJbkahsAAJbkluR8TWobaht8TWobluQAAGobahsAAGobaht8TZbkluR8TZbkahsAAJbkluQAAJbk","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

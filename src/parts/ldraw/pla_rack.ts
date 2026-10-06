@@ -1,0 +1,4 @@
+// LDraw part la_rack "la_rack — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"la_rack","name":"la_rack — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-3.065,0,-1.6278,3,4.065,1.6278],"pos":"AAxDEIMGAAxDEH35AAwAAIMGAAwAAH35vfNDEH35vfNDEIMGvfMAAH35vfMAAIMGvfNDEH35AAxDEH35vfNDEIMGAAxDEIMGvfMAAIMGAAwAAIMGvfMAAH35AAwAAH35vfNDEIMGAAxDEIMGvfMAAIMGAAwAAIMGAAxDEH35vfNDEH35AAwAAH35vfMAAH35","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

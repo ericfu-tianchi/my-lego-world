@@ -5,6 +5,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: 1 });
 page.on('console', (m) => { const t = m.text(); if (!t.includes('GL Driver') && m.type() !== 'debug') console.log('[page]', t.slice(0, 600)); });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-await page.goto(`http://127.0.0.1:${process.env.PORT ?? 8125}/index.html?shot=1&${query}`, { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:${process.env.PORT ?? 8125}/index.html?shot=1&${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
-await page.waitForTimeout(400); await page.screenshot({ path: out }); await browser.close(); console.log('saved', out);
+// the screenshot timeout is long: a swiftshader frame takes > 30 s when another render shares the CPU
+await page.waitForTimeout(400); await page.screenshot({ path: out, timeout: 180000 }); await browser.close(); console.log('saved', out);

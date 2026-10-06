@@ -1,0 +1,4 @@
+// LDraw part palm2_v1 "Palm V1 (after ref-2 #4): cone trunk, tan straw skirt, lime / green / dark green swordleaves on life rings" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"palm2_v1","name":"Palm V1 (after ref-2 #4): cone trunk, tan straw skirt, lime / green / dark green swordleaves on life rings","tris":12,"q":1024,"i32":false,"bbox":[-6.7334,0,-6.7334,6.7334,21.0307,6.7334],"pos":"7xofVO8a7xofVBHl7xoAAO8a7xoAABHlEeUfVBHlEeUfVO8aEeUAABHlEeUAAO8aEeUfVBHl7xofVBHlEeUfVO8a7xofVO8aEeUAAO8a7xoAAO8aEeUAABHl7xoAABHlEeUfVO8a7xofVO8aEeUAAO8a7xoAAO8a7xofVBHlEeUfVBHl7xoAABHlEeUAABHl","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

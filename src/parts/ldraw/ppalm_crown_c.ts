@@ -1,0 +1,4 @@
+// LDraw part palm_crown_c "Palm crown C: swordleaf fans 10884 on a tiered hub, six more on a six-stem flower stem on top" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"palm_crown_c","name":"Palm crown C: swordleaf fans 10884 on a tiered hub, six more on a six-stem flower stem on top","tris":12,"q":1024,"i32":false,"bbox":[-4.2805,-0.679,-4.2805,4.2805,6.1699,4.2805],"pos":"HxGuGB8RHxGuGOHuHxFJ/R8RHxFJ/eHu4e6uGOHu4e6uGB8R4e5J/eHu4e5J/R8R4e6uGOHuHxGuGOHu4e6uGB8RHxGuGB8R4e5J/R8RHxFJ/R8R4e5J/eHuHxFJ/eHu4e6uGB8RHxGuGB8R4e5J/R8RHxFJ/R8RHxGuGOHu4e6uGOHuHxFJ/eHu4e5J/eHu","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

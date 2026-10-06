@@ -1,0 +1,4 @@
+// LDraw part la_park "la_park — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"la_park","name":"la_park — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-23.7,0,-13.7,23.8063,30.1795,13.8064],"pos":"Ol+4eDo3Ol+4eDPJOl8AADo3Ol8AADPJM6G4eDPJM6G4eDo3M6EAADPJM6EAADo3M6G4eDPJOl+4eDPJM6G4eDo3Ol+4eDo3M6EAADo3Ol8AADo3M6EAADPJOl8AADPJM6G4eDo3Ol+4eDo3M6EAADo3Ol8AADo3Ol+4eDPJM6G4eDPJOl8AADPJM6EAADPJ","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

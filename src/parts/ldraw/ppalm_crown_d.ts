@@ -1,0 +1,4 @@
+// LDraw part palm_crown_d "Palm crown D: travis brick, four life rings, twenty swordleaves (after Full Plate Builds), a burst on top" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"palm_crown_d","name":"Palm crown D: travis brick, four life rings, twenty swordleaves (after Full Plate Builds), a burst on top","tris":12,"q":1024,"i32":false,"bbox":[-5.4098,-2.4978,-5.4098,5.4098,6.9477,5.4098],"pos":"pBXKG6QVpBXKG1zqpBUC9qQVpBUC9lzqXOrKG1zqXOrKG6QVXOoC9lzqXOoC9qQVXOrKG1zqpBXKG1zqXOrKG6QVpBXKG6QVXOoC9qQVpBUC9qQVXOoC9lzqpBUC9lzqXOrKG6QVpBXKG6QVXOoC9qQVpBUC9qQVpBXKG1zqXOrKG1zqpBUC9lzqXOoC9lzq","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

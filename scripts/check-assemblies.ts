@@ -29,6 +29,42 @@ console.log(bad ? `FAIL · ${bad} mismatches` : `PASS · ${KEYS.length} assembli
 // (the Pearl's beams, 2026-10-03)
 const OVERLAP_TOL = 0.22, TOUCH = 0.06; const INTERLOCK = new Set(['3937|3938', '3938|3937', '11090|4285b', '4285b|11090', '60592|60601', '60601|60592', '61252|3062b', '3062b|61252', '22890|14418', '14418|22890', '60592|38320', '38320|60592', '61252|60478', '60478|61252', '61252|26604', '26604|61252', '24201|3024', '3024|24201']); const BARS = new Set(['11090', '87994', '3957', '99784', '63965', '3704', '4519', '3705', '3706', '4274', '57585', '26047', '30374', '3673', '48729b', '60478']);
 // + Paris: ball joints (22890|14418), window frame and diamond pane (60592|38320), clip round a handle (61252|60478), clip round a lantern handle (61252|26604), a 1×1 plate on the inverted curved slope (24201|3024)
+for (const p of ['42511|2496', '2496|42511', '19119|32607', '32607|19119']) INTERLOCK.add(p);   // LA: a skateboard's wheel axles in its deck's clips, a six-stem flower stem's caps
+for (const id of ['44294', '60485', '3707', '3737', '32073', '2780']) BARS.add(id);
+// roller-coaster track (LA, 2026-10-04): a curve's / ramp's OBB is its whole quarter square / the air under its high end, so the 2×2 joint plate
+// on the track's end studs and the post under a ramp's high end sit inside it by design, and a car's bogies straddle the rails
+// a raised arch's OBB spans the air over its stepped shoulders and under its own arch, where plates and cheese slopes sit on the shoulder studs (the LA pier arch)
+for (const o of ['3024', '54200', '3005']) { INTERLOCK.add(`14707|${o}`); INTERLOCK.add(`${o}|14707`); }   // 3005: r3, the capital's core bricks on the end step
+INTERLOCK.add('92950|2431'); INTERLOCK.add('2431|92950');
+INTERLOCK.add('26021c01|3004'); INTERLOCK.add('3004|26021c01');   // a coaster car's seat backs stand in its sunken seat well   // … and the tile on the band's studs under the crest's own arch
+for (const t of ['25061', '80562', '34738']) for (const o of ['3022', '3068b', '3020', '3941', '4032a', '26021c01']) { INTERLOCK.add(`${t}|${o}`); INTERLOCK.add(`${o}|${t}`); }   // LA Pacific Wheel (2026-10-04): Technic axles and pins through beam holes
+for (const p of ['60594|86210', '86210|60594', '60593|60602', '60602|60593']) INTERLOCK.add(p);   // LA Venice: window glass in its frame
+for (const id of ['2780', '2496', '2486', '4083', '30055', '3633']) BARS.add(id);   // LA Venice: a Technic pin through a pinhole, skateboard wheels, bar-frame rails and fences
+BARS.add('63965a'); for (const p of ['15712|29592', '29592|15712']) INTERLOCK.add(p);   // LA Venice r2: the lamp pole's bar through its collars' hollow studs; a dumbbell's bar in a clip tile's clip
+// LA Venice r2, the tail-stall skater (la_skater): a minifig built of its real parts interlocks by design (hips in the torso, arms on the
+// torso's pins, hands in the wrists, the head on the neck, the helmet on the head); a locking hinge plate's finger rises over its own end
+// only, and a skateboard deck's box spans its clips — both boxes overlap the plate on their studs where the parts do not
+{ const FIG = ['970c00', '973', '3818', '3819', '3820', '3626c', '46303']; for (const p of FIG) for (const q of FIG) INTERLOCK.add(`${p}|${q}`);
+  for (const p of ['44301b|78329', '78329|44301b', '78329|42511', '42511|78329', '44301b|44302b', '44302b|44301b']) INTERLOCK.add(p); }   // … and the locking hinge's two halves
+for (const p of ['3960|93273', '93273|3960']) INTERLOCK.add(p);   // Griffith: a 4×1 double curved slope over a dish's crown (the crown rides inside the slope's hollow arch)
+// LA pier r2 (2026-10-05): seated minifigs in the coaster cars — a minifig's parts ride on pins and hinges inside each other (arms in the
+// torso's shoulders, hands in the arms, hips under the torso, legs on the hip pin, head on the neck, hair on the head), and the seated
+// figure sits in the car's sunken well against its seat back
+{ const FIG = ['973', '3815', '3816', '3817', '3818', '3819', '3820', '3626c', '12890', '3901']; for (const x of FIG) for (const y of [...FIG, '26021c01', '3004', '3069b']) { INTERLOCK.add(`${x}|${y}`); INTERLOCK.add(`${y}|${x}`); } }
+for (const p of ['26021c01|3069b', '3069b|26021c01']) INTERLOCK.add(p);
+{ const FIG = ['3815', '3816', '3817', '11253', '973', '3818', '3819', '3820', '3626c', '87995']; for (const x of FIG) for (const y of FIG) INTERLOCK.add(`${x}|${y}`); }   // LA r3: la_roller is a minifig of real parts — legs on the hip pins, skates on the feet, hair on the head   // … and the tile on the well's rear row
+for (const [r, o] of [['87559', '3003'], ['87559', '3022'], ['3961', '3022']]) { INTERLOCK.add(`${r}|${o}`); INTERLOCK.add(`${o}|${r}`); }   // Griffith r2 dome: the 2×2 column through the quarter rings' hole, and under the 8×8 dish's hollow
+// LA palms r2 (2026-10-05): a leaf's oriented box is mostly air — a swordleaf fan 10884 is 6 × 6 studs for a 1 × 2 seat, a palm leaf 2518 nine
+// studs long and five plates deep for its seat — so fronds interleave with each other and their box covers the hub they hang round. As the
+// validator's hull pass lets plants overlap plants, leaf pairs and leaf-over-hub pairs are not clashes here; the blades are checked in close-ups.
+// a six-stem flower stem's bar in a hollow stud (1 × 1 round plate, travis brick); two life rings on neighbouring faces of one travis brick: the
+// rings run past each other (a pinwheel, ≥ 1.5 LDU apart) but their boxes, which are solid over the ring's hole, meet at the corner
+for (const p of ['6141|19119', '4733|19119', '3062b|19119', '30340|30340']) { const [a, b] = p.split('|'); INTERLOCK.add(`${a}|${b}`); INTERLOCK.add(`${b}|${a}`); }
+for (const leaf of ['2518', '6148', '10884']) for (const o of ['2518', '6148', '10884', '4032b', '18674', '4733', '30340', '19119', '32607', '6141', '3062b']) { INTERLOCK.add(`${leaf}|${o}`); INTERLOCK.add(`${o}|${leaf}`); }
+// LA palms r3 (2026-10-05): a shaft in the hollow stud below (inverted cones with shaft 11610 stacked, the first through a round tile with hole
+// into a round plate; classic palm trunk segments 2536b pinned into the core / plate below), a prickly bush threaded upside down on the bar above
+// the trunk, its spikes hanging round the top cones and the fans and rings beside it
+for (const p of ['11610|11610', '11610|15535', '11610|4032b', '2536b|2536b', '2536b|4032b', '6064b|11610', '6064b|10884', '6064b|30340', '6064b|4733', '11610|10884', '2536b|10884']) { const [a, b] = p.split('|'); INTERLOCK.add(`${a}|${b}`); INTERLOCK.add(`${b}|${a}`); }
 type OBB = { c: number[]; a: number[][]; h: number[]; id: string };
 const obb = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB => { const id = PARTS[p.key].ldraw!; const b = bodyBox(id); const m = p.xform!.m; return { id, c: p.xform!.p, a: [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]), h: [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2] }; };
 // An arch is mostly air: its bounding box would swallow whatever stands beside its legs or under its crown (the Eiffel Tower's legs lie in

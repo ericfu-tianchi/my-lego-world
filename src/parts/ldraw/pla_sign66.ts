@@ -1,0 +1,4 @@
+// LDraw part la_sign66 "la_sign66 — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"la_sign66","name":"la_sign66 — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-1,0,-0.5,1,5.3,0.9],"pos":"AAQzFZoDAAQzFQD+AAQAAJoDAAQAAAD+APwzFQD+APwzFZoDAPwAAAD+APwAAJoDAPwzFQD+AAQzFQD+APwzFZoDAAQzFZoDAPwAAJoDAAQAAJoDAPwAAAD+AAQAAAD+APwzFZoDAAQzFZoDAPwAAJoDAAQAAJoDAAQzFQD+APwzFQD+AAQAAAD+APwAAAD+","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

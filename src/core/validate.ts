@@ -121,12 +121,22 @@ export function validate(all: Placement[], base = 0): Report {
     return h[0] < R[0] - HULL_PAD || h[1] > R[1] + HULL_PAD || h[2] < R[2] - HULL_PAD || h[3] > R[3] + HULL_PAD || h[4] < sy0 - 2 || h[5] > sy1 + 2 ? h : null;
   };
   const isPlant = (it: Item) => it.def.cat === 'plant';
+  // an exploded assembly's hull is its members' real boxes, not the whole model's box (2026-10-05: a palm's 9-stud crown box, 44 plates
+  // tall, "reached into" the benches under it at its foot); the whole box only pre-filters
+  const memberBoxes = new Map<Placement, [number, number, number, number, number, number][]>();
+  { const at = new Map<string, Placement>(); all.forEach((p, i) => { if (p.proxy) at.set(`${p.key}@${i}`, p); });
+    for (const m of all) { if (!m.member || !m.xform) continue; const pr = at.get(m.member); if (!pr) continue;
+      const g = geometryFor(m.key); if (!g.boundingBox) g.computeBoundingBox(); const b = g.boundingBox!, M = m.xform.m, P = m.xform.p; const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+      for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) for (let k = 0; k < 3; k++) { const v = M[k * 3] * x + M[k * 3 + 1] * y + M[k * 3 + 2] * z + P[k]; lo[k] = Math.min(lo[k], v); hi[k] = Math.max(hi[k], v); }
+      (memberBoxes.get(pr) ?? memberBoxes.set(pr, []).get(pr)!).push([lo[0], hi[0], lo[2], hi[2], lo[1] / PLATE, hi[1] / PLATE]); } }
+  const hits = (H: [number, number, number, number, number, number], R: [number, number, number, number], by0: number, by1: number) =>
+    Math.min(H[1], R[1]) - Math.max(H[0], R[0]) > HULL_TOL && Math.min(H[3], R[3]) - Math.max(H[2], R[2]) > HULL_TOL && Math.min(H[5], by1) - Math.max(H[4], by0) > HULL_TOL_Y;
   for (const A of valid) {
-    const H = hullOf(A); if (!H) continue;
+    const H = hullOf(A); if (!H) continue; const MB = memberBoxes.get(A.p);
     for (const B of valid) {
       // a tree's own trunk carries its leaves (same tag)
       if (B === A || isPlant(B) || (!!A.p.tag && A.p.tag === B.p.tag) || allowedPair(A, B)) continue; const R = rectOf(B), [by0, by1] = spanOf(B);
-      if (Math.min(H[1], R[1]) - Math.max(H[0], R[0]) > HULL_TOL && Math.min(H[3], R[3]) - Math.max(H[2], R[2]) > HULL_TOL && Math.min(H[5], by1) - Math.max(H[4], by0) > HULL_TOL_Y) {
+      if (hits(H, R, by0, by1) && (!MB || MB.some((m) => hits(m, R, by0, by1)))) {
         overlaps++; issues.push({ kind: 'overlap', index: A.i, other: B.i, msg: `hull: ${A.p.key}@(${A.p.x},${A.p.y},${A.p.z}) reaches into ${B.p.key}@(${B.p.x},${B.p.y},${B.p.z})` });
       }
     }

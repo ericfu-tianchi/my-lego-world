@@ -3,6 +3,7 @@
 // A print is rendered as a thin decal geometry that rides on the part's instance matrix; physics and the validator ignore it.
 import * as THREE from 'three';
 import { PLATE, mergeGeos } from './geometry';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { PartDef } from './catalog';
 
 export type Face = 'top' | 'front' | 'side' | 'cyl';
@@ -32,7 +33,7 @@ export function decalGeometry(p: PrintDef, part: PartDef): THREE.BufferGeometry 
   const H = part.h * PLATE; const r = p.rect ?? {};
   if (p.face === 'top') { const g = new THREE.PlaneGeometry(r.w ?? part.w - 0.16, r.h ?? part.d - 0.16); g.rotateX(-Math.PI / 2); g.translate(0, (r.y ?? H / 2) + 0.003, r.z ?? 0); return g; }
   if (p.face === 'front') { const g = new THREE.PlaneGeometry(r.w ?? part.w - 0.12, r.h ?? H - 0.12); g.translate(0, r.y ?? 0, (r.z ?? part.d / 2) + 0.003); return g; }
-  if (p.face === 'side') { const g = new THREE.PlaneGeometry(r.w ?? part.d - 0.12, r.h ?? H - 0.12); g.rotateY(Math.PI / 2); g.translate((r.x ?? part.w / 2) + 0.003, r.y ?? 0, r.z ?? 0); if (!p.both) return g; const b = g.clone(); b.rotateY(Math.PI); b.translate(0, 0, 2 * (r.z ?? 0)); return mergeGeos([g, b]); }
+  if (p.face === 'side') { const g = new THREE.PlaneGeometry(r.w ?? part.d - 0.12, r.h ?? H - 0.12); g.rotateY(Math.PI / 2); g.translate((r.x ?? part.w / 2) + 0.003, r.y ?? 0, r.z ?? 0); if (!p.both) return g; const b = g.clone(); b.rotateY(Math.PI); b.translate(0, 0, 2 * (r.z ?? 0)); return mergeGeometries([g, b])!; }   // keeps the uv (mergeGeos dropped it, so a two-faced print drew nothing; found on the Venice art walls, 2026-10-04)
   const rad = (r.r ?? part.w / 2 - 0.01) + 0.004, th = r.theta ?? Math.PI * 0.62; // wrapped around a cylinder, centred on +z
   const g = new THREE.CylinderGeometry(rad, rad, r.h ?? H * 0.6, 24, 1, true, -th / 2, th); g.translate(0, r.y ?? 0, 0); return g;
 }
@@ -310,3 +311,256 @@ def({ key: 'hc_morris_wrap', zh: 'Morris 广告柱·四张书摊海报围一圈�
   ctx.fillStyle = '#184632'; ctx.fillRect(0, 0, w, h); const n = MORRIS_SET.length, cw = w / n, g = cw * 0.05;
   MORRIS_SET.forEach((k, i) => { ctx.save(); ctx.translate(i * cw + g, 0); ctx.beginPath(); ctx.rect(0, 0, cw - 2 * g, h); ctx.clip(); PRINTS[k].draw!(ctx, cw - 2 * g, h); ctx.restore(); });
 } });
+// ---- LA · palms and figures (2026-10-04) ----
+// Venice life layer: two faces shared by the four figures (heads differ by hair, helmet), four torsos. Flat colours, no words.
+const LA_CORAL = '#FF698F', LA_AZURE = '#078BC9', LA_RED = '#C91A09', LA_YELLOW = '#F2CD37';
+def({ key: 'face_la_grin', zh: '脸·咧嘴大笑（冲浪者、举重者）', colors: ['Black', 'White', 'Dark Red'], firstUse: 'Los Angeles', ...FACE, draw: (ctx, w, h) => {
+  eyes(ctx, w, h, 0.42, 0.05, 'raised');
+  ctx.fillStyle = DARKRED; ctx.beginPath(); ctx.moveTo(w * 0.33, h * 0.56); ctx.quadraticCurveTo(w / 2, h * 0.84, w * 0.67, h * 0.56); ctx.closePath(); ctx.fill();   // open grin
+  ctx.fillStyle = WHITE; ctx.beginPath(); ctx.moveTo(w * 0.35, h * 0.565); ctx.lineTo(w * 0.65, h * 0.565); ctx.lineTo(w * 0.62, h * 0.62); ctx.lineTo(w * 0.38, h * 0.62); ctx.closePath(); ctx.fill();   // top teeth
+  ctx.strokeStyle = INK; ctx.lineWidth = w * 0.022; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(w * 0.33, h * 0.56); ctx.quadraticCurveTo(w / 2, h * 0.84, w * 0.67, h * 0.56); ctx.closePath(); ctx.stroke();
+} });
+def({ key: 'face_la_shades', zh: '脸·墨镜微笑（滑板、旱冰）', colors: ['Black', 'White'], firstUse: 'Los Angeles', ...FACE, draw: (ctx, w, h) => {
+  ctx.fillStyle = INK; for (const cx of [0.37, 0.63]) { ctx.beginPath(); ctx.ellipse(w * cx, h * 0.42, w * 0.105, h * 0.085, 0, 0, Math.PI * 2); ctx.fill(); }   // round lenses
+  ctx.fillRect(w * 0.26, h * 0.385, w * 0.48, h * 0.03);                                                                                                  // the bridge and the brow bar
+  for (const cx of [0.34, 0.6]) { ctx.fillStyle = WHITE; ctx.beginPath(); ctx.ellipse(w * cx, h * 0.395, w * 0.028, h * 0.018, -0.5, 0, Math.PI * 2); ctx.fill(); }   // glints
+  arc(ctx, w / 2, h * 0.53, w * 0.15, Math.PI * 0.2, Math.PI * 0.8, w * 0.032, INK);                                                                   // easy smile
+} });
+def({ key: 'torso_la_wetsuit', zh: '冲浪者·黑色潜水服，深天蓝胸肩拼色', colors: ['Dark Azure', 'White', 'Coral'], firstUse: 'Los Angeles', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = LA_AZURE; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, 0); ctx.lineTo(w, h * 0.3); ctx.lineTo(w * 0.62, h * 0.44); ctx.lineTo(w * 0.38, h * 0.44); ctx.lineTo(0, h * 0.3); ctx.closePath(); ctx.fill();   // chest-and-shoulder panel
+  ctx.strokeStyle = LA_CORAL; ctx.lineWidth = w * 0.025; ctx.beginPath(); ctx.moveTo(0, h * 0.33); ctx.lineTo(w * 0.38, h * 0.47); ctx.lineTo(w * 0.62, h * 0.47); ctx.lineTo(w, h * 0.33); ctx.stroke();   // seam
+  ctx.fillStyle = WHITE; ctx.fillRect(w * 0.4, 0, w * 0.2, h * 0.05); ctx.fillRect(w * 0.485, h * 0.05, w * 0.03, h * 0.12);   // collar and the zip cord's pull
+} });
+def({ key: 'torso_la_tank', zh: '举重者·白色背心（黑描边），胸线', colors: ['White', 'Black'], firstUse: 'Los Angeles', ...TORSO, draw: (ctx, w, h) => {
+  const tank = () => { ctx.beginPath(); ctx.moveTo(w * 0.2, 0); ctx.lineTo(w * 0.33, 0); ctx.quadraticCurveTo(w / 2, h * 0.34, w * 0.67, 0); ctx.lineTo(w * 0.8, 0); ctx.lineTo(w * 0.86, h * 0.36); ctx.lineTo(w * 0.92, h); ctx.lineTo(w * 0.08, h); ctx.lineTo(w * 0.14, h * 0.36); ctx.closePath(); };   // racer-back tank, deep scoop neck
+  ctx.fillStyle = '#FFFFFF'; tank(); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = w * 0.022; ctx.lineJoin = 'round'; tank(); ctx.stroke();
+  ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(w * 0.36, h * 0.08); ctx.quadraticCurveTo(w * 0.45, h * 0.2, w * 0.5, h * 0.14); ctx.quadraticCurveTo(w * 0.55, h * 0.2, w * 0.64, h * 0.08); ctx.stroke();   // pecs in the neckline
+} });
+def({ key: 'torso_la_skate', zh: '滑板少年·白 T 恤胸前落日棕榈圆标', colors: ['Coral', 'Dark Azure', 'Black'], firstUse: 'Los Angeles', ...TORSO, draw: (ctx, w, h) => {
+  const cx = w / 2, cy = h * 0.44, r = w * 0.24; ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = LA_CORAL; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r); ctx.fillStyle = LA_AZURE; ctx.fillRect(cx - r, cy + r * 0.05, 2 * r, r);   // a low sun over half a disc of sea
+  for (const y of [0.3, 0.55]) { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(cx - r, cy + r * y, 2 * r, r * 0.08); }   // swell lines (the shirt's white)
+  ctx.restore();
+  const tx = cx + r * 0.3, top = cy - r * 0.62; ctx.fillStyle = INK; ctx.fillRect(tx - r * 0.06, top, r * 0.12, r * 1.1);   // a tall fan palm across sun and sea
+  for (let k = 0; k < 9; k++) { const a = Math.PI * (0.95 + k * 0.14); ctx.beginPath(); ctx.moveTo(tx, top); ctx.lineTo(tx + Math.cos(a) * r * 0.55, top + Math.sin(a) * r * 0.45); ctx.lineTo(tx + Math.cos(a + 0.13) * r * 0.45, top + Math.sin(a + 0.13) * r * 0.36); ctx.closePath(); ctx.fill(); }
+} });
+def({ key: 'torso_la_rainbow', zh: '旱冰者·白 T 恤三色彩虹', colors: ['Bright Red', 'Yellow', 'Dark Azure'], firstUse: 'Los Angeles', ...TORSO, draw: (ctx, w, h) => {
+  ctx.lineCap = 'butt'; [LA_RED, LA_YELLOW, LA_AZURE].forEach((c, i) => arc(ctx, w * 0.5, h * 0.95, w * (0.42 - i * 0.09), Math.PI * 1.08, Math.PI * 1.92, w * 0.085, c));   // three bands arching over the chest
+} });
+// ---- LA · Santa Monica Pier (2026-10-04) ----
+// Route 66 "End of the Trail": highway-sign lettering (Highway Gothic, bold condensed sans), black on white, a black ring — the only part of the
+// real shield that reads at this size. Drawn on the 2×2 round tile's top face, which faces south where the tile sits on the post's side stud.
+def({ key: 'route66', zh: '66 号公路圆牌「66」（2×2 圆光面砖，公路标志黑体）', colors: ['Black'], firstUse: 'Los Angeles', base: 'ld_14769', face: 'top', rect: { w: 1.9, h: 1.9 }, px: 320, draw: (ctx, w, h) => {
+  const cx = w / 2, cy = h / 2; ctx.strokeStyle = INK; ctx.lineWidth = w * 0.06; ctx.beginPath(); ctx.arc(cx, cy, w * 0.43, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = INK; ctx.font = `bold ${h * 0.56}px "Helvetica Neue",Helvetica,Arial,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.translate(cx, cy + h * 0.03); ctx.scale(0.78, 1); ctx.fillText('66', 0, 0); ctx.restore();   // upright, condensed by scaling (no italic fallback)
+} });
+// ---- LA · Venice beachfront (2026-10-04) ---- three graffiti walls (Brick 1×6×5, both long faces, wordless) and the lifeguard tower's
+// stencil numeral. Lettering culture (usa.md): the county towers carry their number as black stencil paint; the art walls carry no words.
+// The graffiti are iterated in a browser harness and pasted here; ≤ 4 print colours each, the brick colour is the wall's ground.
+{
+  type C2D = CanvasRenderingContext2D; type Glyph = { p: number[][]; hole?: number[][] };
+  const INK = '#1B2A34', WHITE = '#F4F4F4', BLO = '#F8BB3D', RED = '#C91A09', AZURE = '#36AEBF', PINK = '#E4ADC8', YELLOW = '#F2CD37';
+  const poly = (ctx: C2D, pts: number[][], u: number) => { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x * u, y * u) : ctx.moveTo(x * u, y * u))); ctx.closePath(); };
+  const star = (ctx: C2D, x: number, y: number, r: number, c: string) => { ctx.fillStyle = c; ctx.beginPath(); for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4, rr = k % 2 ? r * 0.22 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); };
+  const tags = (ctx: C2D, u: number, spots: number[][]) => { ctx.strokeStyle = INK; ctx.lineWidth = 0.9 * u; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; for (const [x, y, s] of spots) { ctx.beginPath(); ctx.moveTo(x * u, y * u); for (let k = 0; k < 6; k++) ctx.lineTo((x + k * 2.2 * s) * u, (y + (k % 2 ? -2.5 : 2.5) * s + k * 0.3) * u); ctx.stroke(); } };   // quick black tags: the wall is never bare
+  const drip = (ctx: C2D, x: number, y: number, len: number, wd: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(x - wd / 2, y, wd, len); ctx.beginPath(); ctx.arc(x, y + len, wd * 0.75, 0, Math.PI * 2); ctx.fill(); };
+
+  // ---- wildstyle: five interlocking slanted masses with spiked serifs and triangular counters — letter-like, never a letter — two fat arrows
+  const WILD: Glyph[] = [
+    { p: [[5, 36], [24, 29], [28, 38], [20, 41], [25, 61], [31, 64], [15, 75], [12, 60], [3, 64], [8, 49]] },
+    { p: [[21, 22], [41, 15], [47, 23], [39, 30], [45, 58], [37, 63], [41, 73], [24, 77], [26, 55], [19, 41]], hole: [[29, 35], [36, 32], [33, 47]] },
+    { p: [[40, 31], [59, 25], [65, 34], [57, 40], [63, 49], [55, 52], [61, 69], [42, 72], [45, 53], [38, 47]] },
+    { p: [[58, 28], [75, 19], [85, 24], [77, 36], [83, 62], [65, 70], [63, 47], [56, 45]], hole: [[67, 35], [73, 31], [71, 47]] },
+    { p: [[78, 41], [92, 34], [97, 46], [89, 50], [95, 68], [79, 73], [81, 57], [75, 53]] },
+  ];
+  const ARROWS: Glyph[] = [
+    { p: [[77, 27], [86, 16], [82, 13], [97, 6], [94, 21], [90, 18], [82, 31]] },
+    { p: [[13, 66], [8, 80], [3, 78], [3, 94], [16, 87], [12, 84], [19, 70]] },
+  ];
+  function drawWild(ctx: C2D, w: number, h: number) {
+    const u = w / 100, all = [...WILD, ...ARROWS], D = [2.4, 3.0];
+    const path = (g: Glyph, dx = 0, dy = 0) => { ctx.beginPath(); for (const ring of [g.p, g.hole].filter((r): r is number[][] => !!r)) ring.forEach(([x, y], i) => (i ? ctx.lineTo((x + dx) * u, (y + dy) * u) : ctx.moveTo((x + dx) * u, (y + dy) * u))), ctx.closePath(); };
+    const outer = (g: Glyph, dx = 0, dy = 0) => { ctx.beginPath(); g.p.forEach(([x, y], i) => (i ? ctx.lineTo((x + dx) * u, (y + dy) * u) : ctx.moveTo((x + dx) * u, (y + dy) * u))); ctx.closePath(); };
+    // background tags: a few thin black scribbles where the cloud does not reach (the wall is never bare)
+    tags(ctx, u, [[6, 8, 1], [60, 90, 1.2], [40, 4, 0.8]]);
+    ctx.save(); ctx.translate(50 * u, 50 * u); ctx.scale(0.97, 1.16); ctx.translate(-50 * u, -50 * u);   // the piece fills the wall
+    // the white cloud round the piece and its block
+    ctx.fillStyle = WHITE; ctx.strokeStyle = WHITE; ctx.lineWidth = 6.5 * u;
+    for (const g of all) for (const [dx, dy] of [[0, 0], D]) { outer(g, dx, dy); ctx.fill(); ctx.stroke(); }
+    ctx.lineJoin = 'miter'; ctx.miterLimit = 4;
+    ctx.fillStyle = INK; for (const g of all) { path(g, D[0], D[1]); ctx.fill('evenodd'); }       // 3D block, down-right
+    for (const g of all) {
+      ctx.save(); path(g); ctx.clip('evenodd');
+      ctx.fillStyle = BLO; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = RED; ctx.beginPath(); ctx.moveTo(0, 62 * u); ctx.lineTo(100 * u, 42 * u); ctx.lineTo(100 * u, 100 * u); ctx.lineTo(0, 100 * u); ctx.closePath(); ctx.fill();   // one hard diagonal split
+      ctx.strokeStyle = WHITE; ctx.lineWidth = 1.2 * u; ctx.lineCap = 'round'; const [a, b] = g.p;
+      ctx.beginPath(); ctx.moveTo((a[0] + 2) * u, (a[1] + 2.6) * u); ctx.lineTo((a[0] + (b[0] - a[0]) * 0.6 + 1) * u, (a[1] + (b[1] - a[1]) * 0.6 + 2.6) * u); ctx.stroke();   // highlight under the top edge
+      ctx.restore();
+      path(g); ctx.strokeStyle = INK; ctx.lineWidth = 1.5 * u; ctx.stroke();
+    }
+    for (const [x, y, len] of [[33, 75, 9], [52, 70, 6], [70, 69, 7], [88, 72, 4]]) drip(ctx, x * u, y * u, len * u, 1.3 * u, RED);
+    ctx.restore();
+    for (const [x, y, r] of [[16, 16, 4.5], [56, 8, 3.2], [92, 90, 4.5], [26, 93, 3]]) star(ctx, x * u, y * u, r * u, WHITE);
+  }
+
+  // ---- character: a round-headed sun-kid with a backwards cap, wide shades, a grin and a peace sign; no lettering
+  function drawChar(ctx: C2D, w: number, h: number) {
+    const u = w / 100; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const head = () => { ctx.beginPath(); ctx.ellipse(48 * u, 52 * u, 30 * u, 28 * u, -0.1, 0, Math.PI * 2); };
+    const cap = () => { ctx.beginPath(); ctx.moveTo(20 * u, 44 * u); ctx.bezierCurveTo(20 * u, 18 * u, 72 * u, 12 * u, 78 * u, 40 * u); ctx.lineTo(20 * u, 44 * u); ctx.closePath(); };
+    const visor = () => { poly(ctx, [[14, 40], [24, 32], [26, 44], [12, 48]], u); };
+    const hand = () => { poly(ctx, [[70, 74], [68, 50], [73, 49], [77, 66], [81, 47], [86, 49], [82, 70], [87, 74], [86, 84], [72, 86]], u); };
+    // white cloud halo
+    ctx.fillStyle = WHITE; ctx.strokeStyle = WHITE; ctx.lineWidth = 8 * u; for (const f of [head, cap, visor, hand]) { f(); ctx.fill(); ctx.stroke(); }
+    // 3D block
+    ctx.save(); ctx.translate(2.5 * u, 3 * u); ctx.fillStyle = INK; for (const f of [head, cap, visor, hand]) { f(); ctx.fill(); } ctx.restore();
+    ctx.lineWidth = 1.6 * u; ctx.strokeStyle = INK;
+    head(); ctx.fillStyle = AZURE; ctx.fill(); ctx.stroke();
+    cap(); ctx.fillStyle = PINK; ctx.fill(); ctx.stroke(); visor(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = WHITE; ctx.beginPath(); ctx.arc(50 * u, 26 * u, 3 * u, 0, Math.PI * 2); ctx.fill(); ctx.stroke();   // the cap's button
+    // shades: two wide lenses on a bridge, white glints
+    ctx.fillStyle = INK; for (const x of [35, 59]) { ctx.beginPath(); ctx.ellipse(x * u, 50 * u, 11 * u, 7 * u, 0, 0, Math.PI * 2); ctx.fill(); } ctx.fillRect(40 * u, 47 * u, 14 * u, 2.4 * u);
+    ctx.strokeStyle = WHITE; ctx.lineWidth = 1.6 * u; for (const x of [31, 55]) { ctx.beginPath(); ctx.moveTo(x * u, 47 * u); ctx.lineTo((x + 5) * u, 46 * u); ctx.stroke(); }
+    // grin with teeth
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(32 * u, 62 * u); ctx.quadraticCurveTo(48 * u, 82 * u, 66 * u, 60 * u); ctx.quadraticCurveTo(48 * u, 68 * u, 32 * u, 62 * u); ctx.fill();
+    ctx.fillStyle = WHITE; ctx.beginPath(); ctx.moveTo(36 * u, 64 * u); ctx.quadraticCurveTo(48 * u, 70 * u, 62 * u, 62.5 * u); ctx.lineTo(60 * u, 66 * u); ctx.quadraticCurveTo(48 * u, 72 * u, 38 * u, 67 * u); ctx.closePath(); ctx.fill();
+    hand(); ctx.fillStyle = WHITE; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.6 * u; ctx.stroke();
+    for (const [x, y, len] of [[40, 78, 9], [52, 79, 6]]) drip(ctx, x * u, y * u, len * u, 1.6 * u, AZURE);
+    for (const [x, y, r] of [[12, 18, 5], [88, 26, 4], [14, 82, 3.5]]) star(ctx, x * u, y * u, r * u, WHITE);
+    tags(ctx, u, [[4, 92, 1], [70, 6, 0.9]]);
+    ctx.fillStyle = PINK; for (const [x, y, r] of [[86, 14, 2], [92, 38, 1.4], [8, 64, 1.8]]) { ctx.beginPath(); ctx.arc(x * u, y * u, r * u, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  // ---- sunset: a half sun on the horizon cut by three bars (the wall shows through), two fan palms, waves and gulls — sprayed and outlined
+  function drawSun(ctx: C2D, w: number, h: number) {
+    const u = w / 100; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    const H = 64;
+    ctx.save(); ctx.beginPath(); ctx.arc(50 * u, H * u, 31 * u, Math.PI, 0); ctx.closePath(); ctx.clip();
+    ctx.fillStyle = YELLOW; ctx.fillRect(0, 0, w, H * u); ctx.fillStyle = BLO; ctx.fillRect(0, 44 * u, w, 20 * u);
+    for (const [y, t] of [[46, 2.2], [52, 3.2], [58.5, 4.2]]) ctx.clearRect(0, y * u, w, t * u);   // the bars: the wall shows through
+    ctx.restore();
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * u; ctx.beginPath(); ctx.arc(50 * u, H * u, 31 * u, Math.PI, 0); ctx.stroke();
+    ctx.fillStyle = INK; ctx.fillRect(0, H * u, w, 2.2 * u);
+    for (const [x, y, len] of [[31, 66, 7], [63, 66, 10], [73, 66, 5]]) drip(ctx, x * u, y * u, len * u, 1.5 * u, BLO);
+    const palm = (bx: number, top: number, lean: number, s: number) => {
+      ctx.strokeStyle = INK; ctx.lineWidth = 2.6 * u * s; ctx.beginPath(); ctx.moveTo(bx * u, 98 * u); ctx.quadraticCurveTo((bx + lean * 0.2) * u, 60 * u, (bx + lean) * u, (top + 4) * u); ctx.stroke();
+      const cx = (bx + lean) * u, cy = top * u, R = 13 * s * u; ctx.fillStyle = INK;
+      for (let k = 0; k <= 10; k++) { const a = Math.PI * (0.95 + k * 0.11); ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.quadraticCurveTo(cx + Math.cos(a - 0.12) * R * 0.7, cy + Math.sin(a - 0.12) * R * 0.7 - 1.5 * u, cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.7 + (Math.abs(Math.cos(a)) > 0.7 ? 3 * u * s : 0));
+        ctx.quadraticCurveTo(cx + Math.cos(a + 0.12) * R * 0.6, cy + Math.sin(a + 0.12) * R * 0.6, cx, cy); ctx.fill(); }
+      ctx.beginPath(); ctx.ellipse(cx, cy + 4 * s * u, 3 * s * u, 5 * s * u, 0, 0, Math.PI * 2); ctx.fill();   // the dead-frond skirt
+    };
+    palm(17, 22, 3, 1); palm(85, 32, -2, 0.85);
+    ctx.strokeStyle = WHITE; ctx.lineWidth = 2.4 * u; ctx.beginPath(); for (let x = 0; x <= 100; x += 2) { const y = 80 + Math.sin(x / 100 * Math.PI * 4) * 3; x ? ctx.lineTo(x * u, y * u) : ctx.moveTo(0, y * u); } ctx.stroke();
+    ctx.lineWidth = 1.6 * u; ctx.beginPath(); for (let x = 0; x <= 100; x += 2) { const y = 89 + Math.sin(x / 100 * Math.PI * 4 + 1.3) * 2.5; x ? ctx.lineTo(x * u, y * u) : ctx.moveTo(0, y * u); } ctx.stroke();
+    ctx.lineWidth = 1.6 * u; for (const [x, y, s] of [[44, 17, 4.5], [57, 23, 3.4]]) { ctx.beginPath(); ctx.moveTo((x - s) * u, y * u); ctx.quadraticCurveTo((x - s / 2) * u, (y - s * 0.6) * u, x * u, y * u); ctx.quadraticCurveTo((x + s / 2) * u, (y - s * 0.6) * u, (x + s) * u, y * u); ctx.stroke(); }
+    for (const [x, y, r] of [[32, 10, 4], [72, 9, 3]]) star(ctx, x * u, y * u, r * u, WHITE);
+    tags(ctx, u, [[40, 94, 1.1], [86, 6, 0.8]]);
+  }
+
+  // ---- the tower's number: Venice Beach lifeguard tower 18 (real-tower-18.jpg; Commons "Lifeguard tower 18 in Venice Beach County Park"),
+  // black stencil paint set across the upper part of the narrow side panel as on the real cabin: a condensed "1" and "8" built from strokes,
+  // each loop of the 8 broken by stencil bridges. The panel's flat wall is its −z face, the decal sits just outside it and is seen from
+  // behind, so the drawing is mirrored
+  const RECT_NUM: { w: number; h: number; y: number; z: number } = { w: 1.8, h: 3.3, y: 0, z: -0.509 };
+  function drawNumeral(ctx: C2D, w: number, h: number) {
+    ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1);
+    const u = w / 100, v = h / 100; ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    const top = 16, bot = 46;                                                       // the numerals' band, upper half of the panel (v units)
+    ctx.fillRect(22 * u, top * v, 11 * u, (bot - top) * v);                         // "1": the stem …
+    ctx.beginPath(); ctx.moveTo(22 * u, top * v); ctx.lineTo(12 * u, (top + 5) * v); ctx.lineTo(12 * u, (top + 8.5) * v); ctx.lineTo(22 * u, (top + 4.5) * v); ctx.fill();   // … and its flag
+    ctx.lineWidth = 9 * u; const cx = 64, rx = 15, mid = (top + bot) / 2 - 0.5;   // "8": two stacked rounded loops, the lower one wider
+    const loop = (y0: number, y1: number, r: number) => { const ry = (y1 - y0) / 2; ctx.beginPath(); ctx.ellipse(cx * u, (y0 + ry) * v, r * u, ry * v, 0, 0, Math.PI * 2); ctx.stroke(); };
+    loop(top + 1.6, mid, rx - 2); loop(mid, bot - 1.6, rx);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillRect((cx - 2) * u, (top - 1) * v, 4 * u, 4.5 * v); ctx.fillRect((cx - 2) * u, (bot - 3.5) * v, 4 * u, 4.5 * v);   // stencil bridges, top and bottom
+    ctx.restore();
+  }
+  const WALL = { face: 'side' as Face, base: 'la_wall_1x6x5', both: true, px: 160, firstUse: 'Los Angeles' };
+  def({ key: 'graffiti_wild', zh: '涂鸦·无字狂野体（天蓝墙）', colors: ['Bright Light Orange', 'Red', 'Black', 'White'], ...WALL, draw: drawWild });
+  def({ key: 'graffiti_char', zh: '涂鸦·墨镜反戴帽小人（青柠墙）', colors: ['Black', 'White', 'Medium Azure', 'Bright Pink'], ...WALL, draw: drawChar });
+  def({ key: 'graffiti_sun', zh: '涂鸦·条纹落日与棕榈（中薰衣草墙）', colors: ['Yellow', 'Bright Light Orange', 'Black', 'White'], ...WALL, draw: drawSun });
+  def({ key: 'la_tower_18', zh: '救生塔模板喷字「18」（威尼斯海滩 18 号塔，1×2×3 面板外侧）', colors: ['Black'], firstUse: 'Los Angeles', face: 'front', base: 'ld_2362b', px: 320, rect: RECT_NUM, draw: drawNumeral });
+  // the tail-stall skater is an assembly of real minifig parts (la_skater), so his face and torso go on the members: the same designs,
+  // placed on the member's body box (the torso's box runs from its hips to the neck, 0.2 lower-centred than the rig's)
+  def({ ...PRINTS.torso_la_skate, key: 'torso_la_skate_m', base: 'ld_973', rect: { w: 1.42, h: 1.08, y: 0.2, z: 0.5 } });
+  def({ ...PRINTS.face_la_shades, key: 'face_la_shades_m', base: 'ld_3626c' });
+  def({ ...PRINTS.torso_la_rainbow, key: 'torso_la_rainbow_m', base: 'ld_973', rect: { w: 1.42, h: 1.08, y: 0.2, z: 0.5 } });   // r3: the roller-skater (la_roller) is a minifig of real parts too
+}
+// ---- LA · Griffith Observatory + Walk of Fame (2026-10-04) ----
+// Hollywood Walk of Fame star: a coral terrazzo five-point star with a thin brass rim and a round brass emblem in its lower centre, on the
+// charcoal terrazzo square (the tile itself, Black). No name: every real star names a real person, and two words are illegible at this size.
+const WOF_CORAL = '#FF698F', WOF_BRASS = '#AA7F2E';
+def({ key: 'walk_star', zh: '星光大道·珊瑚色五角星（黄铜描边与圆章，黑色 2×2 光面砖）', colors: ['Coral', 'Pearl Gold'], firstUse: 'Los Angeles', face: 'top', base: 'tile_2x2', px: 320, draw: (ctx, w, h) => {
+  const cx = w / 2, cy = h * 0.53, R = Math.min(w, h) * 0.45, r = R * 0.42;
+  const star = (Ro: number, ro: number) => { ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? ro : Ro; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } ctx.closePath(); };
+  star(R, r); ctx.fillStyle = WOF_BRASS; ctx.fill();                                   // the brass rim: the star drawn a line wider in brass …
+  star(R * 0.88, r * 0.84); ctx.fillStyle = WOF_CORAL; ctx.fill();                       // … and the coral terrazzo inside it
+  dot(ctx, cx, cy + R * 0.12, R * 0.22, WOF_BRASS);                                      // the round emblem, lower centre
+} });
+// ---- LA · Santa Monica Pier r2, the arch's lettering (2026-10-05) ----
+// The 1941 arch as it reads today (docs/refs/la-santa-monica/real-entrance-sign*.jpg): SANTA MONICA in heavy Dark Blue Art Deco capitals on the
+// white cartouche, and on the blue band white neon-tube capitals — YACHT HARBOR over the crown, SPORT FISHING ★ BOATING along the arch, stars
+// at the ends ("cafes" hangs on a tab our band does not have). Lettering culture: tube letters are bent glass, one even stroke with round
+// ends, so both are drawn as strokes (no typeface): monoline for the band, the same skeletons stroked heavy for the painted cartouche.
+{
+  type C2D = CanvasRenderingContext2D;
+  type Stroke = ['L', number[][]] | ['E', number, number, number, number, number, number, boolean?];   // polyline | ellipse arc (cx, cy, rx, ry, a0°, a1°, anticlockwise)
+  /** letter skeletons in a unit box: x from 0 to the advance, y 0 (cap line) … 1 (baseline) */
+  const G: Record<string, { w: number; s: Stroke[] }> = {
+    A: { w: 0.6, s: [['L', [[0, 1], [0.3, 0], [0.6, 1]]], ['L', [[0.12, 0.64], [0.48, 0.64]]]] },
+    B: { w: 0.56, s: [['L', [[0.3, 0.5], [0, 0.5], [0, 0], [0.28, 0]]], ['E', 0.28, 0.25, 0.24, 0.25, -90, 90], ['L', [[0, 0.5], [0, 1], [0.3, 1]]], ['E', 0.3, 0.75, 0.26, 0.25, -90, 90]] },
+    C: { w: 0.6, s: [['E', 0.32, 0.5, 0.31, 0.5, -42, 42, true]] },
+    F: { w: 0.5, s: [['L', [[0.5, 0], [0, 0], [0, 1]]], ['L', [[0, 0.48], [0.4, 0.48]]]] },
+    G: { w: 0.64, s: [['E', 0.32, 0.5, 0.31, 0.5, -42, 0, true], ['L', [[0.63, 0.5], [0.36, 0.5]]]] },
+    H: { w: 0.54, s: [['L', [[0, 0], [0, 1]]], ['L', [[0.54, 0], [0.54, 1]]], ['L', [[0, 0.5], [0.54, 0.5]]]] },
+    I: { w: 0, s: [['L', [[0, 0], [0, 1]]]] },
+    M: { w: 0.7, s: [['L', [[0, 1], [0, 0], [0.35, 0.66], [0.7, 0], [0.7, 1]]]] },
+    N: { w: 0.56, s: [['L', [[0, 1], [0, 0], [0.56, 1], [0.56, 0]]]] },
+    O: { w: 0.66, s: [['E', 0.33, 0.5, 0.33, 0.5, 0, 360]] },
+    P: { w: 0.52, s: [['L', [[0, 1], [0, 0], [0.26, 0]]], ['E', 0.26, 0.26, 0.26, 0.26, -90, 90], ['L', [[0.26, 0.52], [0, 0.52]]]] },
+    R: { w: 0.56, s: [['L', [[0, 1], [0, 0], [0.26, 0]]], ['E', 0.26, 0.26, 0.26, 0.26, -90, 90], ['L', [[0.26, 0.52], [0, 0.52]]], ['L', [[0.24, 0.52], [0.56, 1]]]] },
+    S: { w: 0.54, s: [['E', 0.27, 0.25, 0.26, 0.25, -25, 90, true], ['E', 0.27, 0.75, 0.27, 0.25, -90, 155]] },
+    T: { w: 0.6, s: [['L', [[0, 0], [0.6, 0]]], ['L', [[0.3, 0], [0.3, 1]]]] },
+    Y: { w: 0.6, s: [['L', [[0, 0], [0.3, 0.5], [0.6, 0]]], ['L', [[0.3, 0.5], [0.3, 1]]]] },
+    ' ': { w: 0.36, s: [] },
+  };
+  const D2R = Math.PI / 180;
+  /** one letter, its baseline centre at the origin, height h, advance squeezed by sx */
+  const glyph = (ctx: C2D, ch: string, h: number, sx = 1) => {
+    const g = G[ch]; const x0 = (-g.w / 2) * h * sx; const X = (x: number) => x0 + x * h * sx, Y = (y: number) => (y - 1) * h;
+    for (const st of g.s) { ctx.beginPath();
+      if (st[0] === 'L') st[1].forEach(([x, y], i) => (i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y))));
+      else { const [, cx, cy, rx, ry, a0, a1, acw] = st; ctx.ellipse(X(cx), Y(cy), rx * h * sx, ry * h, 0, a0 * D2R, a1 * D2R, !!acw); }
+      ctx.stroke(); }
+  };
+  const star = (ctx: C2D, x: number, y: number, r: number) => { ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.42 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); };
+  /** advance of a string in units of h (letters + tracking + the stroke's own width) */
+  const width = (s: string, track: number, lw: number, sx = 1) => [...s].reduce((t, ch) => t + G[ch].w * sx + lw, 0) + track * (s.length - 1);
+  /** text set upright along a circle (centre cx, cy; baseline radius R, px), centred on angle phi (0 = top, + clockwise) */
+  const onArc = (ctx: C2D, s: string, cx: number, cy: number, R: number, phi: number, h: number, track: number, lw: number) => {
+    let t = -width(s, track, lw) * h / 2;
+    for (const ch of s) { const a = G[ch].w + lw; const f = phi + (t + (a * h) / 2) / R;
+      ctx.save(); ctx.translate(cx + R * Math.sin(f), cy - R * Math.cos(f)); ctx.rotate(f); glyph(ctx, ch, h); ctx.restore(); t += (a + track) * h; }
+  };
+  const TUBE = '#F4F4F4', NAVY = '#0A3463';   // White tubes on the band's Dark Blue; Dark Blue paint on the White cartouche
+  // band: Arch 1 × 12 × 3 Raised (14707), its east face. The intrados is a circle (centre 6.87 studs below the band top, r 6.09: measured from
+  // the mould's front face); the face is 0.78 stud deep at the crown. Rows: YACHT HARBOR over the crown (baseline r 6.51), SPORT FISHING down
+  // the left haunch and BOATING down the right (r 6.21), a star at the crown between them and one at each end
+  def({ key: 'la_arch_band', zh: '圣莫尼卡码头拱门拱带霓虹灯管字「YACHT HARBOR / SPORT FISHING ★ BOATING」（1×12×3 高拱东面）', colors: ['White'], firstUse: 'Los Angeles', face: 'front', base: 'ld_14707', px: 320, rect: { w: 12, h: 3.6, y: 0, z: 0.5 }, draw: (ctx, w) => {
+    const u = w / 12, cx = 6 * u, cy = 6.87 * u; ctx.strokeStyle = TUBE; ctx.fillStyle = TUBE; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 0.27 * u * 0.16; onArc(ctx, 'YACHT HARBOR', cx, cy, 6.52 * u, 0, 0.27 * u, 0.22, 0.16);   // spans ±0.2 rad
+    ctx.lineWidth = 0.32 * u * 0.15; onArc(ctx, 'SPORT FISHING', cx, cy, 6.2 * u, -0.6, 0.32 * u, 0.2, 0.15); onArc(ctx, 'BOATING', cx, cy, 6.2 * u, 0.44, 0.32 * u, 0.2, 0.15);   // −0.86…−0.34, 0.3…0.58
+    for (const [f, r] of [[0.0, 0.14], [-0.95, 0.13], [0.67, 0.13]]) star(ctx, cx + 6.33 * u * Math.sin(f), cy - 6.33 * u * Math.cos(f), r * u);
+  } });
+  // cartouche: Brick 1 × 6 (3009), its east face, 6 × 1.2 studs. Heavy rounded capitals, condensed to fit twelve letters in 5.6 studs
+  def({ key: 'la_arch_cartouche', zh: '圣莫尼卡码头拱门顶牌「SANTA MONICA」（1×6 砖东面，深蓝粗体装饰艺术字）', colors: ['Dark Blue'], firstUse: 'Los Angeles', face: 'front', base: 'ld_3009', px: 320, rect: { w: 6, h: 1.2, y: 0, z: 0.5 }, draw: (ctx, w, h) => {
+    const u = w / 6, H = 0.66 * u, sx = 0.74, lw = 0.2, track = 0.1; ctx.strokeStyle = NAVY; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = lw * H;
+    const s = 'SANTA MONICA'; let x = w / 2 - (width(s, track, lw, sx) * H) / 2;
+    for (const ch of s) { const a = G[ch].w * sx + lw; ctx.save(); ctx.translate(x + (a * H) / 2, h / 2 + H / 2); glyph(ctx, ch, H, sx); ctx.restore(); x += (a + track) * H; }
+  } });
+}
+// the coaster riders are members of the la_park assembly (seated minifigs, tools/ldraw/asm-la-park.mjs), whose heads are ld_3626c: the same
+// laughing face as face_laugh, registered on that key (one design, not a new one)
+def({ ...PRINTS.face_laugh, key: 'face_laugh_ld', zh: '脸·大笑（过山车乘客，la_park 成员头）', firstUse: 'Los Angeles', base: 'ld_3626c' });
