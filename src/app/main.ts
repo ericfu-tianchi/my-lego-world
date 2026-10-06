@@ -15,6 +15,9 @@ import { GlobeView, GLOBE_RADIUS } from './globe-view';
 const TABLE_Y = -6;
 const qs = new URLSearchParams(location.search);
 const SHOT = qs.has('shot');
+/** ?film=1 (promo capture, tools/film/): no rAF loop — window.__film steps app time by an exact dt and renders one frame */
+const FILM = qs.has('film');
+let filmDt = 0, filmK = 1, filmCam: null | { p: THREE.Vector3; t: THREE.Vector3; fov: number } = null;
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 type State = 'idle' | 'building' | 'built' | 'dismantling' | 'settled' | 'rebuilding';
 /** Take it apart (Eric's pick, 2026-10-02): zero gravity — the set bursts and its bricks drift for ever round where it stood.
@@ -38,7 +41,7 @@ app.enter = 'float';   // Eric's pick (B, from the air)
 
 function init() {
   const canvas = $('c') as HTMLCanvasElement;
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT || FILM });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
@@ -331,18 +334,30 @@ function drawDrift(dt: number) {
 }
 // ---- loop ---------------------------------------------------------------------------------------------
 function frame() {
-  const dt = Math.min(0.05, app.clock.getDelta());
+  const dt = FILM ? filmDt : Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
     app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
     app.globe.group.quaternion.copy(homeQ());
   }
-  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
+  app.orbit.update(dt); if (filmCam) { const c = app.camera; c.position.copy(filmCam.p); c.lookAt(filmCam.t); if (c.fov !== filmCam.fov) { c.fov = filmCam.fov; c.updateProjectionMatrix(); } } else if (filmK !== 1) app.camera.position.sub(app.orbit.target).multiplyScalar(filmK).add(app.orbit.target); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); if (!FILM) requestAnimationFrame(frame);
 }
-declare global { interface Window { __ready?: boolean; __app?: typeof app } }
+declare global { interface Window { __ready?: boolean; __app?: typeof app; __film?: object } }
 async function start() {
   init(); window.__app = app;
-  if (!SHOT) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue[0]; if (!id) return; if (app.view === 'globe' && !app.tween) { prepareBricks(id); queue.shift(); } setTimeout(next, 350); }; setTimeout(next, 300); }   // every set built and uploaded in the first seconds, while the globe still stands (it starts turning after 2.5 s idle)
+  if (FILM) window.__film = {
+    step: (dt: number) => { filmDt = dt; frame(); },
+    look: (p: number[] | null, t: number[], fov = 32) => { filmCam = p ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t), fov } : null; app.orbit.autoRotate = 0; app.autoRotate = 0; },
+    enter: (id: string) => { const pin = app.globe.pins.find((p) => p.place.scene === id); if (pin) void enterPlace(pin.place); },
+    pinScreen: (id: string) => { const pin = app.globe.pins.find((p) => p.place.scene === id)!; const v = new THREE.Vector3(); pin.group.getWorldPosition(v); v.project(app.camera); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; },
+    zoom: (k: number) => { filmK = k; },   // the app's own camera, k × farther (a 9:16 frame is narrower than the app's)
+    tags: () => { const b = built.get(app.sceneId)!, [W, D] = b.meta.size, o: Record<string, number[]> = {}; const at = (p: typeof b.bp.parts[number]) => p.xform ? [p.xform.p[0] - W / 2, p.xform.p[1], p.xform.p[2] - D / 2] : [p.x + 0.5 - W / 2, p.y * 0.4, p.z + 0.5 - D / 2];   // world coordinates
+      for (const p of b.bp.parts) { const m = (o[p.tag || '-'] ??= [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]); at(p).forEach((v, i) => { m[i] = Math.min(m[i], v); m[i + 3] = Math.max(m[i + 3], v); }); }
+      return { tags: o, heads: b.bp.parts.filter((p) => p.key === 'fig_head' || p.key === 'ld_3626c').map((p) => [p.tag, ...at(p).map((v) => +v.toFixed(1))]) }; },
+    apart: () => dismantle(), state: () => ({ view: app.view, state: app.state, tween: !!app.tween }),
+    hideUI: (on: boolean) => document.querySelectorAll<HTMLElement>('.hud, #labels').forEach((h) => (h.style.visibility = on ? 'hidden' : '')),
+  };
+  if (!SHOT && !FILM) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue[0]; if (!id) return; if (app.view === 'globe' && !app.tween) { prepareBricks(id); queue.shift(); } setTimeout(next, 350); }; setTimeout(next, 300); }   // every set built and uploaded in the first seconds, while the globe still stands (it starts turning after 2.5 s idle)
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
