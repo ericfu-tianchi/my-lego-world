@@ -1,4 +1,4 @@
-# Country playbook — how every city set gets built (v2, 2026-09-18, distilled from Kyoto v10 = Eric's 8/10)
+# Country playbook — how every city set gets built (v2, 2026-09-18, distilled from Kyoto v10; judge anchors since 2026-10-06: LA = 9, Prague = 8 — LA is the worked example of the full process)
 
 One page. Read it before starting a country; update it when a country teaches something new. Kyoto is the reference build (`src/scenes/kyoto.ts`, brief `judge/briefs/kyoto.md`).
 

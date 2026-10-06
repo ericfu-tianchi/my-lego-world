@@ -261,7 +261,8 @@ function dismantle() {
   app.items.forEach((it, i) => { poses.set([it.home.p.x, it.home.p.y, it.home.p.z, it.home.q.x, it.home.q.y, it.home.q.z, it.home.q.w], i * 7); halfs.set(it.half, i * 3); fixed[i] = it.key.startsWith('baseplate_') ? 1 : 0; });
   app.table.visible = false;   // zero-g, a fixed force (Eric 10-02: no slider; some punch, not much). 
   const B = { vy: 0.85, spin: 0.35, burst: 0.72 };   // Nebula (Eric's pick): a soft round cloud
-  if (n > BURST_BRICKS) { startBurst(poses, fixed, 2.2 * B.burst, app.tableY - 400, B.vy, B.spin, 7); return; }
+  const mode = qs.get('apart');   // ?apart=formula | physics forces one take-apart (side-by-side checks); default: by brick count
+  if (mode === 'formula' || (mode !== 'physics' && n > BURST_BRICKS)) { startBurst(poses, fixed, 2.2 * B.burst, app.tableY - 400, B.vy, B.spin, 7); return; }
   app.physics.start(poses, halfs, fixed, 2.2, app.tableY - 400, [0, 0], 7, undefined, { gravity: 0, damping: [1.0, 0.7], ...B });
 }
 // ---- closed-form burst for the largest sets (LA, 2026-10-06: 11,000 rigid bodies stepped at ≈ 30 ms and the take-apart stuttered) ------
