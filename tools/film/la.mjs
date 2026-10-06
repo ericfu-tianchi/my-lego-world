@@ -44,7 +44,7 @@ const OVERLAY_CSS = `
 #fo .lt .k::before { content: ""; width: calc(var(--u) * 26); height: calc(var(--u) * 18); background: #c91a09; border-radius: calc(var(--u) * 4); }
 #fo .lt .n { font-size: calc(var(--u) * 54); font-weight: 600; letter-spacing: -.01em; margin-top: calc(var(--u) * 8); }
 #fo .lt .z { font-family: "PingFang SC", sans-serif; font-size: calc(var(--u) * 28); color: #4a4e52; margin-top: calc(var(--u) * 2); letter-spacing: .06em; }
-#fo .end { position: absolute; left: 0; right: 0; top: 12%; text-align: center; }
+#fo .end { position: absolute; left: 0; right: 0; top: calc(var(--u) * 300); text-align: center; }
 #fo .end .logo { display: inline-block; width: calc(var(--u) * 66); height: calc(var(--u) * 46); border-radius: calc(var(--u) * 8); background: #c91a09; position: relative; box-shadow: inset 0 calc(var(--u) * -8) 0 rgba(0,0,0,.18); }
 #fo .end .logo::before, #fo .end .logo::after { content: ""; position: absolute; top: calc(var(--u) * -11); width: calc(var(--u) * 18); height: calc(var(--u) * 11); border-radius: calc(var(--u) * 5) calc(var(--u) * 5) 0 0; background: #c91a09; }
 #fo .end .logo::before { left: calc(var(--u) * 9); } #fo .end .logo::after { right: calc(var(--u) * 9); }
