@@ -564,3 +564,12 @@ def({ key: 'walk_star', zh: '星光大道·珊瑚色五角星（黄铜描边与�
 // the coaster riders are members of the la_park assembly (seated minifigs, tools/ldraw/asm-la-park.mjs), whose heads are ld_3626c: the same
 // laughing face as face_laugh, registered on that key (one design, not a new one)
 def({ ...PRINTS.face_laugh, key: 'face_laugh_ld', zh: '脸·大笑（过山车乘客，la_park 成员头）', firstUse: 'Los Angeles', base: 'ld_3626c' });
+// ---- THAILAND · Pattaya (2026-10-06) ----
+// Thai seafood restaurants hang a white board with the word ซีฟู้ด ("seafood") in heavy red looped Thai display lettering; Thai fonts on
+// macOS first (Sukhumvit Set, Thonburi), then any Thai face
+const THAI = '"Sukhumvit Set","Thonburi","Ayuthaya","Krungthep","Silom","Noto Sans Thai","Leelawadee UI",sans-serif';
+def({ key: 'th_seafood', zh: '海鲜大排档招牌「ซีฟู้ด」（1×6 砖长侧面，白底红色泰文粗体，红框）', colors: ['White', 'Red'], firstUse: 'Thailand', face: 'side', base: 'brick_1x6', px: 420, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#F4F4F4'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#C91A09'; ctx.lineWidth = h * 0.07; ctx.strokeRect(h * 0.06, h * 0.06, w - h * 0.12, h - h * 0.12);
+  // set as one string: Thai vowels and tone marks stack on their consonants, so they must not be spaced character by character
+  ctx.fillStyle = '#C91A09'; ctx.font = `bold ${h * 0.6}px ${THAI}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ซีฟู้ด', w / 2, h * 0.58);
+} });

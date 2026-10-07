@@ -31,7 +31,7 @@ const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30, viewDist: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, idle: 9, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
   drift: null as null | { t: number; base: Float32Array; w: Float32Array }, burst: null as null | { t: number; p0: Float32Array; v: Float32Array; w: Float32Array; fixed: Uint8Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   night: false, renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
@@ -52,16 +52,16 @@ function init() {
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
-  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.title = P.scene ? '' : 'Coming soon'; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }
+  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }
   { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
-  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: performance.now() }; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
+  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
   canvas.addEventListener('pointermove', (e) => {
-    if (drag && app.view === 'globe') { const now = performance.now(); const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = (d / Math.max(1, now - drag.t)) * 1000; drag = { x: e.clientX, y: e.clientY, t: now }; app.idle = 0; }
-    const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
+    if (drag && app.view === 'globe') { const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = THREE.MathUtils.clamp((d / Math.max(16, e.timeStamp - drag.t)) * 1000, -4, 4); drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
+    const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene && !drag) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
-  canvas.addEventListener('pointerup', (e) => { drag = null; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
+  canvas.addEventListener('pointerup', (e) => { if (drag && e.timeStamp - drag.t > 80) app.spinVel = 0; drag = null; app.dragging = false; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
   canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
@@ -134,24 +134,39 @@ function showGlobe() {
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
   $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('hint').textContent = 'Drag to turn the globe · Scroll to zoom · Click a pin to visit';
 }
-/** Labels: every visible pin gets one, in rank order (built → next up → the rest, nearer the viewer first); a label that would overlap one
- *  already placed collapses to a dot and opens on hover. Dense Europe stays readable at any turn of the globe. */
+/** Labels (Eric 2026-10-07): built places always show theirs; a place not built yet shows its label only under the pointer or for a
+ *  moment after a click ("Coming soon"). Each label sits clear of every pin head — above its pin, or beside it when that spot is taken —
+ *  and of the labels already placed, so Paris, Neuschwanstein and Prague can all be open at once. A label keeps its spot while it stays free. */
+const SLOTS = ['up', 'upLeft', 'upRight', 'left', 'right', 'down', 'downLeft', 'downRight'] as const;
 function updateLabels() {
-  const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const p = new THREE.Vector3(), d = new THREE.Vector3();
-  const cand: { i: number; x: number; y: number; rank: number; facing: number }[] = [];
+  const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(app.camera.quaternion);
+  const p = new THREE.Vector3(), q = new THREE.Vector3(), d = new THREE.Vector3(); const toPx = (v: THREE.Vector3) => { v.project(app.camera); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; };
+  const now = performance.now(); if (app.soon && app.soon.until < now) app.soon = null;
+  const cand: { i: number; x: number; top: number; base: number; r: number; rank: number; facing: number }[] = []; const heads: { i: number; b: number[] }[] = [];
   app.globe.pins.forEach((pin, i) => {
-    const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const facing = -d.dot(camDir); const visible = app.view === 'globe' && facing > 0.15;
-    if (!visible) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; return; }
-    pin.group.getWorldPosition(p); p.addScaledVector(d, pin.place.scene ? 3 : 2); p.project(app.camera);
-    cand.push({ i, x: (p.x * 0.5 + 0.5) * innerWidth, y: (-p.y * 0.5 + 0.5) * innerHeight, rank: (pin.place.scene ? 0 : pin.place.priority ? 1 : 2) - facing * 0.5, facing });
+    const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const facing = -d.dot(camDir);
+    if (app.view !== 'globe' || facing <= 0.15) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; return; }
+    const built = !!pin.place.scene, s = pin.group.scale.x, top = (built ? 2.2 : 1.8) * s, rad = (built ? 1 : 0.5) * s;
+    pin.group.getWorldPosition(p); q.copy(p).addScaledVector(d, top); const [x, y] = toPx(q.clone()); const [, y1] = toPx(q.addScaledVector(camUp, rad)); const r = Math.max(4, y - y1);
+    const [, base] = toPx(p.clone()); heads.push({ i, b: [x - r, y - r, x + r, Math.max(base, y + r)] });
+    const open = built || app.hover === pin.place || app.soon?.place === pin.place;
+    if (!open) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; l.classList.remove('hover'); return; }
+    cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : -1) - facing * 0.5, facing });   // an opened "coming soon" label is placed first: the pointer asked for it
   });
-  cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = [];
+  cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = []; const G = 6;
+  const hit = (b: number[], list: number[][]) => list.reduce((n, o) => n + Math.max(0, Math.min(b[2], o[2]) - Math.max(b[0], o[0])) * Math.max(0, Math.min(b[3], o[3]) - Math.max(b[1], o[1])), 0);
   for (const c of cand) {
-    const l = app.labels[c.i]; const pin = app.globe.pins[c.i]; const hover = app.hover === pin.place; if (!l.classList.contains('dot') && l.offsetWidth) { l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);   // the full label's size, measured while it is full (a dot would measure 10)
-    const box = [c.x - w / 2 - 3, c.y - h - 3, c.x + w / 2 + 3, c.y + 3]; const clash = boxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
-    const full = hover || !clash; if (full) boxes.push(box);
-    l.classList.toggle('dot', !full); l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
-    l.style.transform = `translate(-50%, -100%) translate(${c.x}px, ${c.y}px)`; l.classList.toggle('hover', hover); l.style.zIndex = hover ? '5' : String(3 - Math.round(c.rank));
+    const l = app.labels[c.i]; const pin = app.globe.pins[c.i]; const hover = app.hover === pin.place;
+    if (l.offsetWidth) { l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);
+    const boxAt = (slot: typeof SLOTS[number]) => { const y0 = slot.startsWith('up') ? c.top - c.r - G - h : slot.startsWith('down') ? c.base + G : c.top - h / 2;
+      const x0 = slot === 'left' ? c.x - c.r - G - w : slot === 'right' ? c.x + c.r + G : slot.endsWith('Left') ? c.x - w + c.r : slot.endsWith('Right') ? c.x - c.r : c.x - w / 2;
+      return [x0, y0, x0 + w, y0 + h]; };
+    const pad = (b: number[]) => [b[0] - 4, b[1] - 4, b[2] + 4, b[3] + 4];   // labels keep a little air between them
+    const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(b, others); };
+    const prev = l.dataset.slot as typeof SLOTS[number] | undefined; let slot: typeof SLOTS[number] = prev && cost(prev) === 0 ? prev : SLOTS.reduce((best, k) => (cost(k) < cost(best) ? k : best), SLOTS[0] as typeof SLOTS[number]);
+    if (prev && slot !== prev && cost(prev) <= cost(slot)) slot = prev; l.dataset.slot = slot; const box = boxAt(slot); boxes.push(box);
+    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
+    l.style.transform = `translate(${box[0]}px, ${box[1]}px)`; l.classList.toggle('hover', hover); l.classList.toggle('asked', app.soon?.place === pin.place); l.style.zIndex = pin.place.scene ? (hover ? '6' : '4') : '7';
   }
 }
 function pickPin(e: PointerEvent): Place | null {
@@ -161,7 +176,7 @@ function pickPin(e: PointerEvent): Place | null {
 }
 const tween = (dur: number, step: (k: number) => void) => new Promise<void>((done) => { app.tween = { t: 0, dur, step, done }; });
 async function enterPlace(place: Place) {
-  if (!place.scene) { const l = app.labels[app.globe.pins.findIndex((p) => p.place === place)]; l.classList.remove('shake'); void l.offsetWidth; l.classList.add('shake'); return; }   // not built yet
+  if (!place.scene) { const l = app.labels[app.globe.pins.findIndex((p) => p.place === place)]; app.soon = { place, until: performance.now() + 2200 }; l.classList.remove('shake'); void l.offsetWidth; l.classList.add('shake'); return; }   // not built yet: its label opens and nods
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
   loadScene(place.scene!); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
@@ -337,7 +352,7 @@ function frame() {
   const dt = FILM ? filmDt : Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
-    app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
+    app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
     app.globe.group.quaternion.copy(homeQ());
   }
   app.orbit.update(dt); if (filmCam) { const c = app.camera; c.position.copy(filmCam.p); c.lookAt(filmCam.t); if (c.fov !== filmCam.fov) { c.fov = filmCam.fov; c.updateProjectionMatrix(); } } else if (filmK !== 1) app.camera.position.sub(app.orbit.target).multiplyScalar(filmK).add(app.orbit.target); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); if (!FILM) requestAnimationFrame(frame);
@@ -357,7 +372,14 @@ async function start() {
     apart: () => dismantle(), state: () => ({ view: app.view, state: app.state, tween: !!app.tween }),
     hideUI: (on: boolean) => document.querySelectorAll<HTMLElement>('.hud, #labels').forEach((h) => (h.style.visibility = on ? 'hidden' : '')),
   };
-  if (!SHOT && !FILM) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!); const next = () => { const id = queue[0]; if (!id) return; if (app.view === 'globe' && !app.tween) { prepareBricks(id); queue.shift(); } setTimeout(next, 350); }; setTimeout(next, 300); }   // every set built and uploaded in the first seconds, while the globe still stands (it starts turning after 2.5 s idle)
+  // every set built and uploaded in the first seconds while the globe stands still (it starts turning once they are in), in two slices per
+  // set (blueprint, then bricks + upload) and never while the hand is on the globe: a slice is a long task, and one in the middle of a
+  // drag froze the ball and then flung it (Eric 2026-10-07)
+  if (!SHOT && !FILM) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!);
+    const next = () => { const id = queue[0]; if (!id) { app.warm = true; return; }
+      if (app.view !== 'globe' || app.tween || app.dragging || Math.abs(app.spinVel) > 0.05) { setTimeout(next, 250); return; }
+      if (!built.has(id)) buildCached(id); else { prepareBricks(id); queue.shift(); } setTimeout(next, 30); };
+    setTimeout(next, 300); } else app.warm = true;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)

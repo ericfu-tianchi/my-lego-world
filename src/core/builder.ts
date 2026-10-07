@@ -66,6 +66,7 @@ export class Blueprint {
   vox1(kind: VoxKind, x: number, y: number, z: number, color: string) { this.vox.set(Blueprint.key(x, y, z), { color, kind, tag: this.tag }); return this; }
   clear(x0: number, y0: number, z0: number, w: number, h: number, d: number) { for (let x = x0; x < x0 + w; x++) for (let y = y0; y < y0 + h; y++) for (let z = z0; z < z0 + d; z++) this.vox.delete(Blueprint.key(x, y, z)); return this; }
   hasVox(x: number, y: number, z: number) { return this.vox.has(Blueprint.key(x, y, z)); }
+  voxAt(x: number, y: number, z: number) { return this.vox.get(Blueprint.key(x, y, z)); }
   /** Convert the voxel volume to parts: bricks where 3 matching plates stack, else plates / tiles. */
   pack() {
     const layers = new Map<number, [number, number][]>();

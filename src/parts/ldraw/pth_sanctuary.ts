@@ -1,0 +1,4 @@
+// LDraw part th_sanctuary "th_sanctuary — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"th_sanctuary","name":"th_sanctuary — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":512,"i32":false,"bbox":[-21.3151,0,-21.3151,21.3151,38.3143,21.3151],"pos":"oSqhTKEqoSoAAKEqoSqhTF/VoSoAAF/VX9WhTF/VX9UAAF/VX9WhTKEqX9UAAKEqX9WhTF/VX9WhTKEqoSqhTF/VoSqhTKEqX9UAAKEqX9UAAF/VoSoAAKEqoSoAAF/VX9WhTKEqX9UAAKEqoSqhTKEqoSoAAKEqoSqhTF/VoSoAAF/VX9WhTF/VX9UAAF/V","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAABAAIAAQADAAIABAAFAAYABQAHAAYACAAJAAoACQALAAoADAANAA4ADQAPAA4AEAARABIAEQATABIAFAAVABYAFQAXABYA"};
+export default p;

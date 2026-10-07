@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "gate": "node scripts/lint-comments.mjs && tsc --noEmit -p . && tsx scripts/check-assemblies.ts && tsx scripts/check-studs.ts && tsx scripts/check-asm-studs.ts && tsx scripts/validate.ts singapore && tsx scripts/validate.ts sg-v4 && tsx scripts/validate.ts kyoto && tsx scripts/validate.ts prague && tsx scripts/validate.ts shanghai && tsx scripts/validate.ts paris && tsx scripts/validate.ts la && tsx scripts/validate.ts neuschwanstein"
+    "gate": "node scripts/lint-comments.mjs && tsc --noEmit -p . && tsx scripts/check-assemblies.ts && tsx scripts/check-studs.ts && tsx scripts/check-asm-studs.ts && tsx scripts/validate.ts singapore && tsx scripts/validate.ts sg-v4 && tsx scripts/validate.ts kyoto && tsx scripts/validate.ts prague && tsx scripts/validate.ts shanghai && tsx scripts/validate.ts paris && tsx scripts/validate.ts la && tsx scripts/validate.ts neuschwanstein && tsx scripts/validate.ts pattaya"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
