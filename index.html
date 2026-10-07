@@ -24,7 +24,8 @@
   .pin-label.soon { padding: 4px 9px 5px; font-size: 11px; background: rgba(255,255,255,.78); } .pin-label.soon b { font-size: 12px; font-weight: 500; } .pin-label.soon span { opacity: .8; }
   .pin-label.next b::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f8bb3d; margin-right: 5px; vertical-align: 1px; }
   .pin-label.asked span::after { content: " · Coming soon"; color: #b4691f; font-weight: 500; }
-  .pin-label.shake { animation: shake .4s ease; } @keyframes shake { 0%,100% { margin-left: 0 } 25% { margin-left: -4px } 75% { margin-left: 4px } }
+  .pin-label.lite { display: flex; align-items: baseline; gap: 6px; } .pin-label.lite b { display: inline; } .pin-label.lite em { font-style: normal; font-size: 11px; color: #b4691f; font-weight: 500; }
+  .pin-label.shake { animation: shake .55s cubic-bezier(.36,.07,.19,.97); } @keyframes shake { 0%,100% { margin-left: 0 } 15% { margin-left: -6px } 35% { margin-left: 5px } 55% { margin-left: -4px } 75% { margin-left: 2px } 90% { margin-left: -1px } }   /* a head shake: no */
   @media (prefers-reduced-motion: reduce) { #fade, button, .pin-label { transition: none; } .pin-label.shake { animation: none; } }
   .entrance { top: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; pointer-events: auto; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.7); border: 1px solid var(--line); backdrop-filter: blur(8px); }
   .entrance span { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 0 8px 0 6px; }

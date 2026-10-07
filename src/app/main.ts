@@ -10,7 +10,7 @@ import { SCENES } from '../scenes/index';
 import checksJson from '../scenes/checks.json';
 const CHECKS: Record<string, { parts: number; ok: boolean; floating: number; overlaps: number } | undefined> = checksJson;
 import { type Place } from '../scenes/globe';
-import { GlobeView, GLOBE_RADIUS, type PinStyle } from './globe-view';
+import { GlobeView, GLOBE_RADIUS } from './globe-view';
 
 const TABLE_Y = -6;
 const qs = new URLSearchParams(location.search);
@@ -44,12 +44,12 @@ function init() {
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
-  const globe = new GlobeView(env, (['dot', 'cone', 'mini'].includes(qs.get('pin') ?? '') ? qs.get('pin') : 'mini') as PinStyle); scene.add(globe.group, globe.fixtures);   // ?pin=dot|cone|mini: the three candidates
+  const globe = new GlobeView(env); scene.add(globe.group, globe.fixtures);
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
-  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }
+  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : '') + (!P.scene && !P.priority ? ' lite' : ''); l.innerHTML = P.scene || P.priority ? `<b>${P.name}</b><span>${P.city}</span>` : `<b>${P.name}</b><em>Coming soon</em>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }   // no plans yet: the country and Coming soon on one line (Eric 2026-10-07)
   { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;

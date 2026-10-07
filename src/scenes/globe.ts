@@ -22,9 +22,9 @@ export const PLACES: Place[] = [
   { id: 'finland', name: 'Finland', city: 'Helsinki', lat: 60.17, lon: 24.94 },   // was Iceland: Eric misremembered (2026-10-07)
   { id: 'france', name: 'France', city: 'Paris', lat: 48.86, lon: 2.35, scene: 'paris' },
   { id: 'germany', name: 'Germany', city: 'Neuschwanstein', lat: 47.56, lon: 10.75, scene: 'neuschwanstein' },
-  { id: 'italy', name: 'Italy', city: 'Rome', lat: 41.9, lon: 12.5, priority: true },
+  { id: 'italy', name: 'Italy', city: 'Rome', lat: 41.9, lon: 12.5 },   // no longer next (Eric 2026-10-07: Seoul is the last set for now)
   { id: 'vatican', name: 'Vatican City', city: 'Vatican City', lat: 41.9, lon: 12.45 },
-  { id: 'switzerland', name: 'Switzerland', city: 'Interlaken', lat: 46.69, lon: 7.86, priority: true },
+  { id: 'switzerland', name: 'Switzerland', city: 'Interlaken', lat: 46.69, lon: 7.86 },
   { id: 'belgium', name: 'Belgium', city: 'Brussels', lat: 50.85, lon: 4.35 },
   { id: 'austria', name: 'Austria', city: 'Vienna', lat: 48.21, lon: 16.37 },
   { id: 'czechia', name: 'Czechia', city: 'Prague', lat: 50.08, lon: 14.43, scene: 'prague' },
