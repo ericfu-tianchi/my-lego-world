@@ -47,7 +47,7 @@ function init() {
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
   $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe(); document.querySelector<HTMLElement>('.brand')!.onclick = () => goGlobe();   // the logo is the way home (Eric 2026-10-07)
   for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : '') + (!P.scene && !P.priority ? ' lite' : ''); l.innerHTML = P.scene || P.priority ? `<b>${P.name}</b><span>${P.city}</span>` : `<b>${P.name}</b><em>Coming soon</em>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }   // no plans yet: the country and Coming soon on one line (Eric 2026-10-07)
-  { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
+  { const n = globe.pins.length, built = globe.pins.filter((p) => p.place.scene).length; $('n-visited').textContent = String(n); $('n-built').textContent = String(built); $('n-todo').textContent = String(n - built); $('intro-eyebrow').textContent = `${n} countries · ${built} built so far`; }   // counted, not hand-written
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
   canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; quietHint(); if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
@@ -108,7 +108,24 @@ const STAGE_SCALE = 3.2, STAGE_DROP = 30;
 const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;
 /** home: the desk globe looked at from ~30° above, so the northern lands — where the places are — face the viewer (Eric's pick, 10-02);
  *  the wheel or a pinch zooms in and out */
-const homeCam = (): CamPose => ({ tx: 0, ty: -9, tz: 0, az: 0, el: 0.52, dist: 158 * app.homeZoom });
+const homeCam = (): CamPose => ({ tx: 0, ty: -5, tz: 0, az: 0, el: 0.52, dist: 168 * app.homeZoom });   // a little smaller and lower than before: the title sits above it, the stats strip below (Eric's pick C, 2026-10-07)
+/** the first-visit intro (Eric's pick B): the same globe, farther off, behind the headline */
+const introCam = (): CamPose => ({ ...homeCam(), ty: -9, dist: homeCam().dist * 1.28 });
+/** the home title and stats strip: shown with a short rise at home, hidden in a set */
+function homeCopy(on: boolean) {
+  for (const id of ['home-title', 'home-stats']) { const el = $(id); el.hidden = !on; if (on && !document.body.classList.contains('intro')) { el.classList.add('pre'); void el.offsetWidth; el.classList.remove('pre'); } }
+}
+/** Explore the globe (Eric 2026-10-07: very, very smooth): the veil clears and the headline lifts away while the globe turns a quarter
+ *  of the way round and draws nearer into the home view, one eased motion; the title and stats rise in as it lands */
+async function explore() {
+  if (!document.body.classList.contains('intro') || app.tween) return;
+  try { sessionStorage.setItem('introSeen', '1'); } catch { /* storage blocked */ }
+  $('intro').classList.add('leaving'); const from = camNow(), s0 = app.spin, D = 1.9;
+  setTimeout(() => document.body.classList.remove('intro'), 900);   // the pin labels and hint fade in as the globe settles
+  setTimeout(() => { for (const id of ['home-title', 'home-stats']) $(id).classList.remove('pre'); }, 750);
+  await tween(D, (k) => { const e = easeInOut(k); setCam(lerpCam(from, homeCam(), e)); app.spin = s0 + 0.9 * e; app.idle = 0; app.spinVel = 0; });
+  $('intro').hidden = true; showHint([['Drag', 'Turn'], ['Scroll', 'Zoom'], ['Click a pin', 'Visit']]);
+}
 const homeQ = () => app.globe.homeQuat(app.spin);
 /** the set's opening view (Eric 10-02): close enough that the island fills the width, looking down at about 33° from the side */
 const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 4, tz: app.center.z, az: 0.3, el: 0.36, dist: app.viewDist });   // Eric's reference view (10-02): ~20° down, three-quarter
@@ -122,7 +139,7 @@ function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
   const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.globe.fixtures.visible = true; 
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
-  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; showHint([['Drag', 'Turn'], ['Scroll', 'Zoom'], ['Click a pin', 'Visit']]); document.querySelector('.brand')!.classList.remove('link');
+  homeCopy(true); $('card-place').hidden = true; $('actions').hidden = true; showHint([['Drag', 'Turn'], ['Scroll', 'Zoom'], ['Click a pin', 'Visit']]); document.querySelector('.brand')!.classList.remove('link');
 }
 /** Labels (Eric 2026-10-07): built places always show theirs; a place not built yet shows its label only under the pointer or for a
  *  moment after a click ("Coming soon"). Each label sits clear of every pin head — above its pin, or beside it when that spot is taken —
@@ -180,7 +197,7 @@ async function enterPlace(place: Place) {
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
   loadScene(place.scene!); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
-  $('card-globe').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
+  homeCopy(false); app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   // one motion (Eric 10-02): the globe grows and rolls down while, above it, the set is already gathering itself
   await tween(2.8, (k) => {
@@ -192,7 +209,7 @@ async function enterPlace(place: Place) {
     if (!started) { started = true; startEntrance(); }   // the gathering begins with the click; its clock eases in
   });
   if (!started) startEntrance(); app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0);
-  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['⇧ Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link'); setState(app.state);
+  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['Shift + Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link'); setState(app.state);
 }
 /** Back to the globe (Eric 10-02: the set should not just vanish): the set rains back up — top pieces first, spiralling the same way, off
  *  the top of the screen — while the globe rises, shrinks and turns home underneath, the set riding its crown as it shrinks. */
@@ -369,9 +386,12 @@ async function start() {
       if (!built.has(id)) buildCached(id); else { prepareBricks(id); queue.shift(); } setTimeout(next, 30); };
     setTimeout(next, 300); } else app.warm = true;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
-  if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
+  if (!direct) { let seen = false; try { seen = !!sessionStorage.getItem('introSeen'); } catch { /* storage blocked */ }
+    const intro = qs.has('intro') || (!SHOT && !seen); if (intro) { document.body.classList.add('intro'); $('intro').hidden = false; for (const id of ['home-title', 'home-stats']) $(id).classList.add('pre'); $('btn-explore').onclick = () => explore(); }
+    if (SHOT && qs.has('explore')) setTimeout(() => explore(), 50); }   // ?intro replays the intro; &explore runs its transition (screenshots)
+  if (!direct) { app.spin = 2.45; showGlobe(); if (document.body.classList.contains('intro')) setCam(introCam()); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct); showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['⇧ Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link');
+  app.view = 'scene'; homeCopy(false); app.globe.fixtures.visible = false; loadScene(direct); showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['Shift + Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link');
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
