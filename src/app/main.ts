@@ -10,7 +10,7 @@ import { SCENES } from '../scenes/index';
 import checksJson from '../scenes/checks.json';
 const CHECKS: Record<string, { parts: number; ok: boolean; floating: number; overlaps: number } | undefined> = checksJson;
 import { type Place } from '../scenes/globe';
-import { GlobeView, GLOBE_RADIUS } from './globe-view';
+import { GlobeView, GLOBE_RADIUS, type PinStyle } from './globe-view';
 
 const TABLE_Y = -6;
 const qs = new URLSearchParams(location.search);
@@ -28,7 +28,7 @@ const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30, viewDist: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, pinPx: [] as { i: number; x: number; y: number; r: number }[], idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
   drift: null as null | { t: number; base: Float32Array; w: Float32Array }, burst: null as null | { t: number; p0: Float32Array; v: Float32Array; w: Float32Array; fixed: Uint8Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   night: false, renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
@@ -44,7 +44,7 @@ function init() {
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
-  const globe = new GlobeView(env); scene.add(globe.group, globe.fixtures);
+  const globe = new GlobeView(env, (['dot', 'cone', 'mini'].includes(qs.get('pin') ?? '') ? qs.get('pin') : 'mini') as PinStyle); scene.add(globe.group, globe.fixtures);   // ?pin=dot|cone|mini: the three candidates
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
@@ -138,17 +138,17 @@ const SLOTS = ['up', 'upLeft', 'upRight', 'left', 'right', 'down', 'downLeft', '
 function updateLabels() {
   const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(app.camera.quaternion);
   const p = new THREE.Vector3(), q = new THREE.Vector3(), d = new THREE.Vector3(); const toPx = (v: THREE.Vector3) => { v.project(app.camera); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; };
-  const now = performance.now(); if (app.soon && app.soon.until < now) app.soon = null;
+  const now = performance.now(); if (app.soon && app.soon.until < now) app.soon = null; app.pinPx = [];
   const cand: { i: number; x: number; top: number; base: number; r: number; rank: number; facing: number }[] = []; const heads: { i: number; b: number[] }[] = [];
   app.globe.pins.forEach((pin, i) => {
     const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const facing = -d.dot(camDir);
     if (app.view !== 'globe' || facing <= 0.15) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; return; }
-    const built = !!pin.place.scene, s = pin.group.scale.x, top = (built ? 2.2 : 1.8) * s, rad = (built ? 1 : 0.5) * s;
+    const built = !!pin.place.scene, top = pin.top, rad = pin.rad;
     pin.group.getWorldPosition(p); q.copy(p).addScaledVector(d, top); const [x, y] = toPx(q.clone()); const [, y1] = toPx(q.addScaledVector(camUp, rad)); const r = Math.max(4, y - y1);
-    const [, base] = toPx(p.clone()); heads.push({ i, b: [x - r, y - r, x + r, Math.max(base, y + r)] });
+    const [, base] = toPx(p.clone()); const bot = Math.max(base, y + r); heads.push({ i, b: [x - r, y - r, x + r, bot] }); app.pinPx.push({ i, x, y: (y - r + bot) / 2, r: Math.max(r, (bot - y + r) / 2) });
     const open = built || app.hover === pin.place || app.soon?.place === pin.place;
     if (!open) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; l.classList.remove('hover'); return; }
-    cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : -1) - facing * 0.5, facing });   // an opened "coming soon" label is placed first: the pointer asked for it
+    cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : 1) - facing * 0.5, facing });   // built labels are placed first and stay put; an opened "coming soon" label goes on top of them
   });
   cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = []; const G = 6;
   const hit = (b: number[], list: number[][]) => list.reduce((n, o) => n + Math.max(0, Math.min(b[2], o[2]) - Math.max(b[0], o[0])) * Math.max(0, Math.min(b[3], o[3]) - Math.max(b[1], o[1])), 0);
@@ -159,17 +159,20 @@ function updateLabels() {
       const x0 = slot === 'left' ? c.x - c.r - G - w : slot === 'right' ? c.x + c.r + G : slot.endsWith('Left') ? c.x - w + c.r : slot.endsWith('Right') ? c.x - c.r : c.x - w / 2;
       return [x0, y0, x0 + w, y0 + h]; };
     const pad = (b: number[]) => [b[0] - 4, b[1] - 4, b[2] + 4, b[3] + 4];   // labels keep a little air between them
-    const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(b, others); };
+    const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(pad(b), others) * 8; };   // a label keeps clear of every pin, so the small ones stay reachable under the pointer
     const prev = l.dataset.slot as typeof SLOTS[number] | undefined; let slot: typeof SLOTS[number] = prev && cost(prev) === 0 ? prev : SLOTS.reduce((best, k) => (cost(k) < cost(best) ? k : best), SLOTS[0] as typeof SLOTS[number]);
     if (prev && slot !== prev && cost(prev) <= cost(slot)) slot = prev; l.dataset.slot = slot; const box = boxAt(slot); boxes.push(box);
     l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
     l.style.transform = `translate(${box[0]}px, ${box[1]}px)`; l.classList.toggle('hover', hover); l.classList.toggle('asked', app.soon?.place === pin.place); l.style.zIndex = pin.place.scene ? (hover ? '6' : '4') : '7';
   }
 }
+/** the pin under the pointer: the nearest pin head on screen within a few pixels of it, not the first hit volume along the ray — in Europe
+ *  the built pins' bigger volumes swallowed the small pins next to them (Eric 2026-10-07: the pin by Paris could not be hovered) */
 function pickPin(e: PointerEvent): Place | null {
   if (app.view !== 'globe') return null;
-  app.raycaster.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), app.camera);
-  const hits = app.raycaster.intersectObjects(app.globe.pins.map((p) => p.hit), false); return hits.length ? app.globe.pins.find((p) => p.hit === hits[0].object)!.place : null;
+  let best: Place | null = null, bd = Infinity;
+  for (const p of app.pinPx) { const dd = Math.hypot(e.clientX - p.x, e.clientY - p.y) - p.r; if (dd < Math.max(6, 14 - p.r) && dd < bd) { bd = dd; best = app.globe.pins[p.i].place; } }
+  return best;
 }
 const tween = (dur: number, step: (k: number) => void) => new Promise<void>((done) => { app.tween = { t: 0, dur, step, done }; });
 async function enterPlace(place: Place) {

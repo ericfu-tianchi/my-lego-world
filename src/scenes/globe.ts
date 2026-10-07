@@ -19,7 +19,7 @@ export const PLACES: Place[] = [
   { id: 'denmark', name: 'Denmark', city: 'Copenhagen', lat: 55.68, lon: 12.57 },
   { id: 'sweden', name: 'Sweden', city: 'Stockholm', lat: 59.33, lon: 18.07 },
   { id: 'norway', name: 'Norway', city: 'Oslo', lat: 59.91, lon: 10.75 },
-  { id: 'iceland', name: 'Iceland', city: 'Reykjavík', lat: 64.15, lon: -21.94 },
+  { id: 'finland', name: 'Finland', city: 'Helsinki', lat: 60.17, lon: 24.94 },   // was Iceland: Eric misremembered (2026-10-07)
   { id: 'france', name: 'France', city: 'Paris', lat: 48.86, lon: 2.35, scene: 'paris' },
   { id: 'germany', name: 'Germany', city: 'Neuschwanstein', lat: 47.56, lon: 10.75, scene: 'neuschwanstein' },
   { id: 'italy', name: 'Italy', city: 'Rome', lat: 41.9, lon: 12.5, priority: true },

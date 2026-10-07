@@ -10,7 +10,9 @@ import { latLonToDir, PLACES, type Place } from '../scenes/globe';
 
 export const GLOBE_RADIUS = 26;   // studs
 export const TILT = 23.4 * Math.PI / 180;
-export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3 }
+export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3; top: number; rad: number }
+/** how a place not built yet is marked (three candidates for Eric, 2026-10-07): a flat round tile, a 1×1 cone, a two-plate mini pin */
+export type PinStyle = 'dot' | 'cone' | 'mini';
 
 const hash = (a: number, b: number) => { let h = Math.imul(a, 73856093) ^ Math.imul(b, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 /** the great ranges, coarsely: 2 = high snow (Himalaya–Tibet core, high Andes), 1 = mountains */
@@ -28,7 +30,7 @@ export class GlobeView {
   group = new THREE.Group();
   /** the stand and meridian: never turn */
   fixtures = new THREE.Group(); pins: Pin[] = [];
-  constructor(env: THREE.Texture) {
+  constructor(env: THREE.Texture, pinStyle: PinStyle = 'mini') {
     const R = GLOBE_RADIUS; const one = new THREE.Vector3(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0, envMap: env, envMapIntensity: 0.9 });
     const inst = (key: string, ms: THREE.Matrix4[], cs: string[], parent: THREE.Object3D, m: THREE.Material = mat) => { const im = new THREE.InstancedMesh(geometryFor(key), m, ms.length); const c = new THREE.Color(); ms.forEach((mm, k) => { im.setMatrixAt(k, mm); im.setColorAt(k, c.setHex(colorHex(cs[k]))); }); im.castShadow = true; im.receiveShadow = true; parent.add(im); return im; };
@@ -100,10 +102,12 @@ export class GlobeView {
     for (const place of PLACES) {
       const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + 0.7); g.quaternion.setFromUnitVectors(up, dir);
       const head = place.scene ? red : place.priority ? yellow : grey;
-      const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['round_1x1', white, 0.6], ['roundplate_1x1', head, 1.4]];
+      const small: Record<PinStyle, [string, THREE.Material, number][]> = { dot: [['roundtile_1x1', head, 0.2]], cone: [['cone_1x1', head, 0.6]], mini: [['roundplate_1x1', white, 0.2], ['roundtile_1x1', head, 0.6]] };
+      const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : small[pinStyle];
+      const top = place.scene ? 2.2 : { dot: 0.4, cone: 1.2, mini: 0.8 }[pinStyle];
       for (const [k, m, y] of parts) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
       const hit = new THREE.Mesh(new THREE.SphereGeometry(place.scene ? 2.6 : 1.4, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); g.scale.setScalar(0.8); this.group.add(g);   // a size smaller (Eric 2026-10-07)
-      this.pins.push({ place, group: g, hit, dir });
+      this.pins.push({ place, group: g, hit, dir, top: top * 0.8, rad: (place.scene ? 1 : 0.5) * 0.8 });
     }
   }
   /** the ball's rotation at home: `spin` about its own axis, the axis tilted 23.4° */
