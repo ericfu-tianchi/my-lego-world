@@ -414,11 +414,11 @@ async function start() {
     setTimeout(next, 300); } else app.warm = true;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { let seen = false; try { seen = !!sessionStorage.getItem('introSeen'); } catch { /* storage blocked */ }
-    const intro = qs.has('intro') || (!SHOT && !seen); if (intro) { document.body.classList.add('intro'); $('intro').hidden = false; for (const id of ['home-title', 'home-stats']) $(id).classList.add('pre'); $('btn-explore').onclick = () => explore(); }
+    const intro = qs.has('intro') || (!SHOT && !seen); if (intro) { document.body.classList.add('intro'); $('intro').hidden = false; for (const id of ['home-title', 'home-stats']) $(id).classList.add('pre'); $('btn-explore').onclick = () => explore(); } else { $('intro').hidden = true; document.body.classList.remove('intro'); }
     if (SHOT && qs.has('explore')) setTimeout(() => explore(), 50); }   // ?intro replays the intro; &explore runs its transition (screenshots)
-  if (!direct) { app.spin = 2.45; showGlobe(); if (document.body.classList.contains('intro')) setCam(introCam()); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
+  if (!direct) { app.spin = 2.45; showGlobe(); if (document.body.classList.contains('intro')) setCam(introCam()); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; appReady(); })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; homeCopy(false); app.globe.fixtures.visible = false; loadScene(direct); showHint(HINT_SET); document.querySelector('.brand')!.classList.add('link');
+  app.view = 'scene'; homeCopy(false); app.globe.fixtures.visible = false; loadScene(direct); $('card-place').hidden = false; $('actions').hidden = false; showHint(HINT_SET); document.querySelector('.brand')!.classList.add('link');
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
@@ -429,6 +429,8 @@ async function start() {
       else await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
     }
   } else { prepareEntrance(); startEntrance(); }
-  app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));
+  app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; appReady(); }));
 }
+/** the first frame is on screen: fade the scene in under the page and let the intro's button go */
+function appReady() { const c = $('c'); if (SHOT) c.style.transition = 'none'; c.classList.add('ready'); const b = $('btn-explore') as HTMLButtonElement; b.disabled = false; b.textContent = 'Explore the globe'; }
 start();
