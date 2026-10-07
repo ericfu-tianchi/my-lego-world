@@ -1,0 +1,4 @@
+// LDraw part seoul_tower "seoul_tower — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"seoul_tower","name":"seoul_tower — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":512,"i32":false,"bbox":[-4,0,-4,4,34.6,4],"pos":"AAgzRQAIAAgzRQD4AAgAAAAIAAgAAAD4APgzRQD4APgzRQAIAPgAAAD4APgAAAAIAPgzRQD4AAgzRQD4APgzRQAIAAgzRQAIAPgAAAAIAAgAAAAIAPgAAAD4AAgAAAD4APgzRQAIAAgzRQAIAPgAAAAIAAgAAAAIAAgzRQD4APgzRQD4AAgAAAD4APgAAAD4","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

@@ -1,4 +1,40 @@
 {
+ "ko-hangang": {
+  "parts": 1050,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "ko-hanok": {
+  "parts": 1670,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "ko-life": {
+  "parts": 206,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "ko-namsan": {
+  "parts": 1962,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "ko-palace": {
+  "parts": 1665,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "ko-stage": {
+  "parts": 902,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
  "kyoto": {
   "parts": 3237,
   "ok": true,
@@ -31,6 +67,12 @@
  },
  "prague": {
   "parts": 5387,
+  "ok": true,
+  "floating": 0,
+  "overlaps": 0
+ },
+ "seoul": {
+  "parts": 8667,
   "ok": true,
   "floating": 0,
   "overlaps": 0

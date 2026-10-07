@@ -65,6 +65,13 @@ for (const leaf of ['2518', '6148', '10884']) for (const o of ['2518', '6148', '
 // into a round plate; classic palm trunk segments 2536b pinned into the core / plate below), a prickly bush threaded upside down on the bar above
 // the trunk, its spikes hanging round the top cones and the fans and rings beside it
 for (const p of ['11610|11610', '11610|15535', '11610|4032b', '2536b|2536b', '2536b|4032b', '6064b|11610', '6064b|10884', '6064b|30340', '6064b|4733', '11610|10884', '2536b|10884']) { const [a, b] = p.split('|'); INTERLOCK.add(`${a}|${b}`); INTERLOCK.add(`${b}|${a}`); }
+for (const p of ['4032a|4285b', '4285b|4032a']) INTERLOCK.add(p);   // Seoul · N Seoul Tower (2026-10-06): a webbed dish studs up on a 2×2 round spacer — its rim lip hangs a plate below its seat at r 2.75–3, far outside the Ø2 spacer, but its box covers the spacer
+for (const p of ['11213|27507', '27507|11213']) INTERLOCK.add(p);   // … and its roof: a 6×6 round plate (r 3) inside four corner-round macaroni tiles (r 3–4) — flush, but each tile's square box covers the plate
+for (const p of ['87081|27507', '27507|87081', '18674|27925', '27925|18674', '3941|27925', '27925|3941']) INTERLOCK.add(p);   // Seoul v2 tower: macaroni quarter rings round a 4 × 4 round brick and round a 2 × 2 round plate / brick — flush, each ring's square box covers the round part
+// Seoul (ko-life, 2026-10-06): a prop in a seated figure's fist (ko_picnic) — the drumstick's bone and the bottle's neck in the hand's clip by
+// design; their boxes (the meat, the bottle's body) cover the fist and the forearm they rise from. Checked by eye: build/r2-picnic-*.png.
+for (const prop of ['33057', '95228']) for (const o of ['3820', '3818', '3819']) { INTERLOCK.add(`${prop}|${o}`); INTERLOCK.add(`${o}|${prop}`); }
+for (const p of ['24201|11477', '4190|6141']) { const [a, b] = p.split('|'); INTERLOCK.add(`${a}|${b}`); INTERLOCK.add(`${b}|${a}`); }   // Seoul · Gwanghwamun: a curved slope on the low step of the 2×1 inverted curve, a round plate on the inverted corner's stud — both boxes span the air over that step / beside the upturn
 type OBB = { c: number[]; a: number[][]; h: number[]; id: string };
 const obb = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB => { const id = PARTS[p.key].ldraw!; const b = bodyBox(id); const m = p.xform!.m; return { id, c: p.xform!.p, a: [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]), h: [(b[3] - b[0]) / 2, (b[4] - b[1]) / 2, (b[5] - b[2]) / 2] }; };
 // An arch is mostly air: its bounding box would swallow whatever stands beside its legs or under its crown (the Eiffel Tower's legs lie in
@@ -84,7 +91,8 @@ function columns(id: string): number[][] {   // local boxes [x0, y0, z0, x1, y1,
 }
 // parts whose one box would cover air beside them: the 1 × 1 plate with a horizontal clip is its plate plus the clip ring a stud out, which
 // stands 0.07 proud of the plate's faces (so it may hang under a plate only where the ring clears that plate's edge)
-const SPLIT: Record<string, number[][]> = { '61252': [[-0.5, -0.4, -0.5, 0.5, 0, 0.5], [-0.5, -0.47, 0.5, 0.5, 0.27, 1.2]], '4733': [[-0.5, -1.2, -0.5, 0.5, 0, 0.5]] };   // 4733: its body; the side studs go into what is mounted on them
+const SPLIT: Record<string, number[][]> = { '15070': [[-0.5, -0.4, -0.5, 0.5, 0, 0.5], [-0.5, -1.2, 0.5, 0.5, 0, 0.9]],   // Seoul: a 1×1 plate with its tooth hanging down outside one face
+  '61252': [[-0.5, -0.4, -0.5, 0.5, 0, 0.5], [-0.5, -0.47, 0.5, 0.5, 0.27, 1.2]], '4733': [[-0.5, -1.2, -0.5, 0.5, 0, 0.5]] };   // 4733: its body; the side studs go into what is mounted on them
 /** the boxes a member is tested with: one OBB, or one per column for an arch */
 const shapes = (p: { key: string; xform?: { p: number[]; m: number[] } }): OBB[] => {
   const id = PARTS[p.key].ldraw!; if (!ARCHES.has(id) && !SPLIT[id]) return [obb(p)]; const b = bodyBox(id); const m = p.xform!.m; const a = [0, 1, 2].map((j) => [m[j], m[3 + j], m[6 + j]]); const bc = [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2];

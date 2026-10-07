@@ -1,0 +1,4 @@
+// LDraw part ko_tower "ko_tower — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_tower","name":"ko_tower — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-1,0,-2,1,18.4,2],"pos":"AASaSQAIAASaSQD4AAQAAAAIAAQAAAD4APyaSQD4APyaSQAIAPwAAAD4APwAAAAIAPyaSQD4AASaSQD4APyaSQAIAASaSQAIAPwAAAAIAAQAAAAIAPwAAAD4AAQAAAD4APyaSQAIAASaSQAIAPwAAAAIAAQAAAAIAASaSQD4APyaSQD4AAQAAAD4APwAAAD4","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

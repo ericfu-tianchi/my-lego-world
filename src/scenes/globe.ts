@@ -11,7 +11,7 @@ export const PLACES: Place[] = [
   { id: 'japan', name: 'Japan', city: 'Kyoto', lat: 35.0, lon: 135.8, scene: 'kyoto' },
   { id: 'singapore', name: 'Singapore', city: 'Marina Bay', lat: 1.35, lon: 103.8, scene: 'singapore' },
   { id: 'china', name: 'China', city: 'Shanghai', lat: 31.23, lon: 121.47, scene: 'shanghai' },
-  { id: 'korea', name: 'South Korea', city: 'Seoul', lat: 37.57, lon: 126.98, priority: true },
+  { id: 'korea', name: 'South Korea', city: 'Seoul', lat: 37.57, lon: 126.98, scene: 'seoul' },
   { id: 'thailand', name: 'Thailand', city: 'Pattaya', lat: 12.93, lon: 100.88, scene: 'pattaya' },
   { id: 'indonesia', name: 'Indonesia', city: 'Jakarta', lat: -6.2, lon: 106.85 },
   { id: 'malaysia', name: 'Malaysia', city: 'Kuala Lumpur', lat: 3.14, lon: 101.69 },

@@ -1,0 +1,4 @@
+// LDraw part ko_chimney "ko_chimney — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_chimney","name":"ko_chimney — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-1,0,-1,1,7.6,1],"pos":"AARmHgAEAARmHgD8AAQAAAAEAAQAAAD8APxmHgD8APxmHgAEAPwAAAD8APwAAAAEAPxmHgD8AARmHgD8APxmHgAEAARmHgAEAPwAAAAEAAQAAAAEAPwAAAD8AAQAAAD8APxmHgAEAARmHgAEAPwAAAAEAAQAAAAEAARmHgD8APxmHgD8AAQAAAD8APwAAAD8","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

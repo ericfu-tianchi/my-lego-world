@@ -23,6 +23,7 @@ for (const id of ['973', '3815', '3816', '3817', '3818', '3819', '3820', '3626c'
 // LA palms r2 (2026-10-05): a leaf's seat — the 1 × 2 plate of a palm leaf 2518 / 6148 or a swordleaf fan 10884 — is its bottom face for a stud
 // joint, not the bottom of its box, which is the tip of the drooping blade (LDraw: the seat's underside is 8 LDU below the origin)
 const SEAT_BOTTOM: Record<string, number> = { '2518': -0.4, '6148': -0.4, '10884': -0.4 };
+SEAT_BOTTOM['15070'] = -0.4;   // Seoul · Gwanghwamun: a 1×1 plate whose tooth hangs 2 plates below its bottom face, beside the part it sits on
 const seatBox = (id: string) => { const b = [...bakedBox(id)]; if (SEAT_BOTTOM[id] !== undefined) b[1] = SEAT_BOTTOM[id]; return b; };
 for (const id of ['11610', '2536b', '6064b']) BY_DESIGN.add(id);   // LA palms r3: an inverted cone's shaft in the hollow stud below, a palm trunk segment's pin in the core below, a prickly bush threaded on a bar
 // parts whose baked box reaches below their bottom face: the ball of a ball-joint plate hangs 0.2 under the plate (the plate's underside is at −0.4)
@@ -35,6 +36,7 @@ PINS['2780'] = [{ at: [0, 0, 0], dir: [1, 0, 0] }, { at: [0, 0, 0], dir: [-1, 0,
 for (const id of ['63965a', '29592']) BY_DESIGN.add(id);   // LA Venice r2: the lamp pole's bar (stub in a round brick's hollow stud, top in the head collar); a dumbbell lying in a clip tile
 for (const id of ['973', '3818', '3819', '3820', '3626c', '46303']) BY_DESIGN.add(id);
 for (const id of ['3815', '3816', '3817', '11253', '87995']) BY_DESIGN.add(id);   // LA r3, la_roller: the legs on the hips' pins (one swung back), a skate on each foot's hole, the afro on the head   // LA Venice r2, la_skater: a minifig of real parts — torso on the hips' pins, arms on the torso's, hands in the wrists, head and helmet on the neck
+for (const id of ['33057', '95228']) BY_DESIGN.add(id);   // Seoul (ko-life): a drumstick's bone and a bottle's neck in a minifig hand's clip (ko_picnic)
 const studsOf = (id: string) => { if (PINS[id]) return PINS[id]; let s = studCache.get(id); if (!s) { s = (connectors(id) as { kind: string; at: number[]; dir: number[] }[]).filter((c) => c.kind === 'stud').map((c) => ({ at: [c.at[0] / 20, -c.at[1] / 20, -c.at[2] / 20], dir: [c.dir[0], -c.dir[1], -c.dir[2]] })); studCache.set(id, s); } return s; };
 const app = (m: number[], v: number[]) => [0, 1, 2].map((i) => m[i * 3] * v[0] + m[i * 3 + 1] * v[1] + m[i * 3 + 2] * v[2]);
 const appT = (m: number[], v: number[]) => [0, 1, 2].map((i) => m[i] * v[0] + m[3 + i] * v[1] + m[6 + i] * v[2]);   // transpose = inverse for a rotation

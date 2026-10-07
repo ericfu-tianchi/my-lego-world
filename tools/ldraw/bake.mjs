@@ -26,6 +26,9 @@ const LDCOLOR = { 297: 'PearlGold', 308: 'DarkBrown', 484: 'DarkOrange', 379: 'S
 Object.assign(LDCOLOR, { 212: 'BrightLightBlue' });   // LA · Venice (2026-10-04): the lifeguard tower
 Object.assign(LDCOLOR, { 330: 'OliveGreen' });   // LA palms r2 (2026-10-05): the yellowing fronds
 Object.assign(LDCOLOR, { 84: 'MediumNougat', 92: 'Nougat' });   // Pattaya (2026-10-06): the Sanctuary's carving
+Object.assign(LDCOLOR, { 353: 'Coral', 30: 'MediumLavender', 3: 'DarkTurquoise', 321: 'DarkAzure' });   // Seoul · K-pop stage (2026-10-06): the LED face swatch and the inner LED strips
+Object.assign(LDCOLOR, { 25: 'Orange' });   // Seoul · Han (2026-10-06): the Hangang Bus's fin
+Object.assign(LDCOLOR, { 335: 'SandRed' });   // Seoul · Bukchon (2026-10-06): the kkotdam band
 /** Flatten an assembly's type-1 lines into members in our frame. LDraw → ours is F = diag(1, −1, −1)/20, so p' = F·p and m' = F·M·F⁻¹. */
 function members(name, src) {
   const out = [];

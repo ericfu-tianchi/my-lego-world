@@ -1,0 +1,4 @@
+// LDraw part ko_neighbour "ko_neighbour — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_neighbour","name":"ko_neighbour — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-4.349,0,-5.5,4.349,10.4,5.5],"pos":"ZRGaKQAWZRGaKQDqZREAAAAWZREAAADqm+6aKQDqm+6aKQAWm+4AAADqm+4AAAAWm+6aKQDqZRGaKQDqm+6aKQAWZRGaKQAWm+4AAAAWZREAAAAWm+4AAADqZREAAADqm+6aKQAWZRGaKQAWm+4AAAAWZREAAAAWZRGaKQDqm+6aKQDqZREAAADqm+4AAADq","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

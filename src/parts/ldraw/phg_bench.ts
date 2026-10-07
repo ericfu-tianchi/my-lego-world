@@ -1,0 +1,4 @@
+// LDraw part hg_bench "hg_bench — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"hg_bench","name":"hg_bench — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-2,0,-1,2,2.8,1],"pos":"AAgzCwAEAAgzCwD8AAgAAAAEAAgAAAD8APgzCwD8APgzCwAEAPgAAAD8APgAAAAEAPgzCwD8AAgzCwD8APgzCwAEAAgzCwAEAPgAAAAEAAgAAAAEAPgAAAD8AAgAAAD8APgzCwAEAAgzCwAEAPgAAAAEAAgAAAAEAAgzCwD8APgzCwD8AAgAAAD8APgAAAD8","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

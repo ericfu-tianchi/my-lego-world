@@ -1,0 +1,4 @@
+// LDraw part ko_hiptest "ko_hiptest — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_hiptest","name":"ko_hiptest — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-7.0469,0,-6,5,8.4083,6.588],"pos":"ABSiIVoaABSiIQDoABQAAFoaABQAAADo0OOiIQDo0OOiIVoa0OMAAADo0OMAAFoa0OOiIQDoABSiIQDo0OOiIVoaABSiIVoa0OMAAFoaABQAAFoa0OMAAADoABQAAADo0OOiIVoaABSiIVoa0OMAAFoaABQAAFoaABSiIQDo0OOiIQDoABQAAADo0OMAAADo","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

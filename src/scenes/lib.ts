@@ -109,7 +109,7 @@ export function spanPlatesX(bp: Blueprint, x0: number, z0: number, W: number, D:
 export const rotv = (dx: number, dz: number, rot: number): [number, number] => { switch (rot & 3) { case 0: return [dx, dz]; case 1: return [dz, -dx]; case 2: return [-dx, -dz]; default: return [-dz, dx]; } };
 export type Pose = 'd' | 'f' | 'h' | 'u' | 'b' | 'k';   // b: arm swung back until the forearm hangs plumb; k: upper arm straight back (minifig-asm.mjs)
 export interface Hold { key: string; color: string; hand?: 'L' | 'R'; pose?: Pose; wrist?: boolean /* the hand turned a quarter in the wrist: the clip runs left-right */; grip?: 'mid' | 'ground' | 'bottom'; rot?: number; print?: string; dx?: number; dy?: number; dz?: number; gp?: [number, number, number] /* overrides the accessory's default grip point, e.g. lower on a bottle's neck */ }
-export interface FigOpts2 extends FigOpts { hold?: Hold[]; poses?: { L?: Pose; R?: Pose }; skates?: string /* roller skates (11253) of this colour under both feet; the figure stands one plate higher */ }
+export interface FigOpts2 extends FigOpts { hold?: Hold[]; poses?: { L?: Pose; R?: Pose }; skates?: string /* roller skates (11253) of this colour under both feet; the figure stands one plate higher */; wrists?: { L?: boolean; R?: boolean } /* hands turned a quarter in the wrist without a held part (Seoul: the idols' raised hands open outward) */; skirt?: string /* Hips and Skirt (36036) of this colour instead of the legs: its tube sits half a stud behind the legs' centre, on a grid crossing (Seoul) */ }
 /** How each accessory sits in a hand: the arm pose that makes the grip real, and where the part's centre goes relative to the wrist. */
 /** How each accessory sits in a hand: arm pose, the point of the part (relative to its box centre, canonical orientation) that goes into the
  *  hand's clip, and the part's rotation relative to the body per side so the part swings outward, never into the torso. */
@@ -145,13 +145,14 @@ export function minifig2(bp: Blueprint, cx: number, y: number, cz: number, rot: 
   if ((rot & 1) === 0) { cx = Math.round(cx); cz = Math.floor(cz) + 0.5; } else { cx = Math.floor(cx) + 0.5; cz = Math.round(cz); }
   reserve?.add(Math.floor(cx - 1), Math.floor(cz - 1), 3, 3);
   const holds = o.hold ?? []; const poses: { L: Pose; R: Pose } = { L: o.poses?.L ?? 'd', R: o.poses?.R ?? 'd' }; const held: Record<string, number> = {}; const wrist = { L: false, R: false };
+  if (o.wrists) { wrist.L = !!o.wrists.L; wrist.R = !!o.wrists.R; }
   for (const h of holds) { const side = h.hand ?? 'R'; const dflt = HOLD_DEFAULTS[h.key] ?? {}; poses[side] = h.pose ?? dflt.pose ?? 'f'; wrist[side] = h.wrist ?? dflt.wrist ?? false; if (h.key === 'tray') { poses.L = 'h'; poses.R = 'h'; } }
   const place = (key: string, yy: number, color: string, print?: string, ox = 0, oz = 0, r = rot) => { const [fw, fd] = footprint(PARTS[key], r); const [dx, dz] = rotv(ox, oz, rot); bp.part(key, cx + dx - fw / 2, yy, cz + dz - fd / 2, color, r, print); };
   const skin = o.skin ?? 'Yellow';
   if (o.skates) { for (const s of [-0.5, 0.5]) place('roller_skate', y, o.skates, undefined, s, 0); y += 1; }   // a skate under each foot hole; each one straddles a stud of the ground
   const pair = `${poses.L}${poses.R}`, handsKey = `fig_hands_${pair}${wrist.L || wrist.R ? `_${wrist.L ? 't' : '0'}${wrist.R ? 't' : '0'}` : ''}`;
   for (const k of [`fig_torso_${pair}`, handsKey]) if (!PARTS[k]) throw new Error(`minifig rig ${k} not baked — add it to EXTRA_TORSO / EXTRA_HANDS in tools/ldraw/minifig-asm.mjs and re-run`);
-  place('fig_legs', y, o.legs); place(`fig_torso_${pair}`, y + 6, o.torso, o.torsoPrint); place(handsKey, y + 6, skin); const hr = (rot + (o.headTurn ?? 0)) & 3; place('fig_head', y + 9, skin, o.face, 0, 0, hr);
+  if (o.skirt) place('fig_skirt', y, o.skirt, undefined, 0, -0.5); else place('fig_legs', y, o.legs); place(`fig_torso_${pair}`, y + 6, o.torso, o.torsoPrint); place(handsKey, y + 6, skin); const hr = (rot + (o.headTurn ?? 0)) & 3; place('fig_head', y + 9, skin, o.face, 0, 0, hr);
   if (o.hat === 'kasa') place('fig_kasa', y + 12, 'Tan', undefined, 0, 0, hr); else if (o.hair) place(o.hairKey ?? 'fig_hair', y + 12, o.hair, undefined, 0, 0, hr);
   const torsoY = (y + 9) * PLATE; // torso origin (the neck) in world height
   const rigKey = (side: 'L' | 'R') => `${side.toLowerCase()}${poses[side]}${wrist[side] ? 't' : ''}` as keyof typeof RIG.grip;
@@ -509,5 +510,117 @@ export function fanPalm(bp: Blueprint, x: number, y: number, z: number, opts: { 
   for (const [cx, cz, , f] of cells) bp.part('plant_bamboo_1x1', cx, ty + 1, cz, 'Green', (f + (turn & 1)) & 3);
   bp.part('roundjumper_2x2', x - 1, ty + 4, z - 1, 'Green'); bp.part('roundplate_1x1', x - 0.5, ty + 5, z - 0.5, 'Green');
   bp.assembly('palm_burst', x - 0.5, ty + 6, z - 0.5, 'Green', turn & 3);
+  reserve?.add(x - 2, z - 2, 4, 4); bp.tag = '';
+}
+
+// ---- Seoul · sonamu, the Korean red pine (Namsan / Bugaksan, 2026-10-06; docs/refs/seoul-namsan/SCHEME.md §3.3) ----------------------
+// The `tree` limb pattern (four corner limbs per fork, crown on a jumper) on a 1 × 1 round trunk (kind exception, below), with what makes it a red pine and not a
+// palm: foliage from mid-height, a crown wider than tall, flat two-deep pads (a 6×5 or 4×3 leaf with one 4×3 crossed over it), limbs of
+// unequal length showing between the pads, a wide flat top, and the bark dark low and reddish above.
+type SonamuSpec = { trunk: number; gap: number; tiers: { big: boolean; out: boolean; limbs: Limb5[] }[] };   // big: 6×5 first leaf, else 4×3; out: the first leaf fans outward, else sideways (a pad strung along the crown's rim)
+const SONAMU: Record<'XS' | 'S' | 'M' | 'L', SonamuSpec> = {   // r3 (on the hill): 6×5 leaves fanning outward made crowns 18 studs wide that hid the hill; sideways pads keep them ≈ L 13 · M 11 · S 8
+  L: { trunk: 4, gap: 2, tiers: [{ big: false, out: true, limbs: [{ len: 3, lift: 0 }, { len: 2, lift: 2 }, { len: 3, lift: 2 }, { len: 2, lift: 4 }] }, { big: false, out: false, limbs: [{ len: 2, lift: 2 }, { len: 3, lift: 0 }, { len: 2, lift: 4 }, { len: 3, lift: 2 }] }] },
+  M: { trunk: 3, gap: 2, tiers: [{ big: false, out: true, limbs: [{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }] }, { big: false, out: false, limbs: [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }] }] },
+  S: { trunk: 2, gap: 1, tiers: [{ big: false, out: false, limbs: [{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }] }, { big: false, out: false, limbs: [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }] }] },
+  XS: { trunk: 1, gap: 1, tiers: [{ big: false, out: false, limbs: [{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }] }] },   // forced perspective on a far mountain (Bugaksan)
+};
+const SONAMU_LEAF = ['DarkGreen', 'DarkGreen', 'DarkGreen', 'DarkGreen', 'Green'];   // Olive Green rendered khaki-yellow beside Dark Green (r1)
+/** one flat pad on a tip stud: a Dark Brown 3-leaf plate, a leaf fanning `rot`-ward, a 4×3 leaf crossed over it — two leaves deep */
+function sonamuPad(bp: Blueprint, tx: number, y: number, tz: number, d: Dir, big: boolean, out: boolean, bare: Set<Dir>) {
+  // a leaf at rot r fans toward Dir FAN[r] (rot 0 +z, 1 −x, 2 −z, 3 +x — checked against the validator's hull, r4); FAN is its own inverse, so
+  // FAN[d] is the rot that fans toward Dir d. A leaf never fans toward a bare side (the hill rising behind).
+  const FAN = [2, 1, 0, 3]; const ok = (r: number) => !bare.has(FAN[r & 3] as Dir); const pickOk = (...rs: number[]) => rs.map((r) => r & 3).find(ok) ?? FAN[d];
+  const side = [FAN[(d + 1) & 3], FAN[(d + 3) & 3]];
+  const r1 = out ? FAN[d] : pickOk(side[0], side[1]), r2 = out ? (bp.chance(0.5) ? pickOk(side[0], side[1]) : pickOk(side[1], side[0])) : pickOk(r1 === side[0] ? side[1] : side[0], FAN[d]);
+  bp.part('plant_3leaves', tx, y, tz, 'DarkBrown');
+  bp.part(big ? 'leaves_6x5' : 'leaves_4x3', tx, y + 1, tz, bp.pick(SONAMU_LEAF), r1);
+  bp.part('leaves_4x3', tx, y + 2, tz, bp.pick(SONAMU_LEAF), r2);
+}
+/** Korean red pine. (x, z) = the axis point (a grid corner), y = ground. Tag 'pine'. Height ≈ L 26 · M 21 · S 15 · XS 11 plates; crown ≈ L 13 · M 11 · S 8 · XS 8 studs wide. */
+export function sonamu(bp: Blueprint, x: number, y: number, z: number, size: 'XS' | 'S' | 'M' | 'L', reserve?: Reserve, turn = 0, skip?: Dir | Dir[], ground = 'DarkGreen') {
+  const prev = bp.tag; bp.tag = 'pine'; const spec = SONAMU[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
+  const CELLS: [number, number][] = [[x - 1, z - 1], [x, z - 1], [x, z], [x - 1, z]];
+  const DIRS_A: Dir[] = [0, 3, 2, 1], DIRS_B: Dir[] = [1, 0, 3, 2];
+  // Kind exception (the lead, 2026-10-06, precedent: LA `palm`): a 1 × 1 round trunk, not the 2 × 2 armature column — beside the tower's
+  // 2 × 2 shaft a fat dark trunk read as a baobab. The trunk stands on a 2 × 2 jumper's centre stud on the axis point; each fork is a 2 × 2
+  // round plate on the trunk's stud (its centre tube), the limbs leave from its four corner studs, and a 2 × 2 jumper on the limbs' inner
+  // ends carries the next segment — every piece on one axis.
+  bp.part('jumper_2x2', x - 1, y, z - 1, ground); let k = 0, ty = y + 1;   // the half-stud seat in the ground's colour (lead r5: a Dark Brown one read as a flower pot)
+  const seg = () => { bp.part('round_1x1', x - 0.5, ty, z - 0.5, k === 0 ? 'DarkBrown' : 'ReddishBrown'); k++; ty += 3; };
+  for (let s = 0; s < spec.trunk; s++) seg();
+  spec.tiers.forEach(({ big, out, limbs }, t) => {
+    const dirs = t % 2 ? DIRS_B : DIRS_A;
+    bp.part('roundplate_2x2', x - 1, ty, z - 1, 'ReddishBrown'); ty += 1;   // the fork
+    limbs.forEach((limb, i) => {
+      const ci = (i + turn) & 3; const [cx, cz] = CELLS[ci]; const d = dirs[ci]; if (bare.has(d)) return;
+      const [ux, uz] = rotv(0, -1, d); const cells: [number, number][] = []; for (let n = 0; n < limb.len; n++) cells.push([cx + ux * n, cz + uz * n]);
+      bp.part(`plate_1x${limb.len}`, Math.min(...cells.map((c) => c[0])), ty, Math.min(...cells.map((c) => c[1])), 'ReddishBrown', ux ? 1 : 0);
+      const [tx, tz] = cells[limb.len - 1];
+      if (limb.lift === 4) { bp.part('round_1x1', tx, ty + 1, tz, 'ReddishBrown'); bp.part('roundplate_1x1', tx, ty + 4, tz, 'ReddishBrown'); }
+      else for (let s = 0; s < limb.lift; s++) bp.part('roundplate_1x1', tx, ty + 1 + s, tz, 'ReddishBrown');
+      sonamuPad(bp, tx, ty + 1 + limb.lift, tz, d, big, out, bare);
+    });
+    ty += 1; bp.part('jumper_2x2', x - 1, ty, z - 1, 'ReddishBrown'); ty += 1;   // on the limbs' inner ends: the trunk goes on from its centre stud
+    if (t < spec.tiers.length - 1) for (let s = 0; s < spec.gap; s++) seg();
+  });
+  // the umbrella top: two 4×3 leaves fanning opposite ways (east–west, else north–south), flat; on a hillside both fan to open sides
+  const FAN = [2, 1, 0, 3]; const open = (r: number) => !bare.has(FAN[r] as Dir);
+  const pair = [1, 0].find((r) => open(r) && open(r ^ 2)); const singles = [0, 1, 3, 2].filter(open);
+  const [ra, rb] = pair !== undefined ? [pair, pair ^ 2] : [singles[0] ?? 0, singles[1] ?? singles[0] ?? 0];
+  bp.part('plant_3leaves', x - 0.5, ty, z - 0.5, 'DarkBrown');
+  bp.part('leaves_4x3', x - 0.5, ty + 1, z - 0.5, bp.pick(SONAMU_LEAF), ra); bp.part('leaves_4x3', x - 0.5, ty + 2, z - 0.5, bp.pick(SONAMU_LEAF), rb);
+  reserve?.add(x - 2, z - 2, 4, 4); bp.tag = prev;
+}
+// ---- Korea · Seoul figures (ko-life, 2026-10-06): grip points read off the moulds (docs/refs/seoul-real/BUILD.md) ----------------------------
+Object.assign(HOLD_DEFAULTS, {
+  mic: { pose: 'f', gp: [0, -0.32, 0], shaft: true, axis: 'y' },                        // 90370 upright in a forward fist: the hand round the handle's middle, the ball at neck height
+  lightstick_hilt: { pose: 'f', gp: [0, -0.06, 0], shaft: true, axis: 'y' },            // 64567a upright in a forward fist: its !HELP grip centre (LDraw y 19.25, 0.06 under the body's middle); the raised u hand cannot hold it upright (its bore runs front–back, and a stick lying that way passes through the head)
+  woldo_pole: { pose: 'f', gp: [0, -0.73, 0], shaft: true, axis: 'y', rotL: 1, rotR: 3 },  // 4497 upright in a forward fist 2.92 over the butt, which stands at the feet's level; the clipped crescent (canonical +z) turned outward
+} satisfies Record<string, HoldDefault>);
+// ---- ginkgo (Seoul · Bukchon, 2026-10-06, docs/refs/seoul-hanok/SCHEME.md §5) — the `tree` armature with an upright egg crown ------------
+// Real: a straight grey-brown trunk limbed up high, short limbs, a crown taller than wide, one even butter-yellow in late October, the leaves
+// dropping together into a yellow carpet (10373's ginkgo: Yellow 2423 + Yellow 32607 on a dark trunk). So: a long clear trunk of Dark Brown
+// 2 × 2 round bricks, short limbs widest in the middle tier, a leader (jumper + one 1 × 1 round brick) carrying the top cluster; every tip
+// cluster a Yellow three-leaf plate (a ginkgo sprig) with three 4 × 3 leaves on it (no 6 × 5: 2417 has no yellow); a 4 × 3 leaf on each
+// middle stud of a 3-long limb so the crown reads as one mass; Yellow : Bright Light Yellow = 3 : 2, nothing else. Fallen leaves: Tile 1 × 1
+// Quarter Circle (a quarter circle is a ginkgo fan) on bare ground studs the caller offers (`fallen`, cells whose top is a plate at y − 1).
+const GINKGO: Record<'S' | 'M' | 'L', { trunk: number; gap: number; tiers: Limb5[][]; fall: number }> = {
+  L: { trunk: 8, gap: 1, fall: 12, tiers: [[{ len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 2 }], [{ len: 3, lift: 2 }, { len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }], [{ len: 3, lift: 0 }, { len: 3, lift: 2 }, { len: 3, lift: 4 }, { len: 3, lift: 2 }], [{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }]] },   // four tiers of 3-long limbs (a leaf on every middle stud), a narrow top: a dense egg
+  M: { trunk: 4, gap: 1, fall: 8, tiers: [[{ len: 2, lift: 0 }, { len: 3, lift: 2 }, { len: 2, lift: 4 }, { len: 3, lift: 2 }], [{ len: 2, lift: 2 }, { len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }]] },
+  S: { trunk: 3, gap: 0, fall: 5, tiers: [[{ len: 2, lift: 0 }, { len: 2, lift: 2 }, { len: 2, lift: 4 }, { len: 2, lift: 2 }]] },
+};
+const GINKGO_LEAF = ['Yellow', 'BrightLightYellow', 'Yellow', 'BrightLightYellow', 'Yellow'];   // 3 : 2
+/** (x, z) the axis point (a grid corner; the trunk covers x−1..x, z−1..z), y the ground plate; `skip` leaves that side bare (toward a roof). */
+export function ginkgo(bp: Blueprint, x: number, y: number, z: number, size: 'S' | 'M' | 'L', reserve?: Reserve, turn = 0, skip?: Dir | Dir[], fallen: [number, number][] = []) {
+  bp.tag = 'ginkgo'; const spec = GINKGO[size]; const bare = new Set<Dir>(skip === undefined ? [] : Array.isArray(skip) ? skip : [skip]);
+  const TRUNK = 'DarkBrown', leaf = () => bp.pick(GINKGO_LEAF);
+  const tip = (tx: number, ty: number, tz: number, rot: number) => {                       // calyx → leaf → leaf crossed → leaf opposite
+    bp.part('plant_3leaves', tx, ty, tz, 'Yellow', rot);
+    bp.part('leaves_4x3', tx, ty + 1, tz, leaf(), rot);
+    bp.part('leaves_4x3', tx, ty + 2, tz, leaf(), (rot + (bp.chance(0.5) ? 1 : 3)) & 3);
+    bp.part('leaves_4x3', tx, ty + 3, tz, leaf(), (rot + 2) & 3);
+  };
+  const CELLS: [number, number][] = [[x - 1, z - 1], [x, z - 1], [x, z], [x - 1, z]];
+  const DIRS_A: Dir[] = [0, 3, 2, 1], DIRS_B: Dir[] = [1, 0, 3, 2];
+  let ty = y; const seg = () => { bp.part('roundbrick_2x2', x - 1, ty, z - 1, TRUNK); ty += 3; };
+  for (let k = 0; k < spec.trunk; k++) seg();
+  spec.tiers.forEach((limbs, t) => {   // the limb pattern turns a corner per tier: tips never sit under the next tier's limbs
+    const dirs = t % 2 ? DIRS_B : DIRS_A;
+    limbs.forEach((limb, i) => {
+      const ci = (i + turn + t) & 3; const [cx, cz] = CELLS[ci]; const d = dirs[ci]; if (bare.has(d)) return;
+      const [ux, uz] = rotv(0, -1, d); const cells: [number, number][] = []; for (let k = 0; k < limb.len; k++) cells.push([cx + ux * k, cz + uz * k]);
+      bp.part(`plate_1x${limb.len}`, Math.min(...cells.map((c) => c[0])), ty, Math.min(...cells.map((c) => c[1])), TRUNK, ux ? 1 : 0);
+      const [tx, tz] = cells[limb.len - 1];
+      if (limb.lift === 4) { bp.part('round_1x1', tx, ty + 1, tz, TRUNK); bp.part('roundplate_1x1', tx, ty + 4, tz, TRUNK); }
+      else for (let s = 0; s < limb.lift; s++) bp.part('roundplate_1x1', tx, ty + 1 + s, tz, TRUNK);
+      tip(tx, ty + 1 + limb.lift, tz, (d + 2) & 3);
+      for (let k = 1; k < limb.len - 1; k++) { const [mx, mz] = cells[k]; bp.part('leaves_4x3', mx, ty + 1, mz, leaf(), (d + (i % 2 ? 1 : 3)) & 3); }
+    });
+    ty += 1; for (let k = 0; k < spec.gap; k++) seg();
+  });
+  bp.part('jumper_2x2', x - 1, ty, z - 1, TRUNK); bp.part('round_1x1', x - 0.5, ty + 1, z - 0.5, TRUNK);   // the leader: the crown is taller than wide
+  tip(x - 0.5, ty + 4, z - 0.5, (turn + 1) & 3);
+  const pool = fallen.filter(([fx, fz]) => !(fx >= x - 1 && fx <= x && fz >= z - 1 && fz <= z));
+  for (let k = 0; k < spec.fall && pool.length; k++) { const [fx, fz] = pool.splice(Math.floor(bp.rand() * pool.length), 1)[0]; bp.part('tile_quarter_1x1', fx, y, fz, bp.chance(0.6) ? 'Yellow' : 'BrightLightYellow', Math.floor(bp.rand() * 4)); }
   reserve?.add(x - 2, z - 2, 4, 4); bp.tag = '';
 }
