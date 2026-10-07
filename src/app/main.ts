@@ -98,7 +98,8 @@ function loadScene(id: string) {
 }
 /** night mode (Shanghai, 2026-10-03): moonlight, a dark sky, and the bricks the scene's glow rule names lit from within */
 function setNight(on: boolean) { app.night = on; app.bricks.setNight(on); app.lights.night(on); app.renderer.toneMappingExposure = on ? 1.15 : 1.0; document.body.classList.toggle('night', on); $('btn-night').textContent = on ? 'Day' : 'Night'; }
-function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
+/** the dock always holds two buttons (Eric 2026-10-07): while the set gathers itself Take apart stays in place, waiting, instead of vanishing */
+function setState(s: State) { app.state = s; const apart = $('btn-apart') as HTMLButtonElement; apart.hidden = s === 'settled' || s === 'dismantling'; apart.disabled = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
 
 // ---- globe: home, and the stage the set stands on -------------------------------------------------------
 // One globe in one world. At home it turns on its stand; on a click it turns until the place faces up, grows and sinks until only a sliver of
@@ -167,6 +168,7 @@ function updateLabels() {
     if (!open) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; l.classList.remove('hover'); return; }
     cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : 1) - facing * 0.5, facing });   // built labels are placed first and stay put; an opened "coming soon" label goes on top of them
   });
+  const tEl = $('home-title'); const titleBot = tEl.hidden ? -1e9 : tEl.getBoundingClientRect().bottom + 6;
   cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = []; const G = 6;
   const hit = (b: number[], list: number[][]) => list.reduce((n, o) => n + Math.max(0, Math.min(b[2], o[2]) - Math.max(b[0], o[0])) * Math.max(0, Math.min(b[3], o[3]) - Math.max(b[1], o[1])), 0);
   for (const c of cand) {
@@ -179,7 +181,7 @@ function updateLabels() {
     const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(pad(b), others) * 8; };   // a label keeps clear of every pin, so the small ones stay reachable under the pointer
     const prev = l.dataset.slot as typeof SLOTS[number] | undefined; let slot: typeof SLOTS[number] = prev && cost(prev) === 0 ? prev : SLOTS.reduce((best, k) => (cost(k) < cost(best) ? k : best), SLOTS[0] as typeof SLOTS[number]);
     if (prev && slot !== prev && cost(prev) <= cost(slot)) slot = prev; l.dataset.slot = slot; const box = boxAt(slot); boxes.push(box);
-    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
+    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4, Math.max(0, (box[1] - titleBot) / 24)));   // labels near the top of the ball fade out under the home title l.style.pointerEvents = 'auto';
     l.style.transform = `translate(${box[0]}px, ${box[1]}px)`; l.classList.toggle('hover', hover); l.classList.toggle('asked', app.soon?.place === pin.place); l.style.zIndex = pin.place.scene ? (hover ? '6' : '4') : '7';
   }
 }
@@ -215,12 +217,12 @@ async function enterPlace(place: Place) {
  *  the top of the screen — while the globe rises, shrinks and turns home underneath, the set riding its crown as it shrinks. */
 async function goGlobe() {
   if (app.night) setNight(false);
-  if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return;
-  app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.table.visible = false;
+  if (app.view !== 'scene' || app.tween) return;   // also mid-build: the bricks leave from wherever they are
+  app.view = 'moving'; app.physics.stop(); app.anims = []; app.entering = false; app.orbit.enabled = false; app.table.visible = false;
   $('card-place').hidden = true; $('actions').hidden = true;
   const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys);
   app.drift = null; app.burst = null; const exits = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); const h = it.home.p;
-    return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25 }; });
+    return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25, away: p.y < -100 }; });   // away: not yet on its way in (parked below the world), it stays there
   setState('idle');
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
   const toQ = homeQ(); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12); const finalCrown = stageY() + GLOBE_RADIUS * STAGE_SCALE; let t = 0;
@@ -228,7 +230,7 @@ async function goGlobe() {
     const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); const gs = Math.exp(Math.log(STAGE_SCALE) * (1 - e)); g.scale.setScalar(gs); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, homeCam(), e)); if (k > 0.85) app.globe.fixtures.visible = true;
     const ss = gs / STAGE_SCALE, crown = g.position.y + GLOBE_RADIUS * gs; app.bricks.group.scale.setScalar(ss); app.bricks.group.position.set(0, crown - finalCrown * ss * (1 - e), 0);
     t = k * 1.9; const _a = new THREE.Vector3(), _b = new THREE.Quaternion();
-    for (const x of exits) { const u = THREE.MathUtils.clamp((t - x.delay) / 0.9, 0, 1), w = u * u * u;   // eases out of its seat, then accelerates up
+    for (const x of exits) { if (x.away) continue; const u = THREE.MathUtils.clamp((t - x.delay) / 0.9, 0, 1), w = u * u * u;   // eases out of its seat, then accelerates up
       _a.lerpVectors(x.p, x.to, w); const ang = -w * 1.1, c = Math.cos(ang), sn = Math.sin(ang), ax = _a.x, az = _a.z; _a.x = ax * c + az * sn; _a.z = -ax * sn + az * c;   // keeps turning the same way as it rose in
       _b.copy(x.q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(w * 2, w * 1.5, w))); app.bricks.setPose(x.it, _a, _b); }
     app.bricks.commit();
