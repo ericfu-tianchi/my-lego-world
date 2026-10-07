@@ -95,11 +95,11 @@ export class GlobeView {
     // ---- pins: a white 2×2 round plate, a red 1×1 round brick post, a red 2×2 round plate head
     const red = new THREE.MeshStandardMaterial({ color: colorHex('BrightRed'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), white = new THREE.MeshStandardMaterial({ color: colorHex('White'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
     const up = new THREE.Vector3(0, 1, 0);
-    // places not built yet: a slimmer pin, a 1×1 round plate on a 1×1 round brick, grey; priority ones yellow
-    const grey = new THREE.MeshStandardMaterial({ color: colorHex('LightBluishGray'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), yellow = new THREE.MeshStandardMaterial({ color: colorHex('BrightLightOrange'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
+    // places not built yet: a slimmer pin, a 1×1 round plate on a 1×1 round brick, yellow
+    const yellow = new THREE.MeshStandardMaterial({ color: colorHex('Yellow'), toneMapped: false, roughness: 0.55, envMap: env, envMapIntensity: 0.9 });
     for (const place of PLACES) {
       const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + 0.7); g.quaternion.setFromUnitVectors(up, dir);
-      const head = place.scene ? red : place.priority ? yellow : grey;
+      const head = place.scene ? red : yellow;   // not built yet: Bright Yellow, untone-mapped so it stays lemon against the tan land (Eric 2026-10-07: grey could not be seen, the tone-mapped yellow read as sand)
       // a place not built yet (Eric's pick C of three, 2026-10-07): a mini pin, a white 1×1 round plate under a 1×1 round tile
       const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['roundplate_1x1', white, 0.2], ['roundtile_1x1', head, 0.6]];
       const top = place.scene ? 2.2 : 0.8;
