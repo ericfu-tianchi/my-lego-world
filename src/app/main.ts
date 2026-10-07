@@ -5,10 +5,7 @@ import { geometryFor } from '../core/catalog';
 import { Orbit } from '../core/controls';
 import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
-let checkId = 0;
 import { SCENES } from '../scenes/index';
-import checksJson from '../scenes/checks.json';
-const CHECKS: Record<string, { parts: number; ok: boolean; floating: number; overlaps: number } | undefined> = checksJson;
 import { type Place } from '../scenes/globe';
 import { GlobeView, GLOBE_RADIUS } from './globe-view';
 
@@ -48,18 +45,18 @@ function init() {
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-  $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
+  $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe(); document.querySelector<HTMLElement>('.brand')!.onclick = () => goGlobe();   // the logo is the way home (Eric 2026-10-07)
   for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : '') + (!P.scene && !P.priority ? ' lite' : ''); l.innerHTML = P.scene || P.priority ? `<b>${P.name}</b><span>${P.city}</span>` : `<b>${P.name}</b><em>Coming soon</em>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }   // no plans yet: the country and Coming soon on one line (Eric 2026-10-07)
   { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
-  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
+  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; quietHint(); if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
   canvas.addEventListener('pointermove', (e) => {
     if (drag && app.view === 'globe') { const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = THREE.MathUtils.clamp((d / Math.max(16, e.timeStamp - drag.t)) * 1000, -4, 4); drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
     const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene && !drag) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
   canvas.addEventListener('pointerup', (e) => { if (drag && e.timeStamp - drag.t > 80) app.spinVel = 0; drag = null; app.dragging = false; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
-  canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
+  canvas.addEventListener('wheel', (e) => { quietHint(); if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
 }
@@ -67,7 +64,7 @@ function replay() { if (app.view !== 'scene' || app.tween || app.state === 'buil
 
 /** Scenes are built once and kept: the blueprint (90 ms on Shanghai) and, through prewarm, every part geometry already on the GPU, so a
  *  click on the globe starts the transition at once (Eric 2026-10-04: big sets waited ~2 s and he clicked again, thinking it had failed). */
-const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number; rep?: { ok: boolean; floating: number; overlaps: number } }>();
+const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number }>();
 function buildCached(id: string) { let b = built.get(id); if (!b) { const def = SCENES[id]; const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); b = { bp, meta, ms: performance.now() - t0 }; built.set(id, b); } return b; }
 /** Every set is built into the brick renderer once — while the globe turns, one set per idle slot, and at once for the set under the
  *  pointer — and drawn once off screen, so its programs, geometry and instance buffers are on the GPU; a click then only swaps it in */
@@ -85,10 +82,8 @@ function loadScene(id: string) {
   const cached = buildCached(id); const { bp, meta, ms } = cached; const t0 = 0, t1 = ms;
   app.tableY = id === 'kyoto-refined' ? -.03 : TABLE_Y; app.table.position.y = app.tableY;
   // the connection check costs ~1.5 s on Shanghai's 8,000 parts — inside the click it held the globe still for two seconds (Eric 2026-10-04).
-  // Screenshots and tools read its summary from the console, so they keep it synchronous; the app runs it once the entrance is over.
+  // Screenshots and tools read its summary from the console; the app does not run it (the gate already has).
   const full = SHOT ? validate(bp.parts, meta.base ?? 0) : null; if (full) console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(full, 10));
-  const baked = CHECKS[id]?.parts === bp.parts.length ? CHECKS[id] : undefined;   // the gate's result (scripts/validate.ts)
-  const rep = full ?? cached.rep ?? baked ?? null;
   const origin = new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2);
   const only = qs.get('only'); const shown = only ? bp.parts.filter((p) => only.split(',').includes(p.tag ?? '')) : bp.parts;   // ?only=torii,bridge → element renders against clean sky
   if (only || bricksFor !== id) { app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin, only ? undefined : id); bricksFor = only ? null : id; }   // a set prepared on hover is reused
@@ -97,10 +92,8 @@ function loadScene(id: string) {
   app.center.set(0, meta.center[1], 0); const radius = Math.hypot(meta.size[0], meta.size[1]) / 2 + 4; app.radius = radius; app.viewDist = meta.viewDist ?? radius * 2.15; app.lights.frame(app.center, radius);
   const o = app.orbit; o.target.copy(app.center); o.az = meta.camera?.az ?? 0.62; o.el = meta.camera?.el ?? 0.4; o.dist = meta.camera?.dist ?? radius * 2.7; o.minDist = 8; o.maxDist = 220; o.minEl = 0.05; o.autoRotate = app.autoRotate;
   if (qs.has('az')) o.az = +qs.get('az')!; if (qs.has('el')) o.el = +qs.get('el')!; if (qs.has('dist')) o.dist = +qs.get('dist')!; if (qs.has('tx')) o.target.set(+qs.get('tx')!, +qs.get('ty')!, +qs.get('tz')!);
-  $('place-title').textContent = meta.title; $('place-sub').textContent = `${meta.caption} · ${meta.subtitle}`;
-  const line = (r: { ok: boolean; floating: number; overlaps: number } | null) => `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${!r ? 'checking connections…' : r.ok ? 'connection check passed' : r.floating + ' floating · ' + r.overlaps + ' overlaps'}`;
-  $('place-stats').textContent = line(rep);
-  if (!rep) { const my = ++checkId; const run = () => { if (my !== checkId || app.sceneId !== id) return; if (app.tween || app.state !== 'built') { setTimeout(run, 400); return; } cached.rep = validate(bp.parts, meta.base ?? 0); $('place-stats').textContent = line(cached.rep); }; setTimeout(run, 3500); }   // once per set per visit to the page
+  const P = app.globe.pins.find((p) => p.place.scene === id)?.place; $('place-title').textContent = P ? `${P.name} · ${P.city}` : meta.title; $('place-sub').textContent = meta.subtitle.charAt(0).toUpperCase() + meta.subtitle.slice(1);   // Country · City for every set (Eric 2026-10-07), then what is in it
+  $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.colors} colors`;   // bricks and colours only (Eric 2026-10-07); the connection check is the build gate's job
   app.bricks.resetHome(); if (SHOT && qs.has('sil')) app.bricks.silhouette(true); setState('built');
 }
 /** night mode (Shanghai, 2026-10-03): moonlight, a dark sky, and the bricks the scene's glow rule names lit from within */
@@ -129,11 +122,18 @@ function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
   const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.globe.fixtures.visible = true; 
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
-  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('hint').textContent = 'Drag to turn the globe · Scroll to zoom · Click a pin to visit';
+  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; showHint([['Drag', 'Turn'], ['Scroll', 'Zoom'], ['Click a pin', 'Visit']]); document.querySelector('.brand')!.classList.remove('link');
 }
 /** Labels (Eric 2026-10-07): built places always show theirs; a place not built yet shows its label only under the pointer or for a
  *  moment after a click ("Coming soon"). Each label sits clear of every pin head — above its pin, or beside it when that spot is taken —
  *  and of the labels already placed, so Paris, Neuschwanstein and Prague can all be open at once. A label keeps its spot while it stays free. */
+/** the controls hint (Eric 2026-10-07: lighter): key caps, shown on arriving at a view and faded out at the first drag or scroll, or after 6 s */
+let hintTimer = 0;
+function showHint(items: [string, string][]) {
+  const h = $('hint'); h.innerHTML = items.map(([k, v]) => `<span><kbd>${k}</kbd>${v}</span>`).join(''); h.classList.remove('quiet');
+  clearTimeout(hintTimer); hintTimer = window.setTimeout(quietHint, 6000);
+}
+const quietHint = () => $('hint').classList.add('quiet');
 const SLOTS = ['up', 'upLeft', 'upRight', 'left', 'right', 'down', 'downLeft', 'downRight'] as const;
 function updateLabels() {
   const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(app.camera.quaternion);
@@ -192,7 +192,7 @@ async function enterPlace(place: Place) {
     if (!started) { started = true; startEntrance(); }   // the gathering begins with the click; its clock eases in
   });
   if (!started) startEntrance(); app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0);
-  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; $('hint').textContent = 'Drag to orbit · Scroll to zoom · Shift-drag to pan'; setState(app.state);
+  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['⇧ Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link'); setState(app.state);
 }
 /** Back to the globe (Eric 10-02: the set should not just vanish): the set rains back up — top pieces first, spiralling the same way, off
  *  the top of the screen — while the globe rises, shrinks and turns home underneath, the set riding its crown as it shrinks. */
@@ -371,7 +371,7 @@ async function start() {
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
   if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
+  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct); showHint([['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['⇧ Drag', 'Pan']]); document.querySelector('.brand')!.classList.add('link');
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
