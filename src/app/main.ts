@@ -25,7 +25,7 @@ const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30, viewDist: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, pinPx: [] as { i: number; x: number; y: number; r: number }[], idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinShown: 0, spinVel: 0, titleBot: -1e9, homeZoom: 1, pinPx: [] as { i: number; x: number; y: number; r: number }[], idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
   drift: null as null | { t: number; base: Float32Array; w: Float32Array }, burst: null as null | { t: number; p0: Float32Array; v: Float32Array; w: Float32Array; fixed: Uint8Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   night: false, renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
@@ -36,15 +36,16 @@ app.enter = 'float';   // Eric's pick (B, from the air)
 function init() {
   const canvas = $('c') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.5 : 2)); renderer.setSize(innerWidth, innerHeight);   // phones: 1.5× is sharp enough and ~45 % fewer pixels than 2×
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
   const globe = new GlobeView(env); scene.add(globe.group, globe.fixtures);
+  if (TOUCH) { lights.key.shadow.mapSize.set(1024, 1024); globe.group.traverse((o) => (o.castShadow = false)); globe.fixtures.traverse((o) => (o.castShadow = false)); }   // phones: no shadow pass for the ~10,000 globe plates (their own studs' shadows are not visible at that size), a smaller map
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (app.view === 'globe' && !app.tween) setCam(document.body.classList.contains('intro') ? introCam() : homeCam()); });
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (!$('home-title').hidden) { const t = $('home-title'); app.titleBot = t.offsetTop + t.offsetHeight + 6; } if (app.view === 'globe' && !app.tween) setCam(document.body.classList.contains('intro') ? introCam() : homeCam()); });
   $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe(); document.querySelector<HTMLElement>('.brand')!.onclick = () => goGlobe();   // the logo is the way home (Eric 2026-10-07)
   for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : '') + (!P.scene && !P.priority ? ' lite' : ''); l.innerHTML = P.scene || P.priority ? `<b>${P.name}</b><span>${P.city}</span>` : `<b>${P.name}</b><em>Coming soon</em>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }   // no plans yet: the country and Coming soon on one line (Eric 2026-10-07)
   { const n = globe.pins.length, built = globe.pins.filter((p) => p.place.scene).length; $('n-visited').textContent = String(n); $('n-built').textContent = String(built); $('n-todo').textContent = String(n - built); $('intro-eyebrow').textContent = `${n} countries · ${built} built so far`; }   // counted, not hand-written
@@ -59,7 +60,8 @@ function init() {
   canvas.addEventListener('pointermove', (e) => {
     if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
     if (pinch0 && app.view === 'globe') { app.homeZoom = THREE.MathUtils.clamp(zoom0 * pinch0 / spread(), 0.42, 1.25); setCam(homeCam()); app.idle = 0; return; }
-    if (drag && app.view === 'globe') { const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = THREE.MathUtils.clamp((d / Math.max(16, e.timeStamp - drag.t)) * 1000, -4, 4); drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
+    if (drag && app.view === 'globe') {   // the release velocity is smoothed over the last few moves, so a flick keeps its speed instead of the last jittery sample
+      const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = app.spinVel * 0.35 + THREE.MathUtils.clamp((d / Math.max(8, e.timeStamp - drag.t)) * 1000, -5, 5) * 0.65; drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
     const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene && !drag) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
   canvas.addEventListener('pointerup', (e) => { lift(e); if (drag && e.timeStamp - drag.t > 80) app.spinVel = 0; drag = null; app.dragging = false; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
@@ -106,7 +108,8 @@ function loadScene(id: string) {
 /** night mode (Shanghai, 2026-10-03): moonlight, a dark sky, and the bricks the scene's glow rule names lit from within */
 function setNight(on: boolean) { app.night = on; app.bricks.setNight(on); app.lights.night(on); app.renderer.toneMappingExposure = on ? 1.15 : 1.0; document.body.classList.toggle('night', on); $('btn-night').textContent = on ? 'Day' : 'Night'; }
 /** the dock always holds two buttons (Eric 2026-10-07): while the set gathers itself Take apart stays in place, waiting, instead of vanishing */
-function setState(s: State) { app.state = s; const apart = $('btn-apart') as HTMLButtonElement; apart.hidden = s === 'settled' || s === 'dismantling'; apart.disabled = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
+// phones: no shadow pass while thousands of bricks are in flight (castShadows below)
+function setState(s: State) { app.state = s; if (TOUCH) app.bricks.castShadows(s === 'built'); const apart = $('btn-apart') as HTMLButtonElement; apart.hidden = s === 'settled' || s === 'dismantling'; apart.disabled = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
 
 // ---- globe: home, and the stage the set stands on -------------------------------------------------------
 // One globe in one world. At home it turns on its stand; on a click it turns until the place faces up, grows and sinks until only a sliver of
@@ -120,11 +123,12 @@ const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;
 const fitW = (k: number) => Math.max(1, k / app.camera.aspect);
 /** and on a short screen (a phone held sideways), where `reserve` px of title and bars take a bigger share: keep the subject at `frac` of what is left */
 const fitH = (reserve: number, frac: number) => Math.max(1, frac * innerHeight / Math.max(innerHeight * 0.3, innerHeight - reserve));
-const homeCam = (): CamPose => ({ tx: 0, ty: -5, tz: 0, az: 0, el: 0.52, dist: 168 * app.homeZoom * Math.max(fitW(0.7), fitH(innerHeight < 500 ? 90 : 200, 0.73)) });   // sideways the title and strip shrink to slim bars   // a little smaller and lower than before: the title sits above it, the stats strip below (Eric's pick C, 2026-10-07)
+const homeCam = (): CamPose => ({ tx: 0, ty: -2, tz: 0, az: 0, el: 0.52, dist: 186 * app.homeZoom * Math.max(fitW(0.64), fitH(innerHeight < 500 ? 90 : 200, 0.73)) });   // sideways the title and strip shrink to slim bars   // a little smaller and lower than before: the title sits above it, the stats strip below (Eric's pick C, 2026-10-07)
 /** the first-visit intro (Eric's pick B): the same globe, farther off, behind the headline */
 const introCam = (): CamPose => ({ ...homeCam(), ty: -9, dist: homeCam().dist * 1.28 });
 /** the home title and stats strip: shown with a short rise at home, hidden in a set */
 function homeCopy(on: boolean) {
+  const t = $('home-title'); app.titleBot = on ? t.offsetTop + t.offsetHeight + 6 : -1e9;   // read here, not per frame
   for (const id of ['home-title', 'home-stats']) { const el = $(id); el.hidden = !on; if (on && !document.body.classList.contains('intro')) { el.classList.add('pre'); void el.offsetWidth; el.classList.remove('pre'); } }
 }
 /** Explore the globe (Eric 2026-10-07: very, very smooth): the veil clears and the headline lifts away while the globe turns a quarter
@@ -149,7 +153,7 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
 function stageQuat(place: Place) { const pin = app.globe.pins.find((p) => p.place === place)!; const q = GlobeView.facing(pin.dir, new THREE.Vector3(0, 1, 0)); const north = new THREE.Vector3(0, 1, 0).applyQuaternion(q); north.y = 0; if (north.lengthSq() > 1e-6) { north.normalize(); const yaw = Math.atan2(north.x, north.z) - Math.PI; q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)); } return q; }
 function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
-  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.globe.fixtures.visible = true; 
+  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.spinShown = app.spin; app.globe.fixtures.visible = true; 
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
   homeCopy(true); $('card-place').hidden = true; $('actions').hidden = true; showHint(HINT_GLOBE); document.querySelector('.brand')!.classList.remove('link');
 }
@@ -182,12 +186,13 @@ function updateLabels() {
     if (!open) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; l.classList.remove('hover'); return; }
     cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : 1) - facing * 0.5, facing });   // built labels are placed first and stay put; an opened "coming soon" label goes on top of them
   });
-  const tEl = $('home-title'); const titleBot = tEl.hidden ? -1e9 : tEl.getBoundingClientRect().bottom + 6;
+  const titleBot = app.titleBot;
+  for (const c of cand) { const l = app.labels[c.i]; const k = String(app.soon?.place === app.globe.pins[c.i].place); if (l.dataset.k !== k && l.offsetWidth) { l.classList.toggle('asked', k === 'true'); l.dataset.k = k; l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } }   // sizes read once when a label changes, all before any write: one layout per change instead of one per label per frame
   cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = []; const G = 6;
   const hit = (b: number[], list: number[][]) => list.reduce((n, o) => n + Math.max(0, Math.min(b[2], o[2]) - Math.max(b[0], o[0])) * Math.max(0, Math.min(b[3], o[3]) - Math.max(b[1], o[1])), 0);
   for (const c of cand) {
     const l = app.labels[c.i]; const pin = app.globe.pins[c.i]; const hover = app.hover === pin.place;
-    if (l.offsetWidth) { l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);
+    const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);
     const boxAt = (slot: typeof SLOTS[number]) => { const y0 = slot.startsWith('up') ? c.top - c.r - G - h : slot.startsWith('down') ? c.base + G : c.top - h / 2;
       const x0 = slot === 'left' ? c.x - c.r - G - w : slot === 'right' ? c.x + c.r + G : slot.endsWith('Left') ? c.x - w + c.r : slot.endsWith('Right') ? c.x - c.r : c.x - w / 2;
       return [x0, y0, x0 + w, y0 + h]; };
@@ -195,7 +200,7 @@ function updateLabels() {
     const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(pad(b), others) * 8; };   // a label keeps clear of every pin, so the small ones stay reachable under the pointer
     const prev = l.dataset.slot as typeof SLOTS[number] | undefined; let slot: typeof SLOTS[number] = prev && cost(prev) === 0 ? prev : SLOTS.reduce((best, k) => (cost(k) < cost(best) ? k : best), SLOTS[0] as typeof SLOTS[number]);
     if (prev && slot !== prev && cost(prev) <= cost(slot)) slot = prev; l.dataset.slot = slot; const box = boxAt(slot); boxes.push(box);
-    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4, Math.max(0, (box[1] - titleBot) / 24)));   // labels near the top of the ball fade out under the home title l.style.pointerEvents = 'auto';
+    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4, Math.max(0, (box[1] - titleBot) / 24))); l.style.pointerEvents = 'auto';   // labels near the top of the ball fade out under the home title
     l.style.transform = `translate(${box[0]}px, ${box[1]}px)`; l.classList.toggle('hover', hover); l.classList.toggle('asked', app.soon?.place === pin.place); l.style.zIndex = pin.place.scene ? (hover ? '6' : '4') : '7';
   }
 }
@@ -385,10 +390,16 @@ function frame() {
   const dt = Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
-    app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
-    app.globe.group.quaternion.copy(homeQ());
+    app.idle += dt; app.spin += (app.dragging ? 0 : app.spinVel * dt) + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 1.5);   // a longer glide after a flick (Eric 2026-10-07: inertia)
+    app.spinShown += (app.spin - app.spinShown) * (1 - Math.exp(-dt * 30));   // the ball follows the hand through a 30 ms smoothing: touch moves arrive at 60 Hz, a phone draws at 120
+    app.globe.group.quaternion.copy(app.globe.homeQuat(app.spinShown));
   }
-  app.orbit.update(dt); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
+  app.orbit.update(dt); app.globe.group.updateMatrixWorld(); app.globe.cull(app.camera.position); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics();
+  // a set standing still under a moving camera casts the same shadows every frame: draw the shadow map once and reuse it (LA's 4.4 M
+  // triangles were drawn twice a frame on phones, Eric 2026-10-07). Anything moving — the globe, a tween, bricks in flight — redraws it.
+  const still = app.view === 'scene' && app.state === 'built' && !app.tween && !app.anims.length; const sm = app.renderer.shadowMap;
+  if (still && sm.autoUpdate) sm.needsUpdate = true; sm.autoUpdate = !still;
+  app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {
@@ -398,7 +409,7 @@ async function start() {
   // drag froze the ball and then flung it (Eric 2026-10-07)
   if (!SHOT) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!);
     const next = () => { const id = queue[0]; if (!id) { app.warm = true; return; }
-      if (app.view !== 'globe' || app.tween || app.dragging || Math.abs(app.spinVel) > 0.05) { setTimeout(next, 250); return; }
+      if (app.view !== 'globe' || app.tween || app.dragging || Math.abs(app.spinVel) > 0.05 || app.idle < 1.2) { setTimeout(next, 250); return; }   // and not within a second of the last touch: the next one is likely to follow
       if (!built.has(id)) buildCached(id); else { prepareBricks(id); queue.shift(); } setTimeout(next, 30); };
     setTimeout(next, 300); } else app.warm = true;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe

@@ -69,6 +69,8 @@ export class BrickRenderer {
   setPose(it: Item, p: THREE.Vector3, q: THREE.Quaternion) { this.m.compose(p, q, this.one); it.mesh.setMatrixAt(it.index, this.m); if (it.decal) it.decal.mesh.setMatrixAt(it.decal.index, this.m); }
   getPose(it: Item, p: THREE.Vector3, q: THREE.Quaternion) { it.mesh.getMatrixAt(it.index, this.m); this.m.decompose(p, q, new THREE.Vector3()); }
   commit() { for (const m of this.meshes) m.instanceMatrix.needsUpdate = true; }
+  /** shadow casting on or off for every brick (a per-object flag: no shader recompile) */
+  castShadows(on: boolean) { for (const m of this.meshes) if (!this.decals.has(m)) m.castShadow = on && !m.userData.trans; }
   resetHome() { for (const it of this.items) this.setPose(it, it.home.p, it.home.q); this.commit(); }
   /** Black-on-white silhouette for judging: one flat material, prints hidden. */
   silhouette(on: boolean) { for (const m of this.meshes) { if (this.decals.has(m)) { m.visible = !on; continue; } m.material = on ? this.matSil : (m.userData.base ?? this.matOpaque); m.castShadow = !on && !m.userData.trans; } }

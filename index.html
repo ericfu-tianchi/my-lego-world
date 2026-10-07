@@ -47,6 +47,7 @@
   .entrance button { font-size: 13px; padding: 6px 11px; border-radius: 8px; border-color: transparent; background: transparent; } .entrance button.on { background: var(--ink); color: #fff; }
   .step { top: 74px; left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 13px; color: var(--ink); background: rgba(255,255,255,.8); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-variant-numeric: tabular-nums; }
   #strength-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.6); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; } #strength { width: 110px; accent-color: var(--brick); }
+  @media (pointer: coarse) { .pin-label::after { content: ""; position: absolute; inset: -10px -8px; } }   /* a finger-sized tap area round each label */
   button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; } html, body { overscroll-behavior: none; }
   /* phones (2026-10-07): the same layout, tightened; bottom bars clear the home indicator */
   @media (max-width: 640px) {
@@ -73,7 +74,7 @@
 <div class="hud hint" id="hint"></div>
 <!-- the home is the globe; any set opens directly with ?scene=<id> (kyoto, singapore, sg-v4, kyoto-refined, tokyo, partsheet, trees) -->
 <div id="labels"></div>
-<div class="hud home-title" id="home-title"><h2>Where I've been</h2><p>Every pin is a country I've been to. Every red pin is a set you can open.</p></div>
+<div class="hud home-title" id="home-title"><h2>Where I've been</h2><p>Every pin is a country I've been to</p></div>
 <div class="hud home-stats glass" id="home-stats"><div><b id="n-visited">20</b><span>Countries visited</span></div><div><b id="n-built">9</b><span><i class="r"></i>Built in LEGO</span></div><div><b id="n-todo">11</b><span><i class="y"></i>Still to build</span></div></div>
 <div id="intro" hidden><div class="in"><div class="eyebrow" id="intro-eyebrow">20 countries · 9 built so far</div><h1>Every country I've been to, <br>rebuilt in real LEGO bricks.</h1><p>Spin the globe, pick a red pin, and watch the city build itself.</p><button id="btn-explore">Explore the globe</button></div></div>
 <div class="hud card glass" id="card-place"><h2 id="place-title">—</h2><p class="sub" id="place-sub"></p><div class="stats" id="place-stats"></div></div>
