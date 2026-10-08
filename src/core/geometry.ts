@@ -39,9 +39,12 @@ export function roundedBox(w: number, h: number, d: number, r = EDGE_R): THREE.B
 }
 export function box(w: number, h: number, d: number, x = 0, y = 0, z = 0): THREE.BufferGeometry { const g = roundedBox(w, h, d, Math.min(EDGE_R, w / 4, h / 4, d / 4)); g.translate(x, y, z); return g; }
 export function cyl(r: number, h: number, segs = 16, rTop = r, x = 0, y = 0, z = 0): THREE.BufferGeometry { const g = new THREE.CylinderGeometry(rTop, r, h, segs, 1, false); g.deleteAttribute('uv'); g.translate(x, y, z); return g; }
+/** Phones draw studs with 8 sides instead of 14: a stud is a few pixels wide there, and studs are most of a big set's triangles
+ *  (Seoul's earth bricks alone were 1.2 M; Eric 2026-10-08: big sets stuttered on his phone). */
+const STUD_SEGS = typeof matchMedia !== 'undefined' && (matchMedia('(pointer: coarse)').matches || /[?&]touch\b/.test(location.search)) ? 8 : 14;
 export function stud(x: number, y: number, z: number): THREE.BufferGeometry {
-  const side = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 14, 1, true);
-  const cap = new THREE.CircleGeometry(STUD_R, 14); cap.rotateX(-Math.PI / 2); cap.translate(0, STUD_H / 2, 0);
+  const side = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, STUD_SEGS, 1, true);
+  const cap = new THREE.CircleGeometry(STUD_R, STUD_SEGS); cap.rotateX(-Math.PI / 2); cap.translate(0, STUD_H / 2, 0);
   const g = mergeGeos([side, cap]); g.translate(x, y + STUD_H / 2, z); return g;
 }
 /** Studs over a w×d footprint on the top face at topY; filter(i, j) selects cells. */

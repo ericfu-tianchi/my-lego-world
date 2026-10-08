@@ -387,7 +387,7 @@ function drawDrift(dt: number) {
 }
 // ---- loop ---------------------------------------------------------------------------------------------
 function frame() {
-  const dt = Math.min(0.05, app.clock.getDelta());
+  const pt0 = performance.now(); const dt = Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
     app.idle += dt; app.spin += (app.dragging ? 0 : app.spinVel * dt) + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 1.5);   // a longer glide after a flick (Eric 2026-10-07: inertia)
@@ -399,7 +399,17 @@ function frame() {
   // triangles were drawn twice a frame on phones, Eric 2026-10-07). Anything moving — the globe, a tween, bricks in flight — redraws it.
   const still = app.view === 'scene' && app.state === 'built' && !app.tween && !app.anims.length; const sm = app.renderer.shadowMap;
   if (still && sm.autoUpdate) sm.needsUpdate = true; sm.autoUpdate = !still;
-  app.renderer.render(app.scene, app.camera); requestAnimationFrame(frame);
+  const pt1 = performance.now(); app.renderer.render(app.scene, app.camera); if (PERF) perfTick(pt0, pt1, performance.now()); requestAnimationFrame(frame);
+}
+/** ?perf: a frame-time readout (update and render-submit ms, fps, draw calls, triangles) for profiling on a real phone */
+const PERF = qs.has('perf'); const perfLog: number[][] = []; let perfEl: HTMLElement | null = null, perfLast = 0;
+function perfTick(t0: number, t1: number, t2: number) {
+  const r = app.renderer.info.render; perfLog.push([t0 - perfLast, t1 - t0, t2 - t1, r.calls, r.triangles]); perfLast = t0; if (perfLog.length > 60) perfLog.shift();
+  (window as unknown as { __perf: unknown }).__perf = perfLog;
+  if (perfLog.length % 15 || !document.body) return;
+  if (!perfEl) { perfEl = document.createElement('div'); perfEl.style.cssText = 'position:fixed;left:8px;top:64px;z-index:9;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.72);color:#fff;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre'; document.body.appendChild(perfEl); }
+  const avg = (k: number) => perfLog.reduce((a, x) => a + x[k], 0) / perfLog.length, worst = Math.max(...perfLog.map((x) => x[0]));
+  perfEl.textContent = `${(1000 / avg(0)).toFixed(0)} fps · worst ${worst.toFixed(0)} ms\nupdate ${avg(1).toFixed(1)} ms · render ${avg(2).toFixed(1)} ms\n${Math.round(avg(3))} calls · ${(avg(4) / 1e6).toFixed(2)} M tris\n${app.view} · ${app.state}`;
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app } }
 async function start() {

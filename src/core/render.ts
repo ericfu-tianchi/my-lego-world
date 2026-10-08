@@ -8,6 +8,8 @@ import { bodyBox } from './ldraw';
 export interface Item { mesh: THREE.InstancedMesh; index: number; key: string; home: { p: THREE.Vector3; q: THREE.Quaternion }; half: [number, number, number]; y: number; decal?: { mesh: THREE.InstancedMesh; index: number } }
 
 /** InstancedMesh per part type × opacity × print; flat item list drives physics and animation. Prints ride as decal instances. */
+/** a phone or tablet: draw the cheaper variants (also forced by ?touch) */
+const LOW_GPU = typeof matchMedia !== 'undefined' && (matchMedia('(pointer: coarse)').matches || /[?&]touch\b/.test(location.search));
 export class BrickRenderer {
   group = new THREE.Group(); items: Item[] = []; meshes: THREE.InstancedMesh[] = []; decals = new Set<THREE.InstancedMesh>();
   matOpaque = new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0, envMapIntensity: 0.9 });
@@ -17,7 +19,10 @@ export class BrickRenderer {
   matTrans = new THREE.MeshPhysicalMaterial({ roughness: 0.08, metalness: 0, transparent: true, opacity: 0.62, envMapIntensity: 1.2, depthWrite: false });
   // curtain-wall glass: real transmission (three renders the opaque scene first and the glass samples it, tinted by the colour), so a
   // core or the sky shows through the facade; the flat 0.62 alpha above reads as frost on a whole tower (Shanghai Tower, 2026-10-03)
-  matGlass = new THREE.MeshPhysicalMaterial({ roughness: 0.15, metalness: 0, transmission: 0.85, thickness: 0.6, ior: 1.5, envMapIntensity: 1.4, specularIntensity: 1, side: THREE.DoubleSide });
+  // phones: transmission re-renders every opaque brick into a second target each frame (Shanghai's whole set drawn twice); there the
+  // glass is an opaque polished panel in its own colour instead (Eric 2026-10-08: big sets stuttered on his phone)
+  matGlass = LOW_GPU ? new THREE.MeshStandardMaterial({ roughness: 0.12, metalness: 0.3, envMapIntensity: 1.5, side: THREE.DoubleSide })   // opaque: see-through alpha reads as frost (pipeline trap)
+    : new THREE.MeshPhysicalMaterial({ roughness: 0.15, metalness: 0, transmission: 0.85, thickness: 0.6, ior: 1.5, envMapIntensity: 1.4, specularIntensity: 1, side: THREE.DoubleSide });
   matSil = new THREE.MeshBasicMaterial({ color: 0x141414 });
   anisotropy = 4;
   /** night mode: a rule naming the glow colour of a brick (by tag, colour key, part key); glowing groups get their own material */
