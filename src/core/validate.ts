@@ -10,6 +10,7 @@ export interface Report { ok: boolean; parts: number; floating: number; overlaps
 interface Item { i: number; p: Placement; def: PartDef; x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; cells: [number, number][]; studs: [number, number][]; rect?: [number, number, number, number] }
 
 export const HOSTS: Record<string, string> = { shutter_open_1x2x3: 'window_1x2x3', shutter_open_r_1x2x3: 'window_1x2x3', glass_1x2x2: 'window_1x2x2', glass_1x4x3: 'window_1x4x3', door_1x4x6: 'doorframe_1x4x6', pane_lattice_1x2x3: 'window_1x2x3', door_lattice: 'doorframe_1x4x6', shutter_1x2x3: 'window_1x2x3', cart_wheel_l: 'wheelplate_2x2', cart_wheel_r: 'wheelplate_2x2', merlion_jet: 'merlion_body', mbs_glass: 'mbs_core', stree_bowl: 'stree_cone', cow_saddle: 'cow', cow_fill: 'cow', cow_fill2: 'cow' };
+Object.assign(HOSTS, { woldo_blade: 'woldo_pole' });   // Seoul (ko-life): the guard's crescent blade clipped round its spear's shaft, one origin
 const BARS = new Set(['bar_3l', 'bar_4l']);
 const isBar = (it: Item) => BARS.has(it.p.key) || !!it.def.bar;
 const isHollow = (it: Item) => HOLLOW.has(it.p.key) || !!it.def.hollow;
@@ -146,7 +147,7 @@ export function validate(all: Placement[], base = 0): Report {
   for (const bar of valid.filter(isBar)) for (const h of valid) if (isHollow(h) && h.y0 <= bar.y1 + (bar.def.loop ?? 0) + EPS && h.y1 >= bar.y0 - EPS && (cellsShare(bar, h) || (h.def.clip && clipReach(bar, h)))) { adj[bar.i].push(h.i); adj[h.i].push(bar.i); } // touching counts: a lantern loop pokes above its box into the clip
   // a minifig stands on both feet (2026-10-03, Eric: the painter's left foot hung over the island's edge): every cell of the legs must have a
   // part directly under it whose top is the legs' bottom
-  for (const L of valid) if (L.p.key === 'fig_legs') for (const [cx, cz] of L.cells) {
+  for (const L of valid) if (L.p.key === 'fig_legs' || L.p.key === 'fig_skirt') for (const [cx, cz] of L.cells) {
     const under = (byTop.get(L.y0) ?? []).some((U) => U !== L && U.cells.some(([ux, uz]) => Math.abs(ux - cx) < 0.5 + EPS && Math.abs(uz - cz) < 0.5 + EPS));
     if (!under && L.y0 !== 0) { issues.push({ kind: 'floating', index: L.i, msg: `fig_legs @(${L.p.x},${L.p.y},${L.p.z}): a foot over (${cx},${cz}) stands on nothing${L.p.tag ? ' [' + L.p.tag + ']' : ''}` }); }
   }

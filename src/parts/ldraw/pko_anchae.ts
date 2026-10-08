@@ -1,0 +1,4 @@
+// LDraw part ko_anchae "ko_anchae — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_anchae","name":"ko_anchae — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-4.349,0,-7.349,5.349,13.2,7.349],"pos":"ZRXNNGUdZRXNNJviZRUAAGUdZRUAAJvim+7NNJvim+7NNGUdm+4AAJvim+4AAGUdm+7NNJviZRXNNJvim+7NNGUdZRXNNGUdm+4AAGUdZRUAAGUdm+4AAJviZRUAAJvim+7NNGUdZRXNNGUdm+4AAGUdZRUAAGUdZRXNNJvim+7NNJviZRUAAJvim+4AAJvi","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

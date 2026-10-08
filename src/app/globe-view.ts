@@ -10,7 +10,7 @@ import { latLonToDir, PLACES, type Place } from '../scenes/globe';
 
 export const GLOBE_RADIUS = 26;   // studs
 export const TILT = 23.4 * Math.PI / 180;
-export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3 }
+export interface Pin { place: Place; group: THREE.Group; hit: THREE.Mesh; dir: THREE.Vector3; top: number; rad: number }
 
 const hash = (a: number, b: number) => { let h = Math.imul(a, 73856093) ^ Math.imul(b, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 /** the great ranges, coarsely: 2 = high snow (Himalaya–Tibet core, high Andes), 1 = mountains */
@@ -28,6 +28,8 @@ export class GlobeView {
   group = new THREE.Group();
   /** the stand and meridian: never turn */
   fixtures = new THREE.Group(); pins: Pin[] = [];
+  /** the surface in 32 patches (45° × 45°) so the GPU skips what is out of view: the far side at home, all but the crown under a set */
+  patches: { mesh: THREE.InstancedMesh; dir: THREE.Vector3 }[] = [];
   constructor(env: THREE.Texture) {
     const R = GLOBE_RADIUS; const one = new THREE.Vector3(1, 1, 1);
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0, envMap: env, envMapIntensity: 0.9 });
@@ -66,7 +68,12 @@ export class GlobeView {
         sea.push(at(0.2)); seaC.push(colourAt(j, false));
       }
     }
-    inst('plate_1x1', land, landC, this.group); inst('tile_1x1', sea, seaC, this.group); inst('tile_1x2', sea2, sea2C, this.group); inst('roundtile_1x1', coast, coastC, this.group);
+    const patched = (key: string, ms: THREE.Matrix4[], cs: string[]) => {   // one instanced mesh per patch, culled by the frustum and by facing
+      const buckets = new Map<number, number[]>(); const v = new THREE.Vector3();
+      ms.forEach((m, k) => { v.setFromMatrixPosition(m); const lat = Math.asin(THREE.MathUtils.clamp(v.y / v.length(), -1, 1)), lon = Math.atan2(v.z, v.x); const b = Math.min(3, Math.floor((lat / Math.PI + 0.5) * 4)) * 8 + Math.min(7, Math.floor((lon / Math.PI + 1) * 4)); (buckets.get(b) ?? buckets.set(b, []).get(b)!).push(k); });
+      for (const ks of buckets.values()) { const im = inst(key, ks.map((k) => ms[k]), ks.map((k) => cs[k]), this.group); im.computeBoundingSphere(); this.patches.push({ mesh: im, dir: im.boundingSphere!.center.clone().normalize() }); }
+    };
+    patched('plate_1x1', land, landC); patched('tile_1x1', sea, seaC); patched('tile_1x2', sea2, sea2C); patched('roundtile_1x1', coast, coastC);
     // ---- the meridian, pole caps and stand (fixed). The arc lies in the axis plane: from the north cap round the west side to the south cap.
     const steel = new THREE.MeshStandardMaterial({ color: colorHex('DarkBluishGray'), roughness: 0.3, metalness: 0.35, envMap: env, envMapIntensity: 1.2 });
     const wood = new THREE.MeshStandardMaterial({ color: colorHex('ReddishBrown'), roughness: 0.45, envMap: env, envMapIntensity: 0.8 });
@@ -95,16 +102,23 @@ export class GlobeView {
     // ---- pins: a white 2×2 round plate, a red 1×1 round brick post, a red 2×2 round plate head
     const red = new THREE.MeshStandardMaterial({ color: colorHex('BrightRed'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), white = new THREE.MeshStandardMaterial({ color: colorHex('White'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
     const up = new THREE.Vector3(0, 1, 0);
-    // places not built yet: a slimmer pin, a 1×1 round plate on a 1×1 round brick, grey; priority ones yellow
-    const grey = new THREE.MeshStandardMaterial({ color: colorHex('LightBluishGray'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 }), yellow = new THREE.MeshStandardMaterial({ color: colorHex('BrightLightOrange'), roughness: 0.35, envMap: env, envMapIntensity: 0.9 });
+    // places not built yet: a slimmer pin, a 1×1 round plate on a 1×1 round brick, yellow
+    const yellow = new THREE.MeshStandardMaterial({ color: colorHex('Yellow'), toneMapped: false, roughness: 0.55, envMap: env, envMapIntensity: 0.9 });
     for (const place of PLACES) {
       const dir = new THREE.Vector3(...latLonToDir(place.lat, place.lon)); const g = new THREE.Group(); g.position.copy(dir).multiplyScalar(R + 0.7); g.quaternion.setFromUnitVectors(up, dir);
-      const head = place.scene ? red : place.priority ? yellow : grey;
-      const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['round_1x1', white, 0.6], ['roundplate_1x1', head, 1.4]];
+      const head = place.scene ? red : yellow;   // not built yet: Bright Yellow, untone-mapped so it stays lemon against the tan land (Eric 2026-10-07: grey could not be seen, the tone-mapped yellow read as sand)
+      // a place not built yet (Eric's pick C of three, 2026-10-07): a mini pin, a white 1×1 round plate under a 1×1 round tile
+      const parts: [string, THREE.Material, number][] = place.scene ? [['roundplate_2x2', white, 0.2], ['round_1x1', red, 1.0], ['roundplate_2x2', red, 1.8]] : [['roundplate_1x1', white, 0.2], ['roundtile_1x1', head, 0.6]];
+      const top = place.scene ? 2.2 : 0.8;
       for (const [k, m, y] of parts) { const mesh = new THREE.Mesh(geometryFor(k), m); mesh.position.y = y; mesh.castShadow = true; g.add(mesh); }
       const hit = new THREE.Mesh(new THREE.SphereGeometry(place.scene ? 2.6 : 1.4, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.2; g.add(hit); g.scale.setScalar(0.8); this.group.add(g);   // a size smaller (Eric 2026-10-07)
-      this.pins.push({ place, group: g, hit, dir });
+      this.pins.push({ place, group: g, hit, dir, top: top * 0.8, rad: (place.scene ? 1 : 0.5) * 0.8 });
     }
+  }
+  /** hide the patches on the far side of the ball from `eye` (world space); the frustum takes care of the rest */
+  cull(eye: THREE.Vector3) {
+    const c = new THREE.Vector3().setFromMatrixPosition(this.group.matrixWorld), toEye = eye.clone().sub(c).normalize(), d = new THREE.Vector3();
+    for (const p of this.patches) p.mesh.visible = d.copy(p.dir).applyQuaternion(this.group.quaternion).dot(toEye) > -0.45;   // a 45° patch still shows a rim at -0.4
   }
   /** the ball's rotation at home: `spin` about its own axis, the axis tilted 23.4° */
   homeQuat(spin: number) { return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), TILT).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), spin)); }

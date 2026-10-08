@@ -1,0 +1,4 @@
+// LDraw part ko_wall8 "ko_wall8 — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_wall8","name":"ko_wall8 — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-4,0,-0.5,4,4.8,0.5],"pos":"ABAzEwACABAzEwD+ABAAAAACABAAAAD+APAzEwD+APAzEwACAPAAAAD+APAAAAACAPAzEwD+ABAzEwD+APAzEwACABAzEwACAPAAAAACABAAAAACAPAAAAD+ABAAAAD+APAzEwACABAzEwACAPAAAAACABAAAAACABAzEwD+APAzEwD+ABAAAAD+APAAAAD+","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

@@ -1,0 +1,4 @@
+// LDraw part ko_frame "ko_frame — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_frame","name":"ko_frame — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-10,0,-2.5,10,16.4,2.5],"pos":"ACiaQQAKACiaQQD2ACgAAAAKACgAAAD2ANiaQQD2ANiaQQAKANgAAAD2ANgAAAAKANiaQQD2ACiaQQD2ANiaQQAKACiaQQAKANgAAAAKACgAAAAKANgAAAD2ACgAAAD2ANiaQQAKACiaQQAKANgAAAAKACgAAAAKACiaQQD2ANiaQQD2ACgAAAD2ANgAAAD2","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

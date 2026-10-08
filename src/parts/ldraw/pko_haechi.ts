@@ -1,0 +1,4 @@
+// LDraw part ko_haechi "ko_haechi — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)" — baked by tools/ldraw/bake.mjs from the LDraw official library (see source part license, ldraw.org). Do not edit.
+import type { Baked } from '../../core/ldraw';
+const p: Baked = {"id":"ko_haechi","name":"ko_haechi — assembly of real parts (My Lego World, tools/ldraw/asm-ours.mjs)","tris":12,"q":1024,"i32":false,"bbox":[-1,0,-2,1,6.8,2.4],"pos":"AAQzG5oJAAQzGwD4AAQAAJoJAAQAAAD4APwzGwD4APwzG5oJAPwAAAD4APwAAJoJAPwzGwD4AAQzGwD4APwzG5oJAAQzG5oJAPwAAJoJAAQAAJoJAPwAAAD4AAQAAAD4APwzG5oJAAQzG5oJAPwAAJoJAAQAAJoJAAQzGwD4APwzGwD4AAQAAAD4APwAAAD4","nrm":"fwAAfwAAfwAAfwAAgQAAgQAAgQAAgQAAAH8AAH8AAH8AAH8AAIEAAIEAAIEAAIEAAAB/AAB/AAB/AAB/AACBAACBAACBAACB","idx":"AAACAAEAAgADAAEABAAGAAUABgAHAAUACAAKAAkACgALAAkADAAOAA0ADgAPAA0AEAASABEAEgATABEAFAAWABUAFgAXABUA"};
+export default p;

@@ -253,11 +253,17 @@ export const RIG = {
       "kf",
       "fk",
       "hf_tt",
-      "df_0t"
+      "df_0t",
+      "uf_t0",
+      "du_0t",
+      "ud_t0",
+      "uu_tt"
     ],
     "held": [
       "surfboard_up",
-      "dumbbell_x"
+      "dumbbell_x",
+      "fighat_brimback",
+      "woldo_blade"
     ]
   },
   "note": "grip = centre of the hand clip in torso coordinates (units: studs, y up, +z front); place a held part there. axis = the clip's bore direction (unit). Keys: side + pose, + t for a wrist turned a quarter"

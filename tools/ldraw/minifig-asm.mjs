@@ -28,6 +28,14 @@ const HELD = {   // name → [part, LDraw matrix]: the part turned so its grip a
   surfboard_up: ['90397', [-1, 0, 0, 0, 0, 1, 0, 1, 0]],   // standing on its tail: nose up (+y), deck (studs) facing +z, rails left and right
   dumbbell_x: ['29592', [0, 1, 0, -1, 0, 0, 0, 0, 1]],      // lying left-right: the bar (its y) along x, a weight either side of a turned fist
 };
+// ---- Seoul figures (ko-life, 2026-10-06): the guard's hat 30167 turned a quarter (Ry: its pinned-up +x side → LDraw +z, the figure's back),
+// worn as a hairpiece.
+Object.assign(HELD, { fighat_brimback: ['30167', [0, 0, -1, 0, 1, 0, 1, 0, 0]] });
+// r3 (judge: "a European halberd"): the gate guards' woldo — a Spear 4497 (the pole, upright as moulded) with a Crescent Blade 3757 clipped
+// round its shaft just under the spearhead, the clip's bar axis turned upright and the crescent bulging forward (LDraw −z); the blade is
+// written in the pole's frame, so the two share one origin and the scene places them at one cell (HOSTS in validate.ts).
+EXTRA_HANDS.push('uf_t0', 'du_0t', 'ud_t0', 'uu_tt');   // r3 (judge): the idols' raised hands turned a quarter in the wrist, the C open outward like a wave
+const HELD_AT = { woldo_blade: ['3757', [0, 0, -1, -1, 0, 0, 0, 1, 0], [0, 20, 0]] };   // name → [part, LDraw matrix, LDraw position in the host's frame]
 const SIDE = {
   R: { file: '3818.dat', P: [-15.552, 9, 0], tilt: +TILT, hand: [-23.6904, 26.774, -9.8982] },   // minifig's right = LDraw -x
   L: { file: '3819.dat', P: [15.552, 9, 0], tilt: -TILT, hand: [23.6904, 26.774, -9.8982] },
@@ -53,7 +61,7 @@ function posed(side, pose, turned = false) {
   return { arm: { pos: S.P, M: armM, file: S.file }, hand: { pos: handPos, M: handM, file: '3820.dat' }, grip, axis: ap(handM, [0, 1, 0]) };
 }
 
-const files = []; const rig = { grip: {}, axis: {}, extra: { torso: EXTRA_TORSO, hands: EXTRA_HANDS, held: Object.keys(HELD) }, note: 'grip = centre of the hand clip in torso coordinates (units: studs, y up, +z front); place a held part there. axis = the clip\'s bore direction (unit). Keys: side + pose, + t for a wrist turned a quarter' };
+const files = []; const rig = { grip: {}, axis: {}, extra: { torso: EXTRA_TORSO, hands: EXTRA_HANDS, held: [...Object.keys(HELD), ...Object.keys(HELD_AT)] }, note: 'grip = centre of the hand clip in torso coordinates (units: studs, y up, +z front); place a held part there. axis = the clip\'s bore direction (unit). Keys: side + pose, + t for a wrist turned a quarter' };
 for (const pair of [...PAIRS, ...EXTRA_TORSO]) {
   const [l, r] = [pair[0], pair[1]]; const L = posed('L', l), R = posed('R', r);
   fs.writeFileSync(path.join(ASM, `figtorso_${pair}.ldr`), [`0 Minifig Torso with Arms (left ${l}, right ${r})`, `0 Name: figtorso_${pair}.ldr`,
@@ -67,6 +75,7 @@ for (const key of [...PAIRS, ...EXTRA_HANDS]) {
   files.push(`fighands_${key}.ldr`);
 }
 for (const [name, [id, M]] of Object.entries(HELD)) { fs.writeFileSync(path.join(ASM, `figheld_${name}.ldr`), [`0 ${name} (${id} turned for the hand's clip)`, `0 Name: figheld_${name}.ldr`, line(16, [0, 0, 0], M, `${id}.dat`)].join('\n') + '\n'); files.push(`figheld_${name}.ldr`); }
+for (const [name, [id, M, at]] of Object.entries(HELD_AT)) { fs.writeFileSync(path.join(ASM, `figheld_${name}.ldr`), [`0 ${name} (${id} turned and offset in its host's frame)`, `0 Name: figheld_${name}.ldr`, line(16, at, M, `${id}.dat`)].join('\n') + '\n'); files.push(`figheld_${name}.ldr`); }   // Seoul (ko-life)
 const unit = (v) => { const n = Math.hypot(...v); return v.map((x) => +(x / n).toFixed(4)); };
 for (const side of ['L', 'R']) for (const pose of Object.keys(POSE)) for (const t of [false, true]) {
   const k = side.toLowerCase() + pose + (t ? 't' : ''); const P = posed(side, pose, t); rig.grip[k] = ours(P.grip); rig.axis[k] = unit(ours(P.axis));

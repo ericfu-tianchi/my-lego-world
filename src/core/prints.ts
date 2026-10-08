@@ -573,3 +573,168 @@ def({ key: 'th_seafood', zh: '海鲜大排档招牌「ซีฟู้ด」（1�
   // set as one string: Thai vowels and tone marks stack on their consonants, so they must not be spaced character by character
   ctx.fillStyle = '#C91A09'; ctx.font = `bold ${h * 0.6}px ${THAI}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ซีฟู้ด', w / 2, h * 0.58);
 } });
+
+// ---- SEOUL · the Han (2026-10-06; docs/refs/seoul-hangang/SCHEME.md §4.5) ----------------------------------------------------------------
+// The chicken box's lid (design 11 in korea.md §1.8): 치킨 in Red marker hangul, the way delivery shops scrawl it on the box — round-capped,
+// heavy, a little uneven — over a small Dark Orange drumstick. Drawn as stroke skeletons (no system hangul font is assumed). Three colours
+// with the White tile.
+{
+  type Pt = [number, number];
+  /** one syllable's strokes in a unit box (0..1 × 0..1), polylines */
+  const CHI: Pt[][] = [[[0.30, 0.07], [0.36, 0.19]], [[0.07, 0.30], [0.60, 0.27]], [[0.35, 0.31], [0.07, 0.86]], [[0.32, 0.53], [0.62, 0.84]], [[0.82, 0.05], [0.81, 0.96]]];
+  const KIN: Pt[][] = [[[0.07, 0.10], [0.58, 0.09], [0.44, 0.50]], [[0.10, 0.31], [0.52, 0.29]], [[0.83, 0.03], [0.82, 0.60]], [[0.14, 0.60], [0.15, 0.90], [0.90, 0.87]]];
+  def({ key: 'ko_chicken_box', zh: '炸鸡外卖盒盖「치킨」（2×2 光面砖，红色马克笔韩文 + 暗橙鸡腿）', colors: ['BrightRed', 'DarkOrange'], firstUse: 'Seoul', face: 'top', base: 'tile_2x2', px: 320, draw: (ctx, w, h) => {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#C91A09';
+    const S = w * 0.38, top = h * 0.1;
+    [CHI, KIN].forEach((syl, i) => { const x0 = w * 0.08 + i * S * 1.12, y0 = top + (i ? S * 0.04 : 0);   // the second syllable a hair lower: hand-written, not set
+      ctx.lineWidth = S * 0.13;
+      for (const st of syl) { ctx.beginPath(); st.forEach(([u, v], k) => (k ? ctx.lineTo(x0 + u * S, y0 + v * S) : ctx.moveTo(x0 + u * S, y0 + v * S))); ctx.stroke(); } });
+    // the drumstick under the word: the meat an egg shape, the bone a stick with two knuckles, leaning
+    const cx = w * 0.5, cy = h * 0.76; ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.35); ctx.fillStyle = '#A95500'; ctx.strokeStyle = '#A95500';
+    ctx.beginPath(); ctx.ellipse(-w * 0.07, 0, w * 0.13, w * 0.085, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = w * 0.035; ctx.beginPath(); ctx.moveTo(w * 0.04, 0); ctx.lineTo(w * 0.17, 0); ctx.stroke();
+    for (const dy of [-1, 1]) { ctx.beginPath(); ctx.arc(w * 0.19, dy * w * 0.025, w * 0.028, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  } });
+}
+// ---- KOREA · Seoul figures (ko-life, 2026-10-06; docs/countries/korea.md §1.8) ----
+// Two faces (the idols' plain smile, the gate guard's beard) and five torsos. No names, no real faces, no logo (korea.md §1.8 likeness rule).
+const KO_DRED = '#720E0F', KO_GOLD = '#AA7F2E', KO_RED = '#C91A09', KO_GREY = '#A0A5A9', KO_PURPLE = '#3F3691';
+def({ key: 'face_ko_idol', zh: '脸·偶像微笑（七人同款）', colors: ['Black', 'White'], firstUse: 'Seoul', ...FACE, draw: (ctx, w, h) => {
+  eyes(ctx, w, h, 0.42, 0.045, 'flat');
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.38, h * 0.55); ctx.quadraticCurveTo(w / 2, h * 0.7, w * 0.62, h * 0.55); ctx.quadraticCurveTo(w / 2, h * 0.6, w * 0.38, h * 0.55); ctx.fill();   // a closed-lip smile, a little open at the middle
+} });
+// r8 (Eric 2026-10-07: the idols stared blankly): a confident stage face — sharp brows angled down to the nose, eyes with a highlight, a
+// slight one-sided smirk. No likeness, no names (korea.md §1.8).
+def({ key: 'face_ko_idol2', zh: '脸·偶像自信（剑眉、微挑嘴角）', colors: ['Black', 'White'], firstUse: 'Seoul', ...FACE, draw: (ctx, w, h) => {
+  eyes(ctx, w, h, 0.43, 0.045, 'none');
+  ctx.fillStyle = INK;   // sharp brows: tapered wedges, thick at the nose end, rising outward
+  for (const s of [-1, 1]) { const x0 = w / 2 + s * w * 0.06; ctx.beginPath(); ctx.moveTo(x0, h * 0.335); ctx.lineTo(w / 2 + s * w * 0.22, h * 0.27); ctx.lineTo(w / 2 + s * w * 0.21, h * 0.295); ctx.lineTo(x0, h * 0.37); ctx.closePath(); ctx.fill(); }
+  ctx.strokeStyle = INK; ctx.lineWidth = w * 0.03; ctx.lineCap = 'round';   // the smirk: a flat line lifting at one corner
+  ctx.beginPath(); ctx.moveTo(w * 0.41, h * 0.585); ctx.quadraticCurveTo(w * 0.52, h * 0.6, w * 0.6, h * 0.545); ctx.stroke();
+  ctx.lineWidth = w * 0.018; ctx.beginPath(); ctx.moveTo(w * 0.585, h * 0.53); ctx.lineTo(w * 0.615, h * 0.56); ctx.stroke();   // the dimple at the raised corner
+} });
+// BTS variant A (r8): the ARIRANG jacket refined — black with a Dark Red front piped in gold, a gold standing collar, five gold frogging
+// bars with knotted ends, black lapels; variant B: a white stage suit, gold piping on the lapels and the collar, double gold buttons, a
+// black shirt at the neck
+def({ key: 'torso_ko_idol_a', zh: '偶像演出服 A·黑衣暗红前襟、金色滚边与横襻、立领', colors: ['Dark Red', 'Pearl Gold', 'Black'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = KO_DRED; ctx.beginPath(); ctx.moveTo(w * 0.22, h * 0.08); ctx.lineTo(w * 0.78, h * 0.08); ctx.lineTo(w * 0.76, h); ctx.lineTo(w * 0.24, h); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = KO_GOLD; ctx.lineWidth = h * 0.035; ctx.stroke();   // gold piping round the front
+  ctx.fillStyle = KO_GOLD; ctx.fillRect(w * 0.36, 0, w * 0.28, h * 0.08);   // the standing collar
+  ctx.fillStyle = INK; ctx.fillRect(w * 0.485, h * 0.08, w * 0.03, h * 0.92);   // centre closure
+  ctx.strokeStyle = KO_GOLD; ctx.lineWidth = h * 0.05; ctx.lineCap = 'round';
+  for (let k = 0; k < 5; k++) { const y = h * (0.2 + k * 0.15); ctx.beginPath(); ctx.moveTo(w * 0.32, y); ctx.lineTo(w * 0.68, y); ctx.stroke(); dot(ctx, w * 0.3, y, h * 0.05, KO_GOLD); dot(ctx, w * 0.7, y, h * 0.05, KO_GOLD); dot(ctx, w * 0.5, y, h * 0.035, KO_GOLD); }
+} });
+def({ key: 'torso_ko_idol_b', zh: '偶像演出服 B·白色西装、金色滚边与双排金扣', colors: ['Pearl Gold', 'Black'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.38, 0); ctx.lineTo(w * 0.62, 0); ctx.lineTo(w * 0.5, h * 0.36); ctx.closePath(); ctx.fill();   // black shirt in the V
+  ctx.strokeStyle = KO_GOLD; ctx.lineWidth = h * 0.05; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(w * 0.3, 0); ctx.lineTo(w * 0.5, h * 0.5); ctx.lineTo(w * 0.7, 0); ctx.stroke();   // lapels piped in gold
+  ctx.beginPath(); ctx.moveTo(w * 0.5, h * 0.5); ctx.lineTo(w * 0.5, h); ctx.stroke();   // the front edge
+  for (let k = 0; k < 3; k++) { const y = h * (0.6 + k * 0.14); dot(ctx, w * 0.4, y, h * 0.045, KO_GOLD); dot(ctx, w * 0.6, y, h * 0.045, KO_GOLD); }   // double gold buttons
+  ctx.fillRect(w * 0.08, 0, w * 0.14, h * 0.05); ctx.fillStyle = KO_GOLD; ctx.fillRect(w * 0.06, 0, w * 0.16, h * 0.06); ctx.fillRect(w * 0.78, 0, w * 0.16, h * 0.06);   // gold shoulder trim
+} });
+def({ key: 'face_ko_guard', zh: '脸·守门将（八字胡、山羊须）', colors: ['Black', 'White'], firstUse: 'Seoul', ...FACE, draw: (ctx, w, h) => {
+  eyes(ctx, w, h, 0.4, 0.04, 'flat');
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.5, h * 0.53); ctx.quadraticCurveTo(w * 0.36, h * 0.5, w * 0.3, h * 0.6); ctx.quadraticCurveTo(w * 0.4, h * 0.56, w * 0.5, h * 0.58); ctx.quadraticCurveTo(w * 0.6, h * 0.56, w * 0.7, h * 0.6); ctx.quadraticCurveTo(w * 0.64, h * 0.5, w * 0.5, h * 0.53); ctx.fill();   // drooping moustache
+  ctx.beginPath(); ctx.moveTo(w * 0.44, h * 0.66); ctx.lineTo(w * 0.56, h * 0.66); ctx.lineTo(w * 0.5, h * 0.86); ctx.closePath(); ctx.fill();   // goatee
+} });
+def({ key: 'torso_ko_idol', zh: '偶像演出服·黑衣红色朝鲜军服前襟、金扣横襻', colors: ['Red', 'Pearl Gold', 'Black'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  // r3 (judge: dark red on black read as seven black figures): the panel two thirds of the front, black lapels either side, heavier gold
+  ctx.fillStyle = KO_RED; ctx.beginPath(); ctx.moveTo(w * 0.17, h * 0.05);   // r4 (judge): Red, not Dark Red — dark red on black stayed muddy at island distance
+   ctx.lineTo(w * 0.83, h * 0.05); ctx.lineTo(w * 0.8, h); ctx.lineTo(w * 0.2, h); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(w * 0.17, h * 0.05); ctx.lineTo(w * 0.34, h * 0.05); ctx.lineTo(w * 0.24, h * 0.5); ctx.lineTo(w * 0.19, h * 0.5); ctx.closePath(); ctx.fill();   // lapels
+  ctx.beginPath(); ctx.moveTo(w * 0.83, h * 0.05); ctx.lineTo(w * 0.66, h * 0.05); ctx.lineTo(w * 0.76, h * 0.5); ctx.lineTo(w * 0.81, h * 0.5); ctx.closePath(); ctx.fill();
+  ctx.fillRect(w * 0.48, h * 0.05, w * 0.04, h * 0.95); ctx.fillRect(w * 0.2, h * 0.82, w * 0.6, h * 0.08);   // centre closure and the belt
+  ctx.strokeStyle = KO_GOLD; ctx.lineWidth = h * 0.065; ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) { const y = h * (0.16 + k * 0.16); ctx.beginPath(); ctx.moveTo(w * 0.33, y); ctx.lineTo(w * 0.67, y); ctx.stroke(); dot(ctx, w * 0.31, y, h * 0.06, KO_GOLD); dot(ctx, w * 0.69, y, h * 0.06, KO_GOLD); }   // frogging bars with a button at each end
+  ctx.fillStyle = KO_GOLD; ctx.fillRect(w * 0.45, h * 0.82, w * 0.1, h * 0.08);   // buckle
+} });
+def({ key: 'torso_ko_guard', zh: '守门将·红袍白交领、琥珀大珠串、黑腰带', colors: ['White', 'Bright Light Orange', 'Black'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = w * 0.09; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(w * 0.34, 0); ctx.lineTo(w * 0.53, h * 0.34); ctx.moveTo(w * 0.66, 0); ctx.lineTo(w * 0.47, h * 0.34); ctx.stroke();   // crossed white collar
+  for (let k = 0; k <= 6; k++) { const a = Math.PI * (0.1 + 0.8 * k / 6); dot(ctx, w / 2 - Math.cos(a) * w * 0.22, h * 0.04 + Math.sin(a) * h * 0.6, w * 0.042, '#F8BB3D'); }   // r3: seven large amber beads round the neck; r4: Bright Light Orange (amber), not Dark Orange
+  ctx.fillStyle = INK; ctx.fillRect(0, h * 0.76, w, h * 0.09); ctx.fillRect(w * 0.56, h * 0.76, w * 0.05, h * 0.24);   // belt and its hanging end
+} });
+// r3 (judge: the skirt started at the hips): the decal now covers the whole torso front down to its foot (1.9 × 1.62:
+// the 973 runs 1.6 under the neck, 1.24 wide there and 1.9 at the foot, and the skirt's hip block sits lower than the legs' hips) so the chima's Dark Pink runs from under the chest to the hips, cut to the torso's taper; the jeogori ends at the chest
+def({ key: 'torso_ko_hanbok', zh: '韩服·白色短袄（灰领白衬、大红飘带结）、胸下深粉裙腰', colors: ['Dark Pink', 'Light Bluish Gray', 'Red', 'White'], firstUse: 'Seoul', ...TORSO, rect: { w: 1.9, h: 1.62, y: -0.21, z: 0.52 }, draw: (ctx, w, h) => {
+  const hw = (t: number) => w * (0.62 + 0.33 * t) / 1.9;   // half the torso's width at height fraction t (0 neck, 1 the torso's foot, 1.6 under the neck)
+  const t0 = 0.45; ctx.fillStyle = '#C870A0'; ctx.beginPath(); ctx.moveTo(w / 2 - hw(t0), h * t0); ctx.quadraticCurveTo(w / 2, h * (t0 + 0.08), w / 2 + hw(t0), h * t0); ctx.lineTo(w / 2 + hw(1), h); ctx.lineTo(w / 2 - hw(1), h); ctx.closePath(); ctx.fill();   // the chima, tied under the chest
+  ctx.strokeStyle = KO_GREY; ctx.lineWidth = w * 0.065; ctx.lineCap = 'butt'; ctx.beginPath(); ctx.moveTo(w * 0.38, 0); ctx.lineTo(w * 0.59, h * 0.36); ctx.moveTo(w * 0.62, 0); ctx.lineTo(w * 0.54, h * 0.13); ctx.stroke();   // the collar band, left over right
+  ctx.strokeStyle = WHITE; ctx.lineWidth = w * 0.03; ctx.beginPath(); ctx.moveTo(w * 0.385, h * 0.005); ctx.lineTo(w * 0.47, h * 0.15); ctx.stroke();   // the white dongjeong on the collar
+  ctx.fillStyle = '#E3261B'; ctx.beginPath(); ctx.ellipse(w * 0.53, h * 0.42, w * 0.07, h * 0.04, -0.4, 0, Math.PI * 2); ctx.ellipse(w * 0.67, h * 0.42, w * 0.07, h * 0.04, 0.4, 0, Math.PI * 2); ctx.fill();   // r4 (judge): the otgoreum bow, two loops in bright red, lower on her right chest, out of the camera's shadow …
+  dot(ctx, w * 0.6, h * 0.43, w * 0.035, '#E3261B');
+  ctx.beginPath(); ctx.moveTo(w * 0.57, h * 0.44); ctx.lineTo(w * 0.5, h * 0.9); ctx.lineTo(w * 0.57, h * 0.9); ctx.lineTo(w * 0.61, h * 0.46); ctx.closePath(); ctx.fill();   // … its two long ribbons
+  ctx.beginPath(); ctx.moveTo(w * 0.62, h * 0.45); ctx.lineTo(w * 0.67, h * 0.84); ctx.lineTo(w * 0.74, h * 0.84); ctx.lineTo(w * 0.66, h * 0.43); ctx.closePath(); ctx.fill();
+} });
+def({ key: 'torso_ko_hoodie', zh: '便装·连帽衫（帽口、抽绳、袋口）', colors: ['White', 'Dark Purple'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  ctx.strokeStyle = KO_PURPLE; ctx.lineWidth = w * 0.03; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(w * 0.3, 0); ctx.quadraticCurveTo(w / 2, h * 0.3, w * 0.7, 0); ctx.stroke();   // the hood's opening
+  ctx.strokeStyle = WHITE; ctx.lineWidth = w * 0.018; ctx.beginPath(); ctx.moveTo(w * 0.44, h * 0.18); ctx.lineTo(w * 0.43, h * 0.42); ctx.moveTo(w * 0.56, h * 0.18); ctx.lineTo(w * 0.57, h * 0.42); ctx.stroke();   // drawstrings
+  ctx.strokeStyle = KO_PURPLE; ctx.lineWidth = w * 0.022; ctx.beginPath(); ctx.moveTo(w * 0.24, h * 0.62); ctx.lineTo(w * 0.32, h * 0.92); ctx.lineTo(w * 0.68, h * 0.92); ctx.lineTo(w * 0.76, h * 0.62); ctx.stroke();   // kangaroo pocket
+} });
+def({ key: 'torso_ko_jacket', zh: '便装·拉链外套、白 T 恤', colors: ['White', 'Black'], firstUse: 'Seoul', ...TORSO, draw: (ctx, w, h) => {
+  ctx.fillStyle = WHITE; ctx.beginPath(); ctx.moveTo(w * 0.36, 0); ctx.lineTo(w * 0.64, 0); ctx.lineTo(w * 0.58, h); ctx.lineTo(w * 0.42, h); ctx.closePath(); ctx.fill();   // the T-shirt in the open front
+  ctx.strokeStyle = INK; ctx.lineWidth = w * 0.02; ctx.beginPath(); ctx.moveTo(w * 0.36, 0); ctx.lineTo(w * 0.42, h); ctx.moveTo(w * 0.64, 0); ctx.lineTo(w * 0.58, h); ctx.stroke();   // zip edges
+  ctx.beginPath(); ctx.moveTo(w * 0.42, 0.02 * h); ctx.quadraticCurveTo(w / 2, h * 0.12, w * 0.58, 0.02 * h); ctx.stroke();   // the T's neckline
+} });
+// the picnic pair is an assembly of real minifig parts (ko_picnic), so its faces and torsos go on the members (ld_973 / ld_3626c): same designs
+def({ ...PRINTS.torso_ko_hoodie, key: 'torso_ko_hoodie_m', base: 'ld_973', rect: { w: 1.42, h: 1.08, y: 0.2, z: 0.5 } });
+def({ ...PRINTS.torso_ko_jacket, key: 'torso_ko_jacket_m', base: 'ld_973', rect: { w: 1.42, h: 1.08, y: 0.2, z: 0.5 } });
+def({ ...PRINTS.face_grin, key: 'face_grin_m', base: 'ld_3626c' });
+def({ ...PRINTS.face_smile, key: 'face_smile_m', base: 'ld_3626c' });
+// The chicken box lid (design no. 11): 치킨 in delivery-box marker hangul, Red, round-capped strokes drawn as skeletons (LA's lettering method,
+// no font assumed), a small drumstick glyph under it. Lettering record for korea.md: delivery-box marker hangul, drawn strokes.
+{
+  type Pt = [number, number]; const CHI: Pt[][] = [[[0.31, 0.06], [0.31, 0.16]], [[0.08, 0.28], [0.56, 0.28]], [[0.33, 0.3], [0.08, 0.86]], [[0.3, 0.52], [0.6, 0.84]], [[0.82, 0.06], [0.82, 0.96]]];
+  const KIN: Pt[][] = [[[0.08, 0.08], [0.52, 0.08], [0.44, 0.52]], [[0.1, 0.3], [0.48, 0.3]], [[0.82, 0.04], [0.82, 0.6]], [[0.16, 0.6], [0.16, 0.92], [0.9, 0.92]]];
+  const block = (ctx: CanvasRenderingContext2D, strokes: Pt[][], x: number, y: number, s: number) => { for (const st of strokes) { ctx.beginPath(); st.forEach(([u, v], k) => (k ? ctx.lineTo(x + u * s, y + v * s) : ctx.moveTo(x + u * s, y + v * s))); ctx.stroke(); } };
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    const s = w * 0.36; ctx.strokeStyle = KO_RED; ctx.lineWidth = s * 0.15; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    block(ctx, CHI, w * 0.1, h * 0.12, s); block(ctx, KIN, w * 0.54, h * 0.12, s);
+    ctx.fillStyle = '#A95500'; ctx.beginPath(); ctx.ellipse(w * 0.45, h * 0.74, w * 0.13, h * 0.085, -0.35, 0, Math.PI * 2); ctx.fill();   // the meat …
+    ctx.strokeStyle = INK; ctx.lineWidth = w * 0.03; ctx.beginPath(); ctx.moveTo(w * 0.56, h * 0.7); ctx.lineTo(w * 0.7, h * 0.64); ctx.stroke(); dot(ctx, w * 0.715, h * 0.615, w * 0.025, INK); dot(ctx, w * 0.725, h * 0.66, w * 0.025, INK);   // … and the bone
+  };
+  def({ key: 'ko_chicken_box_m', zh: '炸鸡盒盖「치킨」（马克笔韩文、鸡腿小图；ko_picnic 成员 2×2 光面砖顶面）', colors: ['Red', 'Dark Orange', 'Black'], firstUse: 'Seoul', face: 'top', base: 'ld_3068b', px: 320, draw });
+}
+// ---- Korea · Seoul · Bukchon (2026-10-06, docs/refs/seoul-hanok/SCHEME.md §2.5) -----------------------------------------------------------
+// The kkotdam band of a Bukchon street wall: a white running key (hoemun) between two white rules, painted on the brick course
+// (real-bukchon-05 / 11gil-a). One key per stud, so 1×2 bricks laid end to end run it on without a break. Brick colour shows as the ground.
+{
+  const meander = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    const n = Math.round(w / h * 1.2), u = w / n, m = h * 0.14, k = h - 2 * m;   // one key per stud; rules at top and bottom
+    ctx.strokeStyle = WHITE; ctx.lineCap = 'square'; ctx.lineJoin = 'miter'; ctx.lineWidth = k * 0.1;
+    ctx.beginPath(); ctx.moveTo(0, m * 0.45); ctx.lineTo(w, m * 0.45); ctx.moveTo(0, h - m * 0.45); ctx.lineTo(w, h - m * 0.45); ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = i * u, X = (f: number) => x + f * u, Y = (f: number) => m + f * k;
+      ctx.moveTo(X(0), Y(0.9)); ctx.lineTo(X(0.12), Y(0.9)); ctx.lineTo(X(0.12), Y(0.1)); ctx.lineTo(X(0.88), Y(0.1)); ctx.lineTo(X(0.88), Y(0.68)); ctx.lineTo(X(0.38), Y(0.68)); ctx.lineTo(X(0.38), Y(0.36)); ctx.lineTo(X(0.62), Y(0.36));
+      ctx.moveTo(X(0.62), Y(0.9)); ctx.lineTo(X(1), Y(0.9)); }
+    ctx.stroke();
+  };
+  def({ key: 'ko_meander', zh: '北村花墙带回纹（1×2 砖外面，白色回纹夹两道白线）', colors: ['White'], firstUse: 'Seoul', face: 'front', base: 'ld_3004', px: 192, rect: { w: 2, h: 1.2, y: -0.1, z: 0.5 }, draw: meander });
+}
+// A daemun leaf (real-bukchon-gate): the planks' joints, three rows of black iron nail heads across the boards, a black iron ring at mid height.
+// Panel 1 × 2 × 3 (87544) front face; the two leaves of a gate carry the same print (one design).
+def({ key: 'ko_gate_leaf', zh: '北村大门门扇（1×2×3 面板正面：木板缝、三排黑铁门钉、黑铁门环）', colors: ['Dark Brown', 'Black'], firstUse: 'Seoul', face: 'front', base: 'ld_87544', px: 192, rect: { w: 1.9, h: 3.5, y: -0.1, z: 0.5 }, draw: (ctx, w, h) => {
+  ctx.strokeStyle = '#4B2E1E'; ctx.lineWidth = w * 0.025; ctx.beginPath(); for (const f of [0.25, 0.5, 0.75]) { ctx.moveTo(w * f, h * 0.02); ctx.lineTo(w * f, h * 0.98); } ctx.stroke();
+  ctx.fillStyle = INK; for (const fy of [0.12, 0.5, 0.88]) for (const fx of [0.125, 0.375, 0.625, 0.875]) { ctx.beginPath(); ctx.arc(w * fx, h * fy, w * 0.035, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = INK; ctx.lineWidth = w * 0.045; ctx.beginPath(); ctx.arc(w * 0.5, h * 0.62, w * 0.11, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(w * 0.5, h * 0.535, w * 0.05, 0, Math.PI * 2); ctx.fill();
+} });
+// ---- SEOUL · Gwanghwamun (2026-10-06, ericf-1006--seoul-palace): the gate's name board 光化門 on a Black 1×6 tile (a member of the
+// ko_gwanghwamun assembly). Lettering culture (korea.md §1.8): gilt brush regular script on black lacquer, read right to left, so the
+// board shows 門 化 光 from the left; a thin Dark Red frame line. Four colours: black ground, gold, dark red (and the tile edge).
+def({ key: 'ko_plaque', zh: '光化门匾额「光化門」（1×8 黑色光面砖，金色楷书，右起横读）', colors: ['Black', 'Pearl Gold', 'Dark Red'], firstUse: 'Seoul', base: 'ld_4162', face: 'top', rect: { w: 7.9, h: 0.92 }, px: 960, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#0E0E10'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#6E1A1A'; ctx.lineWidth = h * 0.06; ctx.strokeRect(h * 0.06, h * 0.06, w - h * 0.12, h - h * 0.12);
+  const GOLDK = '#FFD966'; ctx.strokeStyle = GOLDK; ctx.lineWidth = h * 0.045; ctx.lineJoin = 'round';   // r8: brighter gilt, strokes thickened so the glyphs hold at island distance
+  ['門', '化', '光'].forEach((c, i) => { const x = w * (0.27 + 0.23 * i); kanji(ctx, c, x, h * 0.53, h * 0.8, GOLDK, 0, 'bold', PLAQUE); ctx.font = `bold ${h * 0.8}px ${PLAQUE}`; ctx.strokeText(c, x, h * 0.53); });   // r8: 1×8 board, glyphs 80 % of its height
+} });
+// r9 (Eric 2026-10-07: the plaque must be there and readable, as the real one): the board grows to 2 × 8 — this print on its Black 2×6
+// tile, Dark Red 1×2 tiles standing at the ends as the frame. Real board since Oct 2023: gilt brush regular script on black lacquer, read
+// right to left (門 化 光 from the left), in a painted frame. Colours: black ground, gold, dark red (frame line). r10: a lighter gilt, so it reads Pearl Gold under the eave's shade (it rendered olive).
+def({ key: 'ko_plaque26', zh: '光化门匾额「光化門」（2×6 黑色光面砖，金色楷书，右起横读；两端暗红 1×2 竖砖作框）', colors: ['Black', 'Pearl Gold', 'Dark Red'], firstUse: 'Seoul', base: 'ld_69729', face: 'top', rect: { w: 5.9, h: 1.9 }, px: 960, draw: (ctx, w, h) => {
+  ctx.fillStyle = '#0E0E10'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = '#6E1A1A'; ctx.lineWidth = h * 0.07; ctx.strokeRect(h * 0.035, h * 0.035, w - h * 0.07, h - h * 0.07);
+  const GOLDK = '#FFE27A'; ctx.strokeStyle = GOLDK; ctx.lineWidth = h * 0.012; ctx.strokeRect(h * 0.1, h * 0.1, w - h * 0.2, h - h * 0.2);   // the gilt inner line of the frame
+  ctx.lineWidth = h * 0.05; ctx.lineJoin = 'round';
+  ['門', '化', '光'].forEach((c, i) => { const x = w * (0.2 + 0.3 * i); kanji(ctx, c, x, h * 0.54, h * 0.7, GOLDK, 0, 'bold', PLAQUE); ctx.font = `bold ${h * 0.7}px ${PLAQUE}`; ctx.strokeText(c, x, h * 0.54); });
+} });

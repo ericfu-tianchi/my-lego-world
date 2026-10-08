@@ -5,10 +5,7 @@ import { geometryFor } from '../core/catalog';
 import { Orbit } from '../core/controls';
 import { PhysicsClient } from '../physics/client';
 import { validate, summarize } from '../core/validate';
-let checkId = 0;
 import { SCENES } from '../scenes/index';
-import checksJson from '../scenes/checks.json';
-const CHECKS: Record<string, { parts: number; ok: boolean; floating: number; overlaps: number } | undefined> = checksJson;
 import { type Place } from '../scenes/globe';
 import { GlobeView, GLOBE_RADIUS } from './globe-view';
 
@@ -31,7 +28,7 @@ const app = {
   tableY: TABLE_Y, table: null as unknown as THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>,
   state: 'idle' as State, items: [] as Item[], anims: [] as Anim[], animT: 0, realT: 0, entering: false, entranceEnd: 1, animDone: null as null | (() => void), radius: 30, viewDist: 0,
   physics: new PhysicsClient(), lastPoses: null as Float32Array | null, prevPoses: null as Float32Array | null, poseAt: 0, poseGap: 1000 / 60, sceneId: 'kyoto', clock: new THREE.Clock(), autoRotate: 0.05,
-  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinVel: 0, homeZoom: 1, idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
+  env: null as unknown as THREE.Texture, view: 'scene' as 'globe' | 'scene' | 'moving', globe: null as unknown as GlobeView, spin: 0, spinShown: 0, spinVel: 0, titleBot: -1e9, homeZoom: 1, pinPx: [] as { i: number; x: number; y: number; r: number }[], idle: 0, warm: false, dragging: false, soon: null as null | { place: Place; until: number }, labels: [] as HTMLElement[], hover: null as null | Place,
   drift: null as null | { t: number; base: Float32Array; w: Float32Array }, burst: null as null | { t: number; p0: Float32Array; v: Float32Array; w: Float32Array; fixed: Uint8Array }, tween: null as null | { t: number; dur: number; step: (k: number) => void; done?: () => void }, raycaster: new THREE.Raycaster(), enter: 'float' as Enter,
   night: false, renderer: null as unknown as THREE.WebGLRenderer, scene: null as unknown as THREE.Scene, camera: null as unknown as THREE.PerspectiveCamera, orbit: null as unknown as Orbit, lights: null as unknown as ReturnType<typeof makeLights>, bricks: null as unknown as BrickRenderer, center: new THREE.Vector3(),
 };
@@ -42,27 +39,36 @@ app.enter = 'float';   // Eric's pick (B, from the air)
 function init() {
   const canvas = $('c') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT || FILM });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.5 : 2)); renderer.setSize(innerWidth, innerHeight);   // phones: 1.5× is sharp enough and ~45 % fewer pixels than 2×
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.5, 1200);
   const orbit = new Orbit(camera, canvas); const lights = makeLights(scene); const bricks = new BrickRenderer(scene); bricks.anisotropy = renderer.capabilities.getMaxAnisotropy(); const env = makeStudioEnv(renderer); bricks.setEnvironment(env);
   const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.22 })); table.rotation.x = -Math.PI / 2; table.position.y = TABLE_Y; table.receiveShadow = true; scene.add(table);
   const globe = new GlobeView(env); scene.add(globe.group, globe.fixtures);
+  if (TOUCH) { lights.key.shadow.mapSize.set(1024, 1024); globe.group.traverse((o) => (o.castShadow = false)); globe.fixtures.traverse((o) => (o.castShadow = false)); }   // phones: no shadow pass for the ~10,000 globe plates (their own studs' shadows are not visible at that size), a smaller map
   if (SHOT && qs.has('sil')) { table.visible = false; renderer.shadowMap.enabled = false; scene.background = new THREE.Color(0xffffff); document.body.style.background = '#fff'; document.querySelectorAll<HTMLElement>('.hud').forEach((h) => (h.style.display = 'none')); }
   Object.assign(app, { renderer, scene, camera, orbit, lights, bricks, table, globe, env });
-  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-  $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe();
-  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : ''); l.innerHTML = `<b>${P.name}</b><span>${P.city}</span>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }
-  { const built = globe.pins.filter((p) => p.place.scene).length; const st = document.querySelector('#card-globe .stats'); if (st) st.textContent = `${built} places built · ${globe.pins.length - built} more pinned`; }   // counted, not hand-written (it said 2 with four built)
+  addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (!$('home-title').hidden) { const t = $('home-title'); app.titleBot = t.offsetTop + t.offsetHeight + 6; } if (app.view === 'globe' && !app.tween) setCam(document.body.classList.contains('intro') ? introCam() : homeCam()); });
+  $('btn-night').onclick = () => setNight(!app.night); $('btn-apart').onclick = () => dismantle(); $('btn-rebuild').onclick = () => rebuild(); $('btn-globe').onclick = () => goGlobe(); document.querySelector<HTMLElement>('.brand')!.onclick = () => goGlobe();   // the logo is the way home (Eric 2026-10-07)
+  for (const pin of globe.pins) { const l = document.createElement('button'); const P = pin.place; l.className = 'pin-label' + (P.scene ? '' : ' soon') + (P.priority ? ' next' : '') + (!P.scene && !P.priority ? ' lite' : ''); l.innerHTML = P.scene || P.priority ? `<b>${P.name}</b><span>${P.city}</span>` : `<b>${P.name}</b><em>Coming soon</em>`; l.onclick = () => enterPlace(pin.place); l.onpointerenter = () => { if (P.scene) prepareBricks(P.scene); }; $('labels').appendChild(l); app.labels.push(l); }   // no plans yet: the country and Coming soon on one line (Eric 2026-10-07)
+  { const n = globe.pins.length, built = globe.pins.filter((p) => p.place.scene).length; $('n-visited').textContent = String(n); $('n-built').textContent = String(built); $('n-todo').textContent = String(n - built); $('intro-eyebrow').textContent = `${n} countries · ${built} built so far`; }   // counted, not hand-written
   // at home the globe turns under the hand and the camera stays put: drag or scroll spins the ball about its axis, with a little inertia
   let drag: { x: number; y: number; t: number } | null = null, pressAt: [number, number] | null = null;
-  canvas.addEventListener('pointerdown', (e) => { pressAt = [e.clientX, e.clientY]; if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
+  // two fingers on the globe pinch the zoom, like the wheel (mobile, 2026-10-07)
+  const touches = new Map<number, [number, number]>(); let pinch0 = 0, zoom0 = 1; const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  const lift = (e: PointerEvent) => { touches.delete(e.pointerId); if (touches.size < 2) pinch0 = 0; };
+  canvas.addEventListener('pointercancel', (e) => { lift(e); drag = null; app.dragging = false; pressAt = null; });
+  canvas.addEventListener('pointerdown', (e) => { touches.set(e.pointerId, [e.clientX, e.clientY]); if (touches.size === 2 && app.view === 'globe') { pinch0 = spread(); zoom0 = app.homeZoom; drag = null; pressAt = null; app.spinVel = 0; return; }
+    pressAt = [e.clientX, e.clientY]; quietHint(); if (app.view === 'globe') { drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.dragging = true; app.spinVel = 0; app.idle = 0; canvas.setPointerCapture(e.pointerId); } });
   canvas.addEventListener('pointermove', (e) => {
-    if (drag && app.view === 'globe') { const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = THREE.MathUtils.clamp((d / Math.max(16, e.timeStamp - drag.t)) * 1000, -4, 4); drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pinch0 && app.view === 'globe') { app.homeZoom = THREE.MathUtils.clamp(zoom0 * pinch0 / spread(), 0.42, 1.25); setCam(homeCam()); app.idle = 0; return; }
+    if (drag && app.view === 'globe') {   // the release velocity is smoothed over the last few moves, so a flick keeps its speed instead of the last jittery sample
+      const d = (e.clientX - drag.x) * 0.006; app.spin += d; app.spinVel = app.spinVel * 0.35 + THREE.MathUtils.clamp((d / Math.max(8, e.timeStamp - drag.t)) * 1000, -5, 5) * 0.65; drag = { x: e.clientX, y: e.clientY, t: e.timeStamp }; app.idle = 0; }   // event timestamps, not handler time: moves queued behind a long task arrive 1 ms apart and flung the globe (Eric 2026-10-07)
     const pin = pickPin(e); if (pin && pin !== app.hover && pin.scene && !drag) prepareBricks(pin.scene); app.hover = pin; canvas.style.cursor = pin ? 'pointer' : app.view === 'globe' ? 'grab' : '';
   });
-  canvas.addEventListener('pointerup', (e) => { if (drag && e.timeStamp - drag.t > 80) app.spinVel = 0; drag = null; app.dragging = false; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
-  canvas.addEventListener('wheel', (e) => { if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
+  canvas.addEventListener('pointerup', (e) => { lift(e); if (drag && e.timeStamp - drag.t > 80) app.spinVel = 0; drag = null; app.dragging = false; if (pressAt && Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) < 6) { const pin = pickPin(e); if (pin) enterPlace(pin); } pressAt = null; });
+  canvas.addEventListener('wheel', (e) => { quietHint(); if (app.view !== 'globe') return; e.preventDefault(); e.stopImmediatePropagation(); app.spinVel += e.deltaX * 0.004; app.homeZoom = THREE.MathUtils.clamp(app.homeZoom * Math.exp(e.deltaY * 0.0012), 0.42, 1.25); setCam(homeCam()); app.idle = 0; }, { capture: true, passive: false });   // trackpad sideways spins, scroll or pinch zooms
   orbit.onInteract = () => { orbit.autoRotate = 0; };
   app.physics.onFrame = (f) => { if (app.state !== 'dismantling' && app.state !== 'settled') return; const now = performance.now(); app.prevPoses = app.lastPoses ?? f.poses; app.poseGap = app.lastPoses ? Math.min(100, Math.max(8, now - app.poseAt)) : 1000 / 60; app.poseAt = now; app.lastPoses = f.poses; if (app.state === 'dismantling' && f.simT >= 2.0) { startDrift(f.poses); return; } if (f.awake === 0 && app.state === 'dismantling') setState('settled'); };
 }
@@ -70,7 +76,7 @@ function replay() { if (app.view !== 'scene' || app.tween || app.state === 'buil
 
 /** Scenes are built once and kept: the blueprint (90 ms on Shanghai) and, through prewarm, every part geometry already on the GPU, so a
  *  click on the globe starts the transition at once (Eric 2026-10-04: big sets waited ~2 s and he clicked again, thinking it had failed). */
-const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number; rep?: { ok: boolean; floating: number; overlaps: number } }>();
+const built = new Map<string, { bp: Blueprint; meta: ReturnType<typeof SCENES[string]['build']>; ms: number }>();
 function buildCached(id: string) { let b = built.get(id); if (!b) { const def = SCENES[id]; const bp = new Blueprint(def.seed); const t0 = performance.now(); const meta = def.build(bp); b = { bp, meta, ms: performance.now() - t0 }; built.set(id, b); } return b; }
 /** Every set is built into the brick renderer once — while the globe turns, one set per idle slot, and at once for the set under the
  *  pointer — and drawn once off screen, so its programs, geometry and instance buffers are on the GPU; a click then only swaps it in */
@@ -88,27 +94,25 @@ function loadScene(id: string) {
   const cached = buildCached(id); const { bp, meta, ms } = cached; const t0 = 0, t1 = ms;
   app.tableY = id === 'kyoto-refined' ? -.03 : TABLE_Y; app.table.position.y = app.tableY;
   // the connection check costs ~1.5 s on Shanghai's 8,000 parts — inside the click it held the globe still for two seconds (Eric 2026-10-04).
-  // Screenshots and tools read its summary from the console, so they keep it synchronous; the app runs it once the entrance is over.
+  // Screenshots and tools read its summary from the console; the app does not run it (the gate already has).
   const full = SHOT ? validate(bp.parts, meta.base ?? 0) : null; if (full) console.log(`scene ${id}: ${(t1 - t0).toFixed(0)}ms\n` + summarize(full, 10));
-  const baked = CHECKS[id]?.parts === bp.parts.length ? CHECKS[id] : undefined;   // the gate's result (scripts/validate.ts)
-  const rep = full ?? cached.rep ?? baked ?? null;
   const origin = new THREE.Vector3(-meta.size[0] / 2, 0, -meta.size[1] / 2);
   const only = qs.get('only'); const shown = only ? bp.parts.filter((p) => only.split(',').includes(p.tag ?? '')) : bp.parts;   // ?only=torii,bridge → element renders against clean sky
   if (only || bricksFor !== id) { app.bricks.glowRule = meta.glow ?? null; app.items = app.bricks.build(shown, origin, only ? undefined : id); bricksFor = only ? null : id; }   // a set prepared on hover is reused
   const st = bp.stats();
   $('btn-night').hidden = !meta.glow; setNight(!!meta.glow && (app.night || qs.has('night')));
   app.center.set(0, meta.center[1], 0); const radius = Math.hypot(meta.size[0], meta.size[1]) / 2 + 4; app.radius = radius; app.viewDist = meta.viewDist ?? radius * 2.15; app.lights.frame(app.center, radius);
-  const o = app.orbit; o.target.copy(app.center); o.az = meta.camera?.az ?? 0.62; o.el = meta.camera?.el ?? 0.4; o.dist = meta.camera?.dist ?? radius * 2.7; o.minDist = 8; o.maxDist = 220; o.minEl = 0.05; o.autoRotate = app.autoRotate;
+  const o = app.orbit; o.target.copy(app.center); o.az = meta.camera?.az ?? 0.62; o.el = meta.camera?.el ?? 0.4; o.dist = meta.camera?.dist ?? radius * 2.7; o.minDist = 8; o.maxDist = 220 * fitW(1.3); o.minEl = 0.05; o.autoRotate = app.autoRotate;
   if (qs.has('az')) o.az = +qs.get('az')!; if (qs.has('el')) o.el = +qs.get('el')!; if (qs.has('dist')) o.dist = +qs.get('dist')!; if (qs.has('tx')) o.target.set(+qs.get('tx')!, +qs.get('ty')!, +qs.get('tz')!);
-  $('place-title').textContent = meta.title; $('place-sub').textContent = `${meta.caption} · ${meta.subtitle}`;
-  const line = (r: { ok: boolean; floating: number; overlaps: number } | null) => `${st.parts.toLocaleString()} bricks · ${st.types} part types · ${st.colors} colours · ${!r ? 'checking connections…' : r.ok ? 'connection check passed' : r.floating + ' floating · ' + r.overlaps + ' overlaps'}`;
-  $('place-stats').textContent = line(rep);
-  if (!rep) { const my = ++checkId; const run = () => { if (my !== checkId || app.sceneId !== id) return; if (app.tween || app.state !== 'built') { setTimeout(run, 400); return; } cached.rep = validate(bp.parts, meta.base ?? 0); $('place-stats').textContent = line(cached.rep); }; setTimeout(run, 3500); }   // once per set per visit to the page
+  const P = app.globe.pins.find((p) => p.place.scene === id)?.place; $('place-title').textContent = P ? `${P.name} · ${P.city}` : meta.title; $('place-sub').textContent = meta.subtitle.charAt(0).toUpperCase() + meta.subtitle.slice(1);   // Country · City for every set (Eric 2026-10-07), then what is in it
+  $('place-stats').textContent = `${st.parts.toLocaleString()} bricks · ${st.colors} colors`;   // bricks and colours only (Eric 2026-10-07); the connection check is the build gate's job
   app.bricks.resetHome(); if (SHOT && qs.has('sil')) app.bricks.silhouette(true); setState('built');
 }
 /** night mode (Shanghai, 2026-10-03): moonlight, a dark sky, and the bricks the scene's glow rule names lit from within */
 function setNight(on: boolean) { app.night = on; app.bricks.setNight(on); app.lights.night(on); app.renderer.toneMappingExposure = on ? 1.15 : 1.0; document.body.classList.toggle('night', on); $('btn-night').textContent = on ? 'Day' : 'Night'; }
-function setState(s: State) { app.state = s; $('btn-apart').hidden = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
+/** the dock always holds two buttons (Eric 2026-10-07): while the set gathers itself Take apart stays in place, waiting, instead of vanishing */
+// phones: no shadow pass while thousands of bricks are in flight (castShadows below)
+function setState(s: State) { app.state = s; if (TOUCH) app.bricks.castShadows(s === 'built'); const apart = $('btn-apart') as HTMLButtonElement; apart.hidden = s === 'settled' || s === 'dismantling'; apart.disabled = s !== 'built'; $('btn-rebuild').hidden = !(s === 'settled' || s === 'dismantling'); }
 
 // ---- globe: home, and the stage the set stands on -------------------------------------------------------
 // One globe in one world. At home it turns on its stand; on a click it turns until the place faces up, grows and sinks until only a sliver of
@@ -118,10 +122,32 @@ const STAGE_SCALE = 3.2, STAGE_DROP = 30;
 const stageY = () => app.tableY - STAGE_DROP - GLOBE_RADIUS * STAGE_SCALE;
 /** home: the desk globe looked at from ~30° above, so the northern lands — where the places are — face the viewer (Eric's pick, 10-02);
  *  the wheel or a pinch zooms in and out */
-const homeCam = (): CamPose => ({ tx: 0, ty: -9, tz: 0, az: 0, el: 0.52, dist: 158 * app.homeZoom });
+/** how much farther the camera stands on a screen narrower than `k` (aspect), so the subject keeps its width (portrait phones) */
+const fitW = (k: number) => Math.max(1, k / app.camera.aspect);
+/** and on a short screen (a phone held sideways), where `reserve` px of title and bars take a bigger share: keep the subject at `frac` of what is left */
+const fitH = (reserve: number, frac: number) => Math.max(1, frac * innerHeight / Math.max(innerHeight * 0.3, innerHeight - reserve));
+const homeCam = (): CamPose => ({ tx: 0, ty: -2, tz: 0, az: 0, el: 0.52, dist: 186 * app.homeZoom * Math.max(fitW(0.64), fitH(innerHeight < 500 ? 90 : 200, 0.73)) });   // sideways the title and strip shrink to slim bars   // a little smaller and lower than before: the title sits above it, the stats strip below (Eric's pick C, 2026-10-07)
+/** the first-visit intro (Eric's pick B): the same globe, farther off, behind the headline */
+const introCam = (): CamPose => ({ ...homeCam(), ty: -9, dist: homeCam().dist * 1.28 });
+/** the home title and stats strip: shown with a short rise at home, hidden in a set */
+function homeCopy(on: boolean) {
+  const t = $('home-title'); app.titleBot = on ? t.offsetTop + t.offsetHeight + 6 : -1e9;   // read here, not per frame
+  for (const id of ['home-title', 'home-stats']) { const el = $(id); el.hidden = !on; if (on && !document.body.classList.contains('intro')) { el.classList.add('pre'); void el.offsetWidth; el.classList.remove('pre'); } }
+}
+/** Explore the globe (Eric 2026-10-07: very, very smooth): the veil clears and the headline lifts away while the globe turns a quarter
+ *  of the way round and draws nearer into the home view, one eased motion; the title and stats rise in as it lands */
+async function explore() {
+  if (!document.body.classList.contains('intro') || app.tween) return;
+  try { sessionStorage.setItem('introSeen', '1'); } catch { /* storage blocked */ }
+  $('intro').classList.add('leaving'); const from = camNow(), s0 = app.spin, D = 1.9;
+  setTimeout(() => document.body.classList.remove('intro'), 900);   // the pin labels and hint fade in as the globe settles
+  setTimeout(() => { for (const id of ['home-title', 'home-stats']) $(id).classList.remove('pre'); }, 750);
+  await tween(D, (k) => { const e = easeInOut(k); setCam(lerpCam(from, homeCam(), e)); app.spin = s0 + 0.9 * e; app.idle = 0; app.spinVel = 0; });
+  $('intro').hidden = true; showHint(HINT_GLOBE);
+}
 const homeQ = () => app.globe.homeQuat(app.spin);
 /** the set's opening view (Eric 10-02): close enough that the island fills the width, looking down at about 33° from the side */
-const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 4, tz: app.center.z, az: 0.3, el: 0.36, dist: app.viewDist });   // Eric's reference view (10-02): ~20° down, three-quarter
+const sceneCam = (): CamPose => ({ tx: app.center.x, ty: app.center.y - 4, tz: app.center.z, az: 0.3, el: 0.36, dist: app.viewDist * Math.max(fitW(1.3), fitH(150, 0.7)) });   // Eric's reference view (10-02): ~20° down, three-quarter
 const setCam = (c: CamPose) => { const o = app.orbit; o.target.set(c.tx, c.ty, c.tz); o.az = c.az; o.el = c.el; o.dist = c.dist; };
 const lerpCam = (a: CamPose, b: CamPose, e: number): CamPose => { let dAz = b.az - a.az; dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz)); return { tx: a.tx + (b.tx - a.tx) * e, ty: a.ty + (b.ty - a.ty) * e, tz: a.tz + (b.tz - a.tz) * e, az: a.az + dAz * e, el: a.el + (b.el - a.el) * e, dist: a.dist + (b.dist - a.dist) * e }; };
 const camNow = (): CamPose => ({ tx: app.orbit.target.x, ty: app.orbit.target.y, tz: app.orbit.target.z, az: app.orbit.az, el: app.orbit.el, dist: app.orbit.dist });
@@ -130,49 +156,64 @@ const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k 
 function stageQuat(place: Place) { const pin = app.globe.pins.find((p) => p.place === place)!; const q = GlobeView.facing(pin.dir, new THREE.Vector3(0, 1, 0)); const north = new THREE.Vector3(0, 1, 0).applyQuaternion(q); north.y = 0; if (north.lengthSq() > 1e-6) { north.normalize(); const yaw = Math.atan2(north.x, north.z) - Math.PI; q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)); } return q; }
 function showGlobe() {
   app.view = 'globe'; app.bricks.group.visible = false; app.table.visible = false; app.globe.pins.forEach((p) => (p.group.visible = true)); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12);
-  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.globe.fixtures.visible = true; 
+  const g = app.globe.group; g.position.set(0, 0, 0); g.scale.setScalar(1); g.quaternion.copy(homeQ()); app.spinShown = app.spin; app.globe.fixtures.visible = true; 
   const o = app.orbit; o.enabled = false; o.autoRotate = 0; setCam(homeCam());   // the camera is fixed at home; the hand turns the ball
-  $('card-globe').hidden = false; $('card-place').hidden = true; $('actions').hidden = true; $('hint').textContent = 'Drag to turn the globe · Scroll to zoom · Click a pin to visit';
+  homeCopy(true); $('card-place').hidden = true; $('actions').hidden = true; showHint(HINT_GLOBE); document.querySelector('.brand')!.classList.remove('link');
 }
 /** Labels (Eric 2026-10-07): built places always show theirs; a place not built yet shows its label only under the pointer or for a
  *  moment after a click ("Coming soon"). Each label sits clear of every pin head — above its pin, or beside it when that spot is taken —
  *  and of the labels already placed, so Paris, Neuschwanstein and Prague can all be open at once. A label keeps its spot while it stays free. */
+/** the controls hint (Eric 2026-10-07: lighter): key caps, shown on arriving at a view and faded out at the first drag or scroll, or after 6 s */
+let hintTimer = 0;
+const TOUCH = matchMedia('(pointer: coarse)').matches || qs.has('touch');
+const HINT_GLOBE: [string, string][] = TOUCH ? [['Drag', 'Turn'], ['Pinch', 'Zoom'], ['Tap a pin', 'Visit']] : [['Drag', 'Turn'], ['Scroll', 'Zoom'], ['Click a pin', 'Visit']];
+const HINT_SET: [string, string][] = TOUCH ? [['Drag', 'Orbit'], ['Pinch', 'Zoom'], ['Two fingers', 'Pan']] : [['Drag', 'Orbit'], ['Scroll', 'Zoom'], ['Shift + Drag', 'Pan']];
+function showHint(items: [string, string][]) {
+  const h = $('hint'); h.innerHTML = items.map(([k, v]) => `<span><kbd>${k}</kbd>${v}</span>`).join(''); h.classList.remove('quiet');
+  clearTimeout(hintTimer); hintTimer = window.setTimeout(quietHint, 6000);
+}
+const quietHint = () => $('hint').classList.add('quiet');
 const SLOTS = ['up', 'upLeft', 'upRight', 'left', 'right', 'down', 'downLeft', 'downRight'] as const;
 function updateLabels() {
   const camDir = new THREE.Vector3(); app.camera.getWorldDirection(camDir); const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(app.camera.quaternion);
   const p = new THREE.Vector3(), q = new THREE.Vector3(), d = new THREE.Vector3(); const toPx = (v: THREE.Vector3) => { v.project(app.camera); return [(v.x * 0.5 + 0.5) * innerWidth, (-v.y * 0.5 + 0.5) * innerHeight]; };
-  const now = performance.now(); if (app.soon && app.soon.until < now) app.soon = null;
+  const now = performance.now(); if (app.soon && app.soon.until < now) app.soon = null; app.pinPx = [];
   const cand: { i: number; x: number; top: number; base: number; r: number; rank: number; facing: number }[] = []; const heads: { i: number; b: number[] }[] = [];
   app.globe.pins.forEach((pin, i) => {
     const l = app.labels[i]; d.copy(pin.dir).applyQuaternion(app.globe.group.quaternion); const facing = -d.dot(camDir);
     if (app.view !== 'globe' || facing <= 0.15) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; return; }
-    const built = !!pin.place.scene, s = pin.group.scale.x, top = (built ? 2.2 : 1.8) * s, rad = (built ? 1 : 0.5) * s;
+    const built = !!pin.place.scene, top = pin.top, rad = pin.rad;
     pin.group.getWorldPosition(p); q.copy(p).addScaledVector(d, top); const [x, y] = toPx(q.clone()); const [, y1] = toPx(q.addScaledVector(camUp, rad)); const r = Math.max(4, y - y1);
-    const [, base] = toPx(p.clone()); heads.push({ i, b: [x - r, y - r, x + r, Math.max(base, y + r)] });
+    const [, base] = toPx(p.clone()); const bot = Math.max(base, y + r); heads.push({ i, b: [x - r, y - r, x + r, bot] }); app.pinPx.push({ i, x, y: (y - r + bot) / 2, r: Math.max(r, (bot - y + r) / 2) });
     const open = built || app.hover === pin.place || app.soon?.place === pin.place;
     if (!open) { l.style.opacity = '0'; l.style.pointerEvents = 'none'; l.classList.remove('hover'); return; }
-    cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : -1) - facing * 0.5, facing });   // an opened "coming soon" label is placed first: the pointer asked for it
+    cand.push({ i, x, top: y, base: Math.max(base, y + r), r, rank: (built ? 0 : 1) - facing * 0.5, facing });   // built labels are placed first and stay put; an opened "coming soon" label goes on top of them
   });
+  const titleBot = app.titleBot;
+  for (const c of cand) { const l = app.labels[c.i]; const k = String(app.soon?.place === app.globe.pins[c.i].place); if (l.dataset.k !== k && l.offsetWidth) { l.classList.toggle('asked', k === 'true'); l.dataset.k = k; l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } }   // sizes read once when a label changes, all before any write: one layout per change instead of one per label per frame
   cand.sort((a, b) => a.rank - b.rank); const boxes: number[][] = []; const G = 6;
   const hit = (b: number[], list: number[][]) => list.reduce((n, o) => n + Math.max(0, Math.min(b[2], o[2]) - Math.max(b[0], o[0])) * Math.max(0, Math.min(b[3], o[3]) - Math.max(b[1], o[1])), 0);
   for (const c of cand) {
     const l = app.labels[c.i]; const pin = app.globe.pins[c.i]; const hover = app.hover === pin.place;
-    if (l.offsetWidth) { l.dataset.w = String(l.offsetWidth); l.dataset.h = String(l.offsetHeight); } const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);
+    const w = +(l.dataset.w ?? 110), h = +(l.dataset.h ?? 36);
     const boxAt = (slot: typeof SLOTS[number]) => { const y0 = slot.startsWith('up') ? c.top - c.r - G - h : slot.startsWith('down') ? c.base + G : c.top - h / 2;
       const x0 = slot === 'left' ? c.x - c.r - G - w : slot === 'right' ? c.x + c.r + G : slot.endsWith('Left') ? c.x - w + c.r : slot.endsWith('Right') ? c.x - c.r : c.x - w / 2;
       return [x0, y0, x0 + w, y0 + h]; };
     const pad = (b: number[]) => [b[0] - 4, b[1] - 4, b[2] + 4, b[3] + 4];   // labels keep a little air between them
-    const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(b, others); };
+    const others = heads.filter((o) => o.i !== c.i).map((o) => o.b); const cost = (slot: typeof SLOTS[number]) => { const b = boxAt(slot); return hit(pad(b), boxes) * 4 + hit(pad(b), others) * 8; };   // a label keeps clear of every pin, so the small ones stay reachable under the pointer
     const prev = l.dataset.slot as typeof SLOTS[number] | undefined; let slot: typeof SLOTS[number] = prev && cost(prev) === 0 ? prev : SLOTS.reduce((best, k) => (cost(k) < cost(best) ? k : best), SLOTS[0] as typeof SLOTS[number]);
     if (prev && slot !== prev && cost(prev) <= cost(slot)) slot = prev; l.dataset.slot = slot; const box = boxAt(slot); boxes.push(box);
-    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4)); l.style.pointerEvents = 'auto';
+    l.style.opacity = String(Math.min(1, (c.facing - 0.15) * 4, Math.max(0, (box[1] - titleBot) / 24))); l.style.pointerEvents = 'auto';   // labels near the top of the ball fade out under the home title
     l.style.transform = `translate(${box[0]}px, ${box[1]}px)`; l.classList.toggle('hover', hover); l.classList.toggle('asked', app.soon?.place === pin.place); l.style.zIndex = pin.place.scene ? (hover ? '6' : '4') : '7';
   }
 }
+/** the pin under the pointer: the nearest pin head on screen within a few pixels of it, not the first hit volume along the ray — in Europe
+ *  the built pins' bigger volumes swallowed the small pins next to them (Eric 2026-10-07: the pin by Paris could not be hovered) */
 function pickPin(e: PointerEvent): Place | null {
   if (app.view !== 'globe') return null;
-  app.raycaster.setFromCamera(new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1), app.camera);
-  const hits = app.raycaster.intersectObjects(app.globe.pins.map((p) => p.hit), false); return hits.length ? app.globe.pins.find((p) => p.hit === hits[0].object)!.place : null;
+  let best: Place | null = null, bd = Infinity;
+  for (const p of app.pinPx) { const dd = Math.hypot(e.clientX - p.x, e.clientY - p.y) - p.r; if (dd < (e.pointerType === 'touch' ? 22 : Math.max(6, 14 - p.r)) && dd < bd) { bd = dd; best = app.globe.pins[p.i].place; } }
+  return best;
 }
 const tween = (dur: number, step: (k: number) => void) => new Promise<void>((done) => { app.tween = { t: 0, dur, step, done }; });
 async function enterPlace(place: Place) {
@@ -180,7 +221,7 @@ async function enterPlace(place: Place) {
   if (app.view !== 'globe' || app.tween) return; app.view = 'moving'; app.hover = null; app.spinVel = 0;
   const from = { cam: camNow(), q: app.globe.group.quaternion.clone() };
   loadScene(place.scene!); const to = { cam: sceneCam(), q: stageQuat(place) }; prepareEntrance(); app.bricks.group.visible = true; app.table.visible = app.enter === 'floor'; app.globe.pins.forEach((p) => (p.group.visible = false));
-  $('card-globe').hidden = true; app.globe.fixtures.visible = false;   // the stand stays at home
+  homeCopy(false); app.globe.fixtures.visible = false;   // the stand stays at home
   const g = app.globe.group; const p0 = new THREE.Vector3(), p1 = new THREE.Vector3(0, stageY(), 0); let started = false;
   // one motion (Eric 10-02): the globe grows and rolls down while, above it, the set is already gathering itself
   await tween(2.8, (k) => {
@@ -192,18 +233,18 @@ async function enterPlace(place: Place) {
     if (!started) { started = true; startEntrance(); }   // the gathering begins with the click; its clock eases in
   });
   if (!started) startEntrance(); app.bricks.group.scale.setScalar(1); app.bricks.group.position.set(0, 0, 0);
-  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; $('hint').textContent = 'Drag to orbit · Scroll to zoom · Shift-drag to pan'; setState(app.state);
+  app.view = 'scene'; app.orbit.enabled = true; $('card-place').hidden = false; $('actions').hidden = false; showHint(HINT_SET); document.querySelector('.brand')!.classList.add('link'); setState(app.state);
 }
 /** Back to the globe (Eric 10-02: the set should not just vanish): the set rains back up — top pieces first, spiralling the same way, off
  *  the top of the screen — while the globe rises, shrinks and turns home underneath, the set riding its crown as it shrinks. */
 async function goGlobe() {
   if (app.night) setNight(false);
-  if (app.view !== 'scene' || app.tween || app.state === 'building' || app.state === 'rebuilding') return;
-  app.view = 'moving'; app.physics.stop(); app.anims = []; app.orbit.enabled = false; app.table.visible = false;
+  if (app.view !== 'scene' || app.tween) return;   // also mid-build: the bricks leave from wherever they are
+  app.view = 'moving'; app.physics.stop(); app.anims = []; app.entering = false; app.orbit.enabled = false; app.table.visible = false;
   $('card-place').hidden = true; $('actions').hidden = true;
   const ys = app.items.map((i) => i.home.p.y); const minY = Math.min(...ys), maxY = Math.max(...ys);
   app.drift = null; app.burst = null; const exits = app.items.map((it) => { const p = new THREE.Vector3(), q = new THREE.Quaternion(); app.bricks.getPose(it, p, q); const h = it.home.p;
-    return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25 }; });
+    return { it, p, q, to: new THREE.Vector3(p.x * 1.25 + rnd(6), h.y + 80 + Math.random() * 25, p.z * 1.25 + rnd(6)), delay: (1 - (h.y - minY) / (maxY - minY + 1e-6)) * 0.7 + Math.random() * 0.25, away: p.y < -100 }; });   // away: not yet on its way in (parked below the world), it stays there
   setState('idle');
   const g = app.globe.group; const from = { cam: camNow(), q: g.quaternion.clone(), p: g.position.clone() };
   const toQ = homeQ(); app.lights.frame(new THREE.Vector3(0, -6, 0), GLOBE_RADIUS + 12); const finalCrown = stageY() + GLOBE_RADIUS * STAGE_SCALE; let t = 0;
@@ -211,7 +252,7 @@ async function goGlobe() {
     const e = easeInOut(k); g.quaternion.slerpQuaternions(from.q, toQ, e); const gs = Math.exp(Math.log(STAGE_SCALE) * (1 - e)); g.scale.setScalar(gs); g.position.lerpVectors(from.p, new THREE.Vector3(), e); setCam(lerpCam(from.cam, homeCam(), e)); if (k > 0.85) app.globe.fixtures.visible = true;
     const ss = gs / STAGE_SCALE, crown = g.position.y + GLOBE_RADIUS * gs; app.bricks.group.scale.setScalar(ss); app.bricks.group.position.set(0, crown - finalCrown * ss * (1 - e), 0);
     t = k * 1.9; const _a = new THREE.Vector3(), _b = new THREE.Quaternion();
-    for (const x of exits) { const u = THREE.MathUtils.clamp((t - x.delay) / 0.9, 0, 1), w = u * u * u;   // eases out of its seat, then accelerates up
+    for (const x of exits) { if (x.away) continue; const u = THREE.MathUtils.clamp((t - x.delay) / 0.9, 0, 1), w = u * u * u;   // eases out of its seat, then accelerates up
       _a.lerpVectors(x.p, x.to, w); const ang = -w * 1.1, c = Math.cos(ang), sn = Math.sin(ang), ax = _a.x, az = _a.z; _a.x = ax * c + az * sn; _a.z = -ax * sn + az * c;   // keeps turning the same way as it rose in
       _b.copy(x.q).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(w * 2, w * 1.5, w))); app.bricks.setPose(x.it, _a, _b); }
     app.bricks.commit();
@@ -349,13 +390,29 @@ function drawDrift(dt: number) {
 }
 // ---- loop ---------------------------------------------------------------------------------------------
 function frame() {
-  const dt = FILM ? filmDt : Math.min(0.05, app.clock.getDelta());
+  const pt0 = performance.now(); const dt = FILM ? filmDt : Math.min(0.05, app.clock.getDelta());
   if (app.tween) { app.tween.t += dt; const k = Math.min(1, app.tween.t / app.tween.dur); app.tween.step(k); if (k >= 1) { const d = app.tween.done; app.tween = null; d?.(); } }
   if (app.view === 'globe') {   // the hand's spin decays; after a few idle seconds the globe turns slowly by itself
-    app.idle += dt; app.spin += app.spinVel * dt + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 2.2);
-    app.globe.group.quaternion.copy(homeQ());
+    app.idle += dt; app.spin += (app.dragging ? 0 : app.spinVel * dt) + (app.idle > 2.5 && app.warm ? dt * 0.1 * Math.min(1, (app.idle - 2.5) / 2) : 0); app.spinVel *= Math.exp(-dt * 1.5);   // a longer glide after a flick (Eric 2026-10-07: inertia)
+    app.spinShown += (app.spin - app.spinShown) * (1 - Math.exp(-dt * 30));   // the ball follows the hand through a 30 ms smoothing: touch moves arrive at 60 Hz, a phone draws at 120
+    app.globe.group.quaternion.copy(app.globe.homeQuat(app.spinShown));
   }
-  app.orbit.update(dt); if (filmCam) { const c = app.camera; c.position.copy(filmCam.p); c.lookAt(filmCam.t); if (c.fov !== filmCam.fov) { c.fov = filmCam.fov; c.updateProjectionMatrix(); } } else if (filmK !== 1) app.camera.position.sub(app.orbit.target).multiplyScalar(filmK).add(app.orbit.target); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics(); app.renderer.render(app.scene, app.camera); if (!FILM) requestAnimationFrame(frame);
+  app.orbit.update(dt); if (filmCam) { const c = app.camera; c.position.copy(filmCam.p); c.lookAt(filmCam.t); if (c.fov !== filmCam.fov) { c.fov = filmCam.fov; c.updateProjectionMatrix(); } } else if (filmK !== 1) app.camera.position.sub(app.orbit.target).multiplyScalar(filmK).add(app.orbit.target); app.globe.group.updateMatrixWorld(); app.globe.cull(app.camera.position); updateLabels(); stepAnims(dt); if (app.burst) drawBurst(dt); else if (app.drift) drawDrift(dt); else if (app.state === 'dismantling' || app.state === 'settled') drawPhysics();
+  // a set standing still under a moving camera casts the same shadows every frame: draw the shadow map once and reuse it (LA's 4.4 M
+  // triangles were drawn twice a frame on phones, Eric 2026-10-07). Anything moving — the globe, a tween, bricks in flight — redraws it.
+  const still = app.view === 'scene' && app.state === 'built' && !app.tween && !app.anims.length; const sm = app.renderer.shadowMap;
+  if (still && sm.autoUpdate) sm.needsUpdate = true; sm.autoUpdate = !still;
+  const pt1 = performance.now(); app.renderer.render(app.scene, app.camera); if (PERF) perfTick(pt0, pt1, performance.now()); if (!FILM) requestAnimationFrame(frame);
+}
+/** ?perf: a frame-time readout (update and render-submit ms, fps, draw calls, triangles) for profiling on a real phone */
+const PERF = qs.has('perf'); const perfLog: number[][] = []; let perfEl: HTMLElement | null = null, perfLast = 0;
+function perfTick(t0: number, t1: number, t2: number) {
+  const r = app.renderer.info.render; perfLog.push([t0 - perfLast, t1 - t0, t2 - t1, r.calls, r.triangles]); perfLast = t0; if (perfLog.length > 60) perfLog.shift();
+  (window as unknown as { __perf: unknown }).__perf = perfLog;
+  if (perfLog.length % 15 || !document.body) return;
+  if (!perfEl) { perfEl = document.createElement('div'); perfEl.style.cssText = 'position:fixed;left:8px;top:64px;z-index:9;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.72);color:#fff;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre'; document.body.appendChild(perfEl); }
+  const avg = (k: number) => perfLog.reduce((a, x) => a + x[k], 0) / perfLog.length, worst = Math.max(...perfLog.map((x) => x[0]));
+  perfEl.textContent = `${(1000 / avg(0)).toFixed(0)} fps · worst ${worst.toFixed(0)} ms\nupdate ${avg(1).toFixed(1)} ms · render ${avg(2).toFixed(1)} ms\n${Math.round(avg(3))} calls · ${(avg(4) / 1e6).toFixed(2)} M tris\n${app.view} · ${app.state}`;
 }
 declare global { interface Window { __ready?: boolean; __app?: typeof app; __film?: object } }
 async function start() {
@@ -377,13 +434,16 @@ async function start() {
   // drag froze the ball and then flung it (Eric 2026-10-07)
   if (!SHOT && !FILM) { const queue = app.globe.pins.filter((p) => p.place.scene).map((p) => p.place.scene!);
     const next = () => { const id = queue[0]; if (!id) { app.warm = true; return; }
-      if (app.view !== 'globe' || app.tween || app.dragging || Math.abs(app.spinVel) > 0.05) { setTimeout(next, 250); return; }
+      if (app.view !== 'globe' || app.tween || app.dragging || Math.abs(app.spinVel) > 0.05 || app.idle < 1.2) { setTimeout(next, 250); return; }   // and not within a second of the last touch: the next one is likely to follow
       if (!built.has(id)) buildCached(id); else { prepareBricks(id); queue.shift(); } setTimeout(next, 30); };
     setTimeout(next, 300); } else app.warm = true;
   const direct = qs.get('scene') && SCENES[qs.get('scene')!] ? qs.get('scene')! : null;   // ?scene= opens a set directly (render tooling); otherwise the globe
-  if (!direct) { app.spin = 2.45; showGlobe(); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; })); return; }
+  if (!direct) { let seen = false; try { seen = !!sessionStorage.getItem('introSeen'); } catch { /* storage blocked */ }
+    const intro = qs.has('intro') || (!SHOT && !seen); if (intro) { document.body.classList.add('intro'); $('intro').hidden = false; for (const id of ['home-title', 'home-stats']) $(id).classList.add('pre'); $('btn-explore').onclick = () => explore(); } else { $('intro').hidden = true; document.body.classList.remove('intro'); }
+    if (SHOT && qs.has('explore')) setTimeout(() => explore(), 50); }   // ?intro replays the intro; &explore runs its transition (screenshots)
+  if (!direct) { app.spin = 2.45; showGlobe(); if (document.body.classList.contains('intro')) setCam(introCam()); app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; appReady(); })); return; }
   // a set opened directly still stands over its globe, as after a click (&noglobe for clean element renders)
-  app.view = 'scene'; $('card-globe').hidden = true; app.globe.fixtures.visible = false; loadScene(direct);
+  app.view = 'scene'; homeCopy(false); app.globe.fixtures.visible = false; loadScene(direct); $('card-place').hidden = false; $('actions').hidden = false; showHint(HINT_SET); document.querySelector('.brand')!.classList.add('link');
   const place = app.globe.pins.find((p) => p.place.scene === direct)?.place;
   if (place && !qs.has('noglobe')) { const g = app.globe.group; g.quaternion.copy(stageQuat(place)); g.scale.setScalar(STAGE_SCALE); g.position.set(0, stageY(), 0); app.globe.pins.forEach((p) => (p.group.visible = false)); if (!qs.has('az')) setCam(sceneCam()); } else app.globe.group.visible = false;
   app.table.visible = false; setState('built');
@@ -394,6 +454,8 @@ async function start() {
       else await new Promise<void>((res) => { const orig = app.physics.onFrame!; app.physics.onFrame = (f) => { orig(f); if (f.simT >= T) { app.physics.pause(true); res(); } }; }); // T = simulated seconds
     }
   } else { prepareEntrance(); startEntrance(); }
-  app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; }));
+  app.clock.getDelta(); frame(); requestAnimationFrame(() => requestAnimationFrame(() => { window.__ready = true; appReady(); }));
 }
+/** the first frame is on screen: fade the scene in under the page and let the intro's button go */
+function appReady() { const c = $('c'); if (SHOT) c.style.transition = 'none'; c.classList.add('ready'); const b = $('btn-explore') as HTMLButtonElement; b.disabled = false; b.textContent = 'Explore the globe'; }
 start();

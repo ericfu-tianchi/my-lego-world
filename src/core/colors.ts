@@ -57,6 +57,7 @@ export const COLORS: LegoColor[] = [
   { key: 'TransClearGlass', lego: 'Transparent', id: 40, bl: 'Trans-Clear', hex: 0xFCFCFC, trans: true, glass: true, use: '透明玻璃幕墙（同 Trans-Clear，按玻璃渲染）' },
   { key: 'TransLightBlueGlass', lego: 'Transparent Light Blue', id: 42, bl: 'Trans-Light Blue', hex: 0xAEEFEC, trans: true, glass: true, use: '浅蓝玻璃幕墙（同 Trans-Light Blue，按玻璃渲染）' },
   { key: 'TransBlack', lego: 'Transparent Brown', id: 111, bl: 'Trans-Black', hex: 0x635F52, trans: true, use: '墨色玻璃幕墙（滨海湾金沙）' },
+  { key: 'SandRed', lego: 'Sand Red', id: 153, bl: 'Sand Red', hex: 0x88605E, use: '北村花墙带（kkotdam）砖红' },   // Seoul (2026-10-06); hex = LDConfig Sand_Red (code 335)
 ];
 const BY_KEY = new Map(COLORS.map((c) => [c.key, c]));
 export function colorOf(key: string): LegoColor { const c = BY_KEY.get(key); if (!c) throw new Error('Unknown LEGO colour: ' + key); return c; }
