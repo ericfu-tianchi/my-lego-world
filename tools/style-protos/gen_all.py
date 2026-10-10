@@ -1,6 +1,6 @@
-import subprocess, json, concurrent.futures, pathlib, sys
-GEN = "/Users/tianchifu/.claude/plugins/cache/opus-dev-agent-plugins/flyer/0.29.0/commands/image-gen/scripts/gen.sh"
-OUT = pathlib.Path("/Users/tianchifu/Desktop/My Lego World/docs/protos")
+import subprocess, json, concurrent.futures, pathlib, sys, os
+GEN = os.environ.get("IMAGE_GEN", "gen.sh")  # path to an image-generation script
+OUT = pathlib.Path(__file__).resolve().parents[2] / "docs/protos"
 
 TAIL = (" Studio photography style with soft diffused daylight and gentle contact shadows, clean light warm-grey seamless background, three-quarter elevated view, 35mm lens. "
         "Every brick is a real LEGO element with visible studs and the slight edge bevel of ABS plastic, official LEGO colours only; no brick floats, every piece is physically attached to another piece. "

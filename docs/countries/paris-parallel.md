@@ -20,8 +20,8 @@ session shows Eric the screenshots.
 
 ## How to run
 ```
-cd /Users/tianchifu/Desktop/lego-paris
-export LDRAW_DIR="/Users/tianchifu/Desktop/My Lego World/vendor/ldraw-lib/ldraw"
+cd ../lego-paris
+export LDRAW_DIR="<repo>/vendor/ldraw-lib/ldraw"
 node tools/ldraw/bake.mjs <ids…>                      # new moulds
 npx tsx scripts/validate.ts fr-nd                       # must PASS
 npx tsx scripts/check-assemblies.ts                     # if you made assemblies

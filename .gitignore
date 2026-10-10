@@ -9,3 +9,10 @@ vendor/earth/*.jpg
 dist-*/
 docs/refs/paris-moc/eiffel-instructions/
 docs/refs/neuschwanstein-moc/21063-instructions/
+
+# kept local, not published
+My Lego World.html
+dist-single/
+参考图/
+docs/handoff-archive/
+docs/protos/results.json

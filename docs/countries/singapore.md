@@ -87,7 +87,7 @@ A floating garden island around **Marina Bay**: Marina Bay Sands as the hero on 
 - Prints: `merlion_face` → `merlion_eye` (1×1 brick, 2 pieces); `merlion_scales` re-based on `brick_*` so one design covers the 2×3 and 1×3 flank bricks. Designs stay at 12.
 - Regularity: 3-wide axis throughout, every column on its own stud, z-symmetric; the muzzle and the hem are plate cantilevers (real LEGO overhangs), everything stud-down.
 - Part estimate ≈ 90–100 (v2 ≈ 45). Footprint 7 × 5 plus the jet 6 studs forward.
-- gpt-image-2 reference `docs/refs/singapore-merlion-lego-*.png`: pending — the Flyer Access token expired; needs `cloudflared access login https://flyer.opuslab.ai`.
+- gpt-image-2 reference `docs/refs/singapore-merlion-lego-*.png`: pending.
 
 ## 2. Build notes (country-specific techniques)
 _Element stage, 2026-09-18 (test scene `?scene=sg-parts`, one element with `?only=<tag>`; builders in `src/scenes/singapore.ts`, shared grammar in `lib.ts`)._

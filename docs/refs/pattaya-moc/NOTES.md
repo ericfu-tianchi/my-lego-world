@@ -116,7 +116,7 @@ The real building [S Wikipedia/Thai sources]: all wood (teak, *takhian thong*, *
 ---
 
 ## 3. Hillside letter sign ("PATTAYA CITY" on Pratumnak Hill)
-Full study already in the LA worktree: `/Users/tianchifu/Desktop/lego-la/docs/refs/la-hollywood-sign/NOTES.md` (+ `SCHEME.md`, `BUILD.md`, 25 images). Copied here: `moc-brickman-hollywood-front.jpg`, `moc-brickblvd-hollywood-micro.jpg`, `miniland-hollywood-coastermadmatt.jpg`; new here `moc-imaxedlp-hollywood-sign.jpg` (Ideas 2026, Yanko Design).
+Full study already in the LA worktree: `../lego-la/docs/refs/la-hollywood-sign/NOTES.md` (+ `SCHEME.md`, `BUILD.md`, 25 images). Copied here: `moc-brickman-hollywood-front.jpg`, `moc-brickblvd-hollywood-micro.jpg`, `miniland-hollywood-coastermadmatt.jpg`; new here `moc-imaxedlp-hollywood-sign.jpg` (Ideas 2026, Yanko Design).
 - **No official set of any hillside sign.** [S, LA notes]
 - **Brickman (Ryan McNaught, 2016, minifig scale)**: **White bricks studs-up, letter face = brick sides, 1–2 studs thick**, 1-stud stair steps for rounded letters, open slot counters, on **Light Bluish Grey bar legs with grey bracing** behind; hill of terraced Dark Tan plates. ≈ 8,500 bricks. [S/P via LA notes]
 - **Miniland (LEGOWOOD, HOLLYWOOD)**: white brick letters studs-up pushed into turf, no legs. [P]
@@ -158,7 +158,7 @@ Full study already in the LA worktree: `/Users/tianchifu/Desktop/lego-la/docs/re
 ---
 
 ## Parts verified in LDraw
-All checked by `head -1` against `/Users/tianchifu/Desktop/My Lego World/vendor/ldraw-lib/ldraw/parts/<num>.dat` on 2026-10-05. "No LDraw file" = the number exists at Brickset/BrickLink but not in our library.
+All checked by `head -1` against `<repo>/vendor/ldraw-lib/ldraw/parts/<num>.dat` on 2026-10-05. "No LDraw file" = the number exists at Brickset/BrickLink but not in our library.
 
 **Thai roof and carving**
 | Number | LDraw name | Use |
