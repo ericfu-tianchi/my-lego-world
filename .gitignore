@@ -17,3 +17,8 @@ tools/film/out-ns-v1/
 tools/film/out-seoul-v1/
 tools/film/out-pattaya-v1/
 tools/film/out-pattaya-v2/
+
+# film renders, final videos and music (kept locally / copied separately, not in git)
+tools/film/out-*/
+docs/film/*.mp4
+tools/film/audio/

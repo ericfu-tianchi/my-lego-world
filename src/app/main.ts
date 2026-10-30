@@ -426,6 +426,7 @@ async function start() {
     tags: () => { const b = built.get(app.sceneId)!, [W, D] = b.meta.size, o: Record<string, number[]> = {}; const at = (p: typeof b.bp.parts[number]) => p.xform ? [p.xform.p[0] - W / 2, p.xform.p[1], p.xform.p[2] - D / 2] : [p.x + 0.5 - W / 2, p.y * 0.4, p.z + 0.5 - D / 2];   // world coordinates
       for (const p of b.bp.parts) { const m = (o[p.tag || '-'] ??= [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]); at(p).forEach((v, i) => { m[i] = Math.min(m[i], v); m[i + 3] = Math.max(m[i + 3], v); }); }
       return { tags: o, heads: b.bp.parts.filter((p) => p.key === 'fig_head' || p.key === 'ld_3626c').map((p) => [p.tag, ...at(p).map((v) => +v.toFixed(1))]) }; },
+    three: THREE,   // the how-it's-made film (tools/film/howto-v1.mjs) builds its blockout boxes and scan plane with the app's own three.js
     apart: () => dismantle(), state: () => ({ view: app.view, state: app.state, tween: !!app.tween }),
     hideUI: (on: boolean) => document.querySelectorAll<HTMLElement>('.hud, #labels').forEach((h) => (h.style.visibility = on ? 'hidden' : '')),
   };

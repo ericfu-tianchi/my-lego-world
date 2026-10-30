@@ -5,7 +5,7 @@ import { PRINTS, decalGeometry, printTexture } from './prints';
 import type { Placement } from './builder';
 import { bodyBox } from './ldraw';
 
-export interface Item { mesh: THREE.InstancedMesh; index: number; key: string; home: { p: THREE.Vector3; q: THREE.Quaternion }; half: [number, number, number]; y: number; decal?: { mesh: THREE.InstancedMesh; index: number } }
+export interface Item { mesh: THREE.InstancedMesh; index: number; key: string; tag?: string; home: { p: THREE.Vector3; q: THREE.Quaternion }; half: [number, number, number]; y: number; decal?: { mesh: THREE.InstancedMesh; index: number } }
 
 /** InstancedMesh per part type × opacity × print; flat item list drives physics and animation. Prints ride as decal instances. */
 /** a phone or tablet: draw the cheaper variants (also forced by ?touch) */
@@ -62,7 +62,7 @@ export class BrickRenderer {
         } else { pos.set(origin.x + p.x + fw / 2, origin.y + (p.y + def.h / 2) * PLATE, origin.z + p.z + fd / 2); q.setFromAxisAngle(up, p.rot * Math.PI / 2); }
         this.m.compose(pos, q, this.one); mesh.setMatrixAt(i, this.m); if (decal) decal.setMatrixAt(i, this.m);
         c.setHex(colorHex(p.color)); mesh.setColorAt(i, c);
-        this.items.push({ mesh, index: i, key, home: { p: pos.clone(), q: q.clone() }, half, y: p.y, decal: decal ? { mesh: decal, index: i } : undefined });
+        this.items.push({ mesh, index: i, key, tag: p.tag, home: { p: pos.clone(), q: q.clone() }, half, y: p.y, decal: decal ? { mesh: decal, index: i } : undefined });
       });
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       this.group.add(mesh); this.meshes.push(mesh);
